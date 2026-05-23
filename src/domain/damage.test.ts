@@ -61,10 +61,11 @@ const TYPES: Record<string, MitigationType> = {
     job: "DRK",
     cooldown_seconds: 90,
     duration_seconds: 20,
-    mitigation_percent: 20,
-    damage_types_affected: ["magical", "physical", "unaspected"],
+    mitigation_per_type: { all: 20 },
     affects: "self",
     max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Rampart",
   },
   reprisal: {
     id: "drk.reprisal",
@@ -72,21 +73,25 @@ const TYPES: Record<string, MitigationType> = {
     job: "DRK",
     cooldown_seconds: 60,
     duration_seconds: 15,
-    mitigation_percent: 10,
-    damage_types_affected: ["magical", "physical", "unaspected"],
+    mitigation_per_type: { all: 10 },
     affects: "boss_debuff",
     max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Reprisal",
   },
+  // Synthetic magical-only fixture for the damage-type-mismatch test below.
+  // Live Dark Missionary applies to all damage types (phys 5 / mag 10).
   darkMissionary: {
     id: "drk.dark_missionary",
     name: "Dark Missionary",
     job: "DRK",
     cooldown_seconds: 90,
     duration_seconds: 15,
-    mitigation_percent: 10,
-    damage_types_affected: ["magical"],
+    mitigation_per_type: { magical: 10 },
     affects: "party",
     max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Dark_Missionary",
   },
 };
 const lookup = (id: string): MitigationType | undefined =>

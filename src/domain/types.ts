@@ -86,10 +86,37 @@ export interface MitigationType {
   job: Job;
   cooldown_seconds: number;
   duration_seconds: number;
-  mitigation_percent: number; // 0–100 (flat %, multiplicative when stacked)
-  damage_types_affected: DamageType[];
+  // Per-damage-type %. Use "all" as a shorthand when every type shares the
+  // same value (the common case). Per-type keys override "all" for that type.
+  // Invulns use {all: 100} together with mechanic: "invuln".
+  mitigation_per_type: Partial<Record<DamageType | "all", number>>;
   affects: MitAffects;
-  max_charges: number; // always 1 in v0.1 (§8); field exists for future-proofing (§15)
+  max_charges: number;
+  // UI discriminator. The math for an invuln is the same as 100% all-types mit;
+  // this flag exists so the timeline can render invulns distinctly.
+  mechanic: "mit" | "invuln";
+  // FFXIV wiki page for this ability. Re-verify against this URL before
+  // changing any numeric value — it is the source of truth.
+  wiki_url: string;
+}
+
+// Resolve the % mit an ability applies to a given damage type.
+// Per-type entries override the "all" shorthand.
+export function mitPercentFor(mit: MitigationType, dt: DamageType): number {
+  return mit.mitigation_per_type[dt] ?? mit.mitigation_per_type.all ?? 0;
+}
+
+// Tooltip-friendly magnitude string. Examples:
+// "20%" (all-types), "10% phys / 5% mag" (split), "Invuln".
+export function formatMitMagnitude(mit: MitigationType): string {
+  if (mit.mechanic === "invuln") return "Invuln";
+  const t = mit.mitigation_per_type;
+  if (t.all != null) return `${t.all}%`;
+  const parts: string[] = [];
+  if (t.physical != null) parts.push(`${t.physical}% phys`);
+  if (t.magical != null) parts.push(`${t.magical}% mag`);
+  if (t.unaspected != null) parts.push(`${t.unaspected}% unasp`);
+  return parts.join(" / ");
 }
 
 export type CoverageOverrideMode = "force_include" | "force_exclude";

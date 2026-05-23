@@ -1,6 +1,6 @@
 import { useDraggable } from "@dnd-kit/core";
 import { getMitsForJob } from "@/data/mit-library";
-import type { MitigationType, PlayerSlot } from "@/domain/types";
+import { formatMitMagnitude, type MitigationType, type PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { DRAG_TYPE_MIT } from "./timeline-constants";
@@ -58,7 +58,7 @@ function MitChip({ mit, slotId }: { mit: MitigationType; slotId: string }) {
       type="button"
       ref={setNodeRef}
       className={`mit-chip${isDragging ? " dragging" : ""}`}
-      title={`${mit.name} · ${mit.mitigation_percent}% ${mit.damage_types_affected.join("/")} · ${mit.duration_seconds}s/${mit.cooldown_seconds}s`}
+      title={`${mit.name} · ${formatMitMagnitude(mit)} · ${mit.duration_seconds}s/${mit.cooldown_seconds}s`}
       {...attributes}
       {...listeners}
     >

@@ -40,10 +40,11 @@ function mitType(overrides: Partial<MitigationType> = {}): MitigationType {
     job: "DRK",
     cooldown_seconds: 90,
     duration_seconds: 20,
-    mitigation_percent: 20,
-    damage_types_affected: ["magical", "physical", "unaspected"],
+    mitigation_per_type: { all: 20 },
     affects: "self",
     max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Rampart",
     ...overrides,
   };
 }
@@ -183,9 +184,9 @@ describe("mitCovers — temporal window", () => {
 // ─── Damage type match ──────────────────────────────────────────────────────
 
 describe("mitCovers — damage type", () => {
-  it("does not cover when damage type is not in damage_types_affected", () => {
+  it("does not cover when mit has no % for the hit's damage type", () => {
     const m = mit({ player_slot_id: "s0" });
-    const t = mitType({ affects: "party", damage_types_affected: ["magical"] });
+    const t = mitType({ affects: "party", mitigation_per_type: { magical: 20 } });
 
     expect(mitCovers(m, t, hit({ damage_type: "physical" }), 0, ROSTER)).toBe(false);
     expect(mitCovers(m, t, hit({ damage_type: "magical" }), 0, ROSTER)).toBe(true);

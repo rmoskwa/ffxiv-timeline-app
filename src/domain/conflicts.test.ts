@@ -19,10 +19,11 @@ const RAMPART: MitigationType = {
   job: "DRK",
   cooldown_seconds: 90,
   duration_seconds: 20,
-  mitigation_percent: 20,
-  damage_types_affected: ["magical", "physical", "unaspected"],
+  mitigation_per_type: { all: 20 },
   affects: "self",
   max_charges: 1,
+  mechanic: "mit",
+  wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Rampart",
 };
 
 const lookup = (id: string): MitigationType | undefined =>

@@ -1,8 +1,8 @@
 import type { MitigationType } from "@/domain/types";
 
-// DRK mitigation kit, FFXIV 7.x (Dawntrail) values.
-// Spot-check against The Balance / a current tooltip before relying on these
-// for planning — Square Enix can adjust values in any patch.
+// DRK mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
+// Source of truth: wiki_url on each entry. Re-verify before changing any %.
+// Shadow Wall is omitted — it upgrades to Shadowed Vigil via trait at L92.
 export const DRK_MITS: MitigationType[] = [
   {
     id: "drk.rampart",
@@ -10,10 +10,11 @@ export const DRK_MITS: MitigationType[] = [
     job: "DRK",
     cooldown_seconds: 90,
     duration_seconds: 20,
-    mitigation_percent: 20,
-    damage_types_affected: ["magical", "physical", "unaspected"],
+    mitigation_per_type: { all: 20 },
     affects: "self",
     max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Rampart",
   },
   {
     id: "drk.reprisal",
@@ -21,10 +22,11 @@ export const DRK_MITS: MitigationType[] = [
     job: "DRK",
     cooldown_seconds: 60,
     duration_seconds: 15,
-    mitigation_percent: 10,
-    damage_types_affected: ["magical", "physical", "unaspected"],
+    mitigation_per_type: { all: 10 },
     affects: "boss_debuff",
     max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Reprisal",
   },
   {
     id: "drk.dark_mind",
@@ -32,21 +34,23 @@ export const DRK_MITS: MitigationType[] = [
     job: "DRK",
     cooldown_seconds: 60,
     duration_seconds: 10,
-    mitigation_percent: 30,
-    damage_types_affected: ["magical"],
+    mitigation_per_type: { physical: 10, magical: 20 },
     affects: "self",
     max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Dark_Mind",
   },
   {
-    id: "drk.shadow_wall",
-    name: "Shadow Wall",
+    id: "drk.shadowed_vigil",
+    name: "Shadowed Vigil",
     job: "DRK",
     cooldown_seconds: 120,
     duration_seconds: 15,
-    mitigation_percent: 30,
-    damage_types_affected: ["magical", "physical", "unaspected"],
+    mitigation_per_type: { all: 40 },
     affects: "self",
     max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Shadowed_Vigil",
   },
   {
     id: "drk.dark_missionary",
@@ -54,9 +58,34 @@ export const DRK_MITS: MitigationType[] = [
     job: "DRK",
     cooldown_seconds: 90,
     duration_seconds: 15,
-    mitigation_percent: 10,
-    damage_types_affected: ["magical"],
+    mitigation_per_type: { physical: 5, magical: 10 },
     affects: "party",
     max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Dark_Missionary",
+  },
+  {
+    id: "drk.oblation",
+    name: "Oblation",
+    job: "DRK",
+    cooldown_seconds: 60,
+    duration_seconds: 10,
+    mitigation_per_type: { all: 10 },
+    affects: "target",
+    max_charges: 2,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Oblation",
+  },
+  {
+    id: "drk.living_dead",
+    name: "Living Dead",
+    job: "DRK",
+    cooldown_seconds: 300,
+    duration_seconds: 10,
+    mitigation_per_type: { all: 100 },
+    affects: "self",
+    max_charges: 1,
+    mechanic: "invuln",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Living_Dead",
   },
 ];

@@ -1,12 +1,12 @@
 import type { MitigationType } from "@/domain/types";
 
-// MNK mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Only the melee role action Feint applies.
-export const MNK_MITS: MitigationType[] = [
+// SAM mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
+// Only the melee role action Feint applies. Third Eye is excluded as conditional.
+export const SAM_MITS: MitigationType[] = [
   {
-    id: "mnk.feint",
+    id: "sam.feint",
     name: "Feint",
-    job: "MNK",
+    job: "SAM",
     cooldown_seconds: 90,
     duration_seconds: 15,
     mitigation_per_type: { physical: 10, magical: 5 },

@@ -1,4 +1,4 @@
-import type { MitigationInstance, MitigationType } from "@/domain/types";
+import { formatMitMagnitude, type MitigationInstance, type MitigationType } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { PX_PER_SEC, secondsToTimecode } from "./timeline-constants";
 
@@ -20,7 +20,7 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
 
   const title =
     `${type.name} @ ${secondsToTimecode(instance.effect_time)}\n` +
-    `${type.mitigation_percent}% ${type.damage_types_affected.join("/")} · ` +
+    `${formatMitMagnitude(type)} · ` +
     `${type.duration_seconds}s active / ${type.cooldown_seconds}s cd` +
     (hasConflict ? "\n⚠ overlaps previous cooldown" : "");
 

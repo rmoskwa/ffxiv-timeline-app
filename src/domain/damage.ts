@@ -8,6 +8,7 @@ import {
   type BossAbilityType,
   type MitigationInstance,
   type MitigationType,
+  mitPercentFor,
   type Roster,
   resolveBossAbility,
 } from "./types";
@@ -37,7 +38,7 @@ export function computeDamagePerPlayer(
       const mt = lookupMitType(m.type_id);
       if (!mt) continue;
       if (mitCovers(m, mt, resolvedHit, i, roster)) {
-        damage *= 1 - mt.mitigation_percent / 100;
+        damage *= 1 - mitPercentFor(mt, resolvedHit.damage_type) / 100;
       }
     }
     result[i] = damage;

@@ -3,7 +3,7 @@
 //
 // Three conditions must hold for coverage:
 //   1. The hit's effect_time falls within the mit's active window.
-//   2. The mit's damage_types_affected includes the hit's damage_type.
+//   2. The mit has a non-zero % for the hit's damage_type.
 //   3. The mit's `affects` reaches this player AND the hit's target_pattern
 //      actually lands on this player.
 
@@ -18,7 +18,7 @@ import type {
   Roster,
   TargetPattern,
 } from "./types";
-import { resolveBossAbility } from "./types";
+import { mitPercentFor, resolveBossAbility } from "./types";
 
 // A "resolved" hit folds the type defaults + any per-instance overrides into a
 // single object so coverage logic doesn't need both inputs.
@@ -72,8 +72,9 @@ function mitReachesPlayer(
     case "boss_debuff":
       return true;
     case "target":
-      // No v0.1 mit uses `affects: target` (would require a per-instance
-      // target slot on MitigationInstance — not modeled). Treat as no-op.
+      // affects:"target" abilities (Oblation, Aquaveil, Exaltation) exist in
+      // the library but are no-ops until v0.2 adds a per-instance target slot
+      // on MitigationInstance to resolve who's being shielded.
       return false;
   }
 }
@@ -93,8 +94,8 @@ export function mitCovers(
   const mitEnd = mit.effect_time + mitType.duration_seconds;
   if (hit.effect_time < mitStart || hit.effect_time > mitEnd) return false;
 
-  // 2. Damage-type match
-  if (!mitType.damage_types_affected.includes(hit.damage_type)) return false;
+  // 2. Damage-type match (any non-zero % for this hit's damage type counts)
+  if (mitPercentFor(mitType, hit.damage_type) <= 0) return false;
 
   // 3a. Hit must actually land on this player.
   if (!hitLandsOnPlayer(hit, player)) return false;

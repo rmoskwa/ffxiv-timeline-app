@@ -1,14 +1,13 @@
 import type { MitigationType } from "@/domain/types";
 
-// BLM mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Manaward is excluded — wiki confirms it is barrier-only ("nullifies damage
-// totaling up to 30% of maximum HP"), not flat % mit. Only the caster role
+// SMN mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
+// Radiant Aegis is excluded — shield-only per PRD §3.7. Only the caster role
 // action Addle applies.
-export const BLM_MITS: MitigationType[] = [
+export const SMN_MITS: MitigationType[] = [
   {
-    id: "blm.addle",
+    id: "smn.addle",
     name: "Addle",
-    job: "BLM",
+    job: "SMN",
     cooldown_seconds: 90,
     duration_seconds: 15,
     mitigation_per_type: { physical: 5, magical: 10 },

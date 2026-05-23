@@ -1,12 +1,12 @@
 import type { MitigationType } from "@/domain/types";
 
-// MNK mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
+// VPR mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Only the melee role action Feint applies.
-export const MNK_MITS: MitigationType[] = [
+export const VPR_MITS: MitigationType[] = [
   {
-    id: "mnk.feint",
+    id: "vpr.feint",
     name: "Feint",
-    job: "MNK",
+    job: "VPR",
     cooldown_seconds: 90,
     duration_seconds: 15,
     mitigation_per_type: { physical: 10, magical: 5 },
