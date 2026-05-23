@@ -10,6 +10,17 @@
     "fs:allow-app-write",
     "fs:allow-app-read",
     "fs:allow-appdata-write-recursive",
-    "fs:allow-appdata-read-recursive"
+    "fs:allow-appdata-read-recursive",
+    "fs:allow-exists",
+    "fs:allow-remove",
+    "fs:allow-mkdir",
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "**" }]
+    }
   ]
 }

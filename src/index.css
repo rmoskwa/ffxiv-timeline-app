@@ -126,6 +126,29 @@ button {
   padding: 0;
   text-decoration: underline;
 }
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+.hydrating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  color: #888;
+  font-size: 0.9rem;
+}
+.wizard-error {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #3a1f1f;
+  border: 1px solid #6a2f2f;
+  border-radius: 4px;
+  color: #f3b9b9;
+  font-size: 0.85rem;
+}
 
 /* ─── Job icon ────────────────────────────────────────────────────────── */
 

@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import type { JobOrUnset } from "@/domain/types";
+import { saveWorkingTimeline } from "@/persistence/storage";
 import { useTimelineStore } from "@/state/timeline-store";
 
 const JOBS_BY_ROLE: { role: string; jobs: JobOrUnset[] }[] = [
@@ -23,7 +24,11 @@ function initialSlots(): SlotDraft[] {
   return Array.from({ length: 8 }, () => ({ id: crypto.randomUUID(), job: "unset" }));
 }
 
-export function SetupWizard() {
+interface SetupWizardProps {
+  hydrateError?: Error | null;
+}
+
+export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
   const newTimeline = useTimelineStore((s) => s.newTimeline);
   const setSlotJob = useTimelineStore((s) => s.setSlotJob);
 
@@ -34,18 +39,33 @@ export function SetupWizard() {
     setSlots((prev) => prev.map((s, i) => (i === idx ? { ...s, job } : s)));
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     newTimeline(name.trim() || "Untitled Timeline");
     slots.forEach((s, i) => {
       setSlotJob(i, s.job);
     });
+    // Persist immediately so a quick app-close right after Create doesn't
+    // lose the wizard input (the auto-save hook only sees post-mount changes).
+    const tl = useTimelineStore.getState().timeline;
+    if (tl) {
+      try {
+        await saveWorkingTimeline(tl);
+      } catch (err) {
+        console.error("Initial save failed:", err);
+      }
+    }
   };
 
   return (
     <div className="modal-backdrop">
       <form className="wizard" onSubmit={submit}>
         <h2>New Timeline</h2>
+        {hydrateError && (
+          <p className="wizard-error" role="alert">
+            Couldn't load the previous auto-save ({hydrateError.message}). Starting fresh.
+          </p>
+        )}
         <p className="hint">Pick the 8 jobs for this fight. Use "fill in later" if unknown.</p>
 
         <label className="field">
