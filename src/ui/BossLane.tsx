@@ -3,12 +3,9 @@ import type { BossAbilityInstance, BossAbilityType } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import {
   DROP_TARGET_BOSS_LANE,
-  LABEL_INTERVAL_SEC,
-  LANE_DURATION_SEC,
   LANE_WIDTH_PX,
   PX_PER_SEC,
   secondsToTimecode,
-  TICK_INTERVAL_SEC,
 } from "./timeline-constants";
 
 export function BossLane() {
@@ -18,57 +15,35 @@ export function BossLane() {
 
   const typeMap = new Map(types.map((t) => [t.id, t]));
 
+  // useDroppable lives on the track (LANE_WIDTH_PX wide). over.rect.left is the
+  // track's left edge in viewport coords — already accounts for horizontal scroll.
   const { isOver, setNodeRef } = useDroppable({
     id: DROP_TARGET_BOSS_LANE,
     data: { kind: DROP_TARGET_BOSS_LANE },
   });
 
   return (
-    <div className="lane-scroll">
+    <div className="lane-row lane-row--boss">
+      <div className="lane-label lane-label--boss">Boss</div>
       <div
         ref={setNodeRef}
-        className={`lane-content${isOver ? " drop-active" : ""}`}
+        className={`lane-track boss-lane-track${isOver ? " drop-active" : ""}`}
         style={{ width: LANE_WIDTH_PX }}
       >
-        <Ruler />
-        <div className="boss-lane">
-          <div className="lane-gridlines" aria-hidden />
-          {instances.map((inst) => {
-            const type = typeMap.get(inst.type_id);
-            if (!type) return null; // orphan instance — store cascade should prevent this
-            return (
-              <BossMarker
-                key={inst.id}
-                instance={inst}
-                type={type}
-                onRemove={() => removeInstance(inst.id)}
-              />
-            );
-          })}
-        </div>
+        <div className="lane-gridlines" aria-hidden />
+        {instances.map((inst) => {
+          const type = typeMap.get(inst.type_id);
+          if (!type) return null; // orphan instance — store cascade should prevent this
+          return (
+            <BossMarker
+              key={inst.id}
+              instance={inst}
+              type={type}
+              onRemove={() => removeInstance(inst.id)}
+            />
+          );
+        })}
       </div>
-    </div>
-  );
-}
-
-function Ruler() {
-  const ticks: number[] = [];
-  for (let t = 0; t <= LANE_DURATION_SEC; t += TICK_INTERVAL_SEC) ticks.push(t);
-
-  return (
-    <div className="ruler" aria-hidden>
-      {ticks.map((t) => {
-        const isLabeled = t % LABEL_INTERVAL_SEC === 0;
-        return (
-          <div
-            key={t}
-            className={`tick${isLabeled ? " tick--labeled" : ""}`}
-            style={{ left: t * PX_PER_SEC }}
-          >
-            {isLabeled && <span className="tick-label">{secondsToTimecode(t)}</span>}
-          </div>
-        );
-      })}
     </div>
   );
 }

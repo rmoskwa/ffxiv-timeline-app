@@ -10,6 +10,8 @@ export const LANE_WIDTH_PX = LANE_DURATION_SEC * PX_PER_SEC;
 // dnd-kit drag-data type tags. Lets onDragEnd route on what kind of payload was dropped.
 export const DRAG_TYPE_BOSS_ABILITY_TYPE = "boss-ability-type" as const;
 export const DROP_TARGET_BOSS_LANE = "boss-lane" as const;
+export const DRAG_TYPE_MIT = "mit" as const;
+export const DROP_TARGET_PLAYER_LANE = "player-lane" as const;
 
 export function secondsToTimecode(sec: number): string {
   const s = Math.max(0, Math.round(sec));
