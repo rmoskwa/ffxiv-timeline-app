@@ -1,5 +1,6 @@
 import { formatMitMagnitude, type MitigationInstance, type MitigationType } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
+import { MitIcon } from "./MitIcon";
 import { PX_PER_SEC, secondsToTimecode } from "./timeline-constants";
 
 interface MitBarProps {
@@ -32,6 +33,7 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
       data-mit-id={instance.id}
     >
       <div className="mit-bar-duration" style={{ width: durationPx }}>
+        <MitIcon name={type.name} size={16} title={type.name} />
         <span className="mit-bar-name">{type.name}</span>
         <button
           type="button"

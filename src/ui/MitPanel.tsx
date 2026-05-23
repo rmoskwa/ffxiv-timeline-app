@@ -3,6 +3,7 @@ import { getMitsForJob } from "@/data/mit-library";
 import { formatMitMagnitude, type MitigationType, type PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
+import { MitIcon } from "./MitIcon";
 import { DRAG_TYPE_MIT } from "./timeline-constants";
 
 export function MitPanel() {
@@ -62,7 +63,8 @@ function MitChip({ mit, slotId }: { mit: MitigationType; slotId: string }) {
       {...attributes}
       {...listeners}
     >
-      {mit.name}
+      <MitIcon name={mit.name} size={18} title={mit.name} />
+      <span className="mit-chip-name">{mit.name}</span>
     </button>
   );
 }

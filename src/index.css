@@ -147,6 +147,19 @@ button {
   place-items: center;
 }
 
+/* ─── Mit icon ────────────────────────────────────────────────────────── */
+
+.mit-icon {
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.mit-icon--missing {
+  background: #333;
+  border: 1px dashed #555;
+}
+
 /* ─── Roster panel ────────────────────────────────────────────────────── */
 
 .roster-panel {
@@ -566,6 +579,7 @@ button {
   border-radius: 3px 0 0 3px;
   display: flex;
   align-items: center;
+  gap: 0.3rem;
   padding: 0 0.4rem;
   position: relative;
   min-width: 8px;
@@ -688,6 +702,12 @@ button {
   cursor: grab;
   font-family: inherit;
   user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.mit-chip-name {
+  white-space: nowrap;
 }
 .mit-chip:hover {
   background: #284a40;
