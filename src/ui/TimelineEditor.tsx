@@ -1,6 +1,7 @@
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossAbilityPanel } from "./BossAbilityPanel";
+import { ConflictsPanel } from "./ConflictsPanel";
 import { MitPanel } from "./MitPanel";
 import { TimelineCanvas } from "./TimelineCanvas";
 import {
@@ -65,6 +66,7 @@ export function TimelineEditor() {
         <main className="editor-main">
           <TimelineCanvas />
         </main>
+        <ConflictsPanel />
       </div>
     </DndContext>
   );

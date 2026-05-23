@@ -7,6 +7,10 @@ export const TICK_INTERVAL_SEC = 30; // minor tick every 30s
 export const LABEL_INTERVAL_SEC = 60; // labeled tick every 60s
 export const LANE_WIDTH_PX = LANE_DURATION_SEC * PX_PER_SEC;
 
+// v0.1 heatmap: party-wide HP constant (PRD §6.1 — real per-job HP deferred).
+// A hit is "lethal" if any player's post-mit damage ≥ PLAYER_MAX_HP.
+export const PLAYER_MAX_HP = 100_000;
+
 // dnd-kit drag-data type tags. Lets onDragEnd route on what kind of payload was dropped.
 export const DRAG_TYPE_BOSS_ABILITY_TYPE = "boss-ability-type" as const;
 export const DROP_TARGET_BOSS_LANE = "boss-lane" as const;

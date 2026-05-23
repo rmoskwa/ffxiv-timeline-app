@@ -1,25 +1,46 @@
 import { useDroppable } from "@dnd-kit/core";
 import { getMitById } from "@/data/mit-library";
-import type { MitigationInstance, PlayerSlot } from "@/domain/types";
+import type {
+  BossAbilityInstance,
+  BossAbilityType,
+  MitigationInstance,
+  PlayerSlot,
+} from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitBar } from "./MitBar";
-import { DROP_TARGET_PLAYER_LANE, LANE_WIDTH_PX } from "./timeline-constants";
+import {
+  DROP_TARGET_PLAYER_LANE,
+  LANE_WIDTH_PX,
+  PLAYER_MAX_HP,
+  PX_PER_SEC,
+} from "./timeline-constants";
+import { useCooldownOverlapMitIds, useDamageByInstance } from "./use-derived";
 
 interface PlayerLaneProps {
   slot: PlayerSlot;
   index: number;
 }
 
-// Module-level stable empty array so the selector returns a cached reference
-// when no timeline is loaded. Zustand v5 + React 19's useSyncExternalStore
-// throw "getSnapshot should be cached" if a selector returns a new reference
-// on every read; filtering must happen after the selector, not inside it.
+// Module-level stable empty arrays so selectors return cached references when
+// no timeline is loaded. Zustand v5 + React 19's useSyncExternalStore throw
+// "getSnapshot should be cached" on unstable references; filtering must happen
+// outside the selector.
 const EMPTY_MITS: readonly MitigationInstance[] = [];
+const EMPTY_INSTANCES: readonly BossAbilityInstance[] = [];
+const EMPTY_TYPES: readonly BossAbilityType[] = [];
 
 export function PlayerLane({ slot, index }: PlayerLaneProps) {
   const allMits = useTimelineStore((s) => s.timeline?.mitigation_instances ?? EMPTY_MITS);
+  const bossInstances = useTimelineStore(
+    (s) => s.timeline?.boss_ability_instances ?? EMPTY_INSTANCES,
+  );
+  const bossTypes = useTimelineStore((s) => s.timeline?.boss_ability_types ?? EMPTY_TYPES);
+  const damageByInstance = useDamageByInstance();
+  const conflictIds = useCooldownOverlapMitIds();
+
   const mits = allMits.filter((m) => m.player_slot_id === slot.id);
+  const typeById = new Map(bossTypes.map((t) => [t.id, t]));
 
   const { isOver, setNodeRef } = useDroppable({
     id: `${DROP_TARGET_PLAYER_LANE}-${slot.id}`,
@@ -41,12 +62,37 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
         style={{ width: LANE_WIDTH_PX }}
       >
         <div className="lane-gridlines" aria-hidden />
+        {bossInstances.map((inst) => {
+          const damage = damageByInstance.get(inst.id)?.[index];
+          // Hide the chip when this player isn't targeted (damage === 0).
+          // Without it tankbusters / targeted hits — which return 0 until a
+          // target is picked — would litter every lane with "0".
+          if (damage === undefined || damage <= 0) return null;
+          const type = typeById.get(inst.type_id);
+          const lethal = damage >= PLAYER_MAX_HP;
+          return (
+            <div
+              key={inst.id}
+              className={`damage-chip${lethal ? " damage-chip--lethal" : ""}`}
+              style={{ left: inst.effect_time * PX_PER_SEC }}
+              title={`${type?.name ?? "hit"} — ${Math.round(damage).toLocaleString()} damage`}
+            >
+              {formatDamage(damage)}
+            </div>
+          );
+        })}
         {mits.map((m) => {
           const mt = getMitById(m.type_id);
           if (!mt) return null;
-          return <MitBar key={m.id} instance={m} type={mt} />;
+          return <MitBar key={m.id} instance={m} type={mt} hasConflict={conflictIds.has(m.id)} />;
         })}
       </div>
     </div>
   );
+}
+
+// 12345 → "12.3k" so chips stay narrow at the v0.1 fixed zoom.
+function formatDamage(n: number): string {
+  if (n >= 10_000) return `${(n / 1000).toFixed(1)}k`;
+  return Math.round(n).toString();
 }

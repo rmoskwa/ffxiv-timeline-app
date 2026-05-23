@@ -4,14 +4,17 @@ import { useTimelineStore } from "@/state/timeline-store";
 import {
   DROP_TARGET_BOSS_LANE,
   LANE_WIDTH_PX,
+  PLAYER_MAX_HP,
   PX_PER_SEC,
   secondsToTimecode,
 } from "./timeline-constants";
+import { useDamageByInstance } from "./use-derived";
 
 export function BossLane() {
   const types = useTimelineStore((s) => s.timeline?.boss_ability_types ?? []);
   const instances = useTimelineStore((s) => s.timeline?.boss_ability_instances ?? []);
   const removeInstance = useTimelineStore((s) => s.removeBossAbilityInstance);
+  const damageByInstance = useDamageByInstance();
 
   const typeMap = new Map(types.map((t) => [t.id, t]));
 
@@ -34,11 +37,14 @@ export function BossLane() {
         {instances.map((inst) => {
           const type = typeMap.get(inst.type_id);
           if (!type) return null; // orphan instance — store cascade should prevent this
+          const damages = damageByInstance.get(inst.id);
+          const lethal = damages?.some((d) => d >= PLAYER_MAX_HP) ?? false;
           return (
             <BossMarker
               key={inst.id}
               instance={inst}
               type={type}
+              lethal={lethal}
               onRemove={() => removeInstance(inst.id)}
             />
           );
@@ -51,20 +57,27 @@ export function BossLane() {
 function BossMarker({
   instance,
   type,
+  lethal,
   onRemove,
 }: {
   instance: BossAbilityInstance;
   type: BossAbilityType;
+  lethal: boolean;
   onRemove: () => void;
 }) {
   const tp = instance.target_pattern_override ?? type.target_pattern;
   const damage = instance.damage_override ?? type.base_damage;
   const title =
     `${type.name} @ ${secondsToTimecode(instance.effect_time)}\n` +
-    `${damage > 0 ? `${damage.toLocaleString()} ` : ""}${type.damage_type} · ${tp}`;
+    `${damage > 0 ? `${damage.toLocaleString()} ` : ""}${type.damage_type} · ${tp}` +
+    (lethal ? "\n⚠ lethal to at least one player" : "");
 
   return (
-    <div className="boss-marker" style={{ left: instance.effect_time * PX_PER_SEC }} title={title}>
+    <div
+      className={`boss-marker${lethal ? " boss-marker--lethal" : ""}`}
+      style={{ left: instance.effect_time * PX_PER_SEC }}
+      title={title}
+    >
       <button
         type="button"
         className="boss-marker-remove"
