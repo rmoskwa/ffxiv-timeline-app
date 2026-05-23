@@ -1,4 +1,4 @@
-.venv
+.claude
 
 ### Local examples
 DT Raid Timelines - M12Sp2.csv
@@ -6,3 +6,18 @@ Events - Lindwurm Savage Wipe 10 (8.4 at 553 PM) - Report AAC Heavyweight (Unlis
 
 ### Local Development Files
 PRD.md
+Progress.md
+
+### Node / Vite
+node_modules
+dist
+.vite
+
+### Tauri / Rust
+src-tauri/target
+src-tauri/gen
+src-tauri/Cargo.lock
+
+### OS
+.DS_Store
+Thumbs.db

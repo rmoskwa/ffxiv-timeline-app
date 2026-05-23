@@ -1,0 +1,61 @@
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+  background: #1a1a1a;
+  color: #e0e0e0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+header h1 {
+  margin: 0 0 0.25rem;
+}
+.subtitle {
+  margin: 0 0 2rem;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+h2 {
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.5rem;
+  margin-top: 2rem;
+}
+
+.job-block {
+  margin-bottom: 1.25rem;
+}
+.job-block h3 {
+  margin: 0.5rem 0 0.25rem;
+  color: #9cf;
+}
+.job-block ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+.job-block li {
+  margin: 0.15rem 0;
+}
+.meta {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.placeholder {
+  border: 1px dashed #444;
+  padding: 1rem;
+  border-radius: 6px;
+  color: #888;
+}
