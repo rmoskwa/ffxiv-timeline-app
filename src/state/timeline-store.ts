@@ -15,6 +15,19 @@ type BossTypeInput = Omit<BossAbilityType, "id">;
 type BossInstanceInput = Omit<BossAbilityInstance, "id" | "observed_damage">;
 type MitInstanceInput = Omit<MitigationInstance, "id" | "coverage_overrides">;
 
+// PRD §3.2: boss ability type names are unique within a timeline. Compared
+// case-insensitively after trim so "Replication I" and " replication i " collide.
+export class DuplicateNameError extends Error {
+  constructor(name: string) {
+    super(`A boss ability named "${name}" already exists in this timeline.`);
+    this.name = "DuplicateNameError";
+  }
+}
+
+function normalizeName(n: string): string {
+  return n.trim().toLowerCase();
+}
+
 export interface TimelineStore {
   timeline: TimelineFile | null;
 
@@ -75,6 +88,13 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
 
   addBossAbilityType: (input) => {
     const id = crypto.randomUUID();
+    const tl = useTimelineStore.getState().timeline;
+    if (tl) {
+      const target = normalizeName(input.name);
+      if (tl.boss_ability_types.some((t) => normalizeName(t.name) === target)) {
+        throw new DuplicateNameError(input.name.trim());
+      }
+    }
     set((s) => {
       if (!s.timeline) return s;
       return {
@@ -90,6 +110,14 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   updateBossAbilityType: (id, patch) =>
     set((s) => {
       if (!s.timeline) return s;
+      if (patch.name !== undefined) {
+        const target = normalizeName(patch.name);
+        if (
+          s.timeline.boss_ability_types.some((t) => t.id !== id && normalizeName(t.name) === target)
+        ) {
+          throw new DuplicateNameError(patch.name.trim());
+        }
+      }
       return {
         timeline: touch({
           ...s.timeline,

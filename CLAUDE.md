@@ -56,6 +56,6 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
----
+## 5. Verify Before Declaring Done
 
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+Before reporting a task as complete, run `npx biome check .` and resolve every issue (both lint and format). A passing typecheck and test run is not enough — Biome catches a11y and style regressions that the compiler won't.
