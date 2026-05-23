@@ -1,0 +1,202 @@
+import { describe, expect, it } from "vitest";
+import { mitCovers, type ResolvedHit } from "./coverage";
+import type { MitigationInstance, MitigationType, PlayerSlot, Roster } from "./types";
+
+// ─── Test fixtures ──────────────────────────────────────────────────────────
+
+function slot(id: string, job: PlayerSlot["job"] = "DRK"): PlayerSlot {
+  return { id, job };
+}
+
+// 8 named slots so tests can pick anyone.
+const SLOT_IDS = ["s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"] as const;
+const ROSTER: Roster = [
+  slot("s0", "DRK"),
+  slot("s1", "WAR"),
+  slot("s2", "SCH"),
+  slot("s3", "WHM"),
+  slot("s4", "MNK"),
+  slot("s5", "DRG"),
+  slot("s6", "BLM"),
+  slot("s7", "RDM"),
+];
+
+function mit(
+  overrides: Partial<MitigationInstance> & { player_slot_id: string },
+): MitigationInstance {
+  return {
+    id: "mit-1",
+    type_id: "drk.rampart",
+    effect_time: 100,
+    coverage_overrides: [],
+    ...overrides,
+  };
+}
+
+function mitType(overrides: Partial<MitigationType> = {}): MitigationType {
+  return {
+    id: "drk.rampart",
+    name: "Rampart",
+    job: "DRK",
+    cooldown_seconds: 90,
+    duration_seconds: 20,
+    mitigation_percent: 20,
+    damage_types_affected: ["magical", "physical", "unaspected"],
+    affects: "self",
+    max_charges: 1,
+    ...overrides,
+  };
+}
+
+function hit(overrides: Partial<ResolvedHit> = {}): ResolvedHit {
+  return {
+    effect_time: 110,
+    damage_type: "magical",
+    target_pattern: "raidwide",
+    target_slot_ids: [],
+    ...overrides,
+  };
+}
+
+// ─── Affects × target_pattern matrix (PRD §5.3) ─────────────────────────────
+
+describe("mitCovers — affects × target_pattern", () => {
+  it("raidwide + affects:party covers all 8 players", () => {
+    const m = mit({ player_slot_id: "s0" });
+    const t = mitType({ affects: "party" });
+    const h = hit({ target_pattern: "raidwide" });
+
+    for (let i = 0; i < 8; i++) {
+      expect(mitCovers(m, t, h, i, ROSTER)).toBe(true);
+    }
+  });
+
+  it("raidwide + affects:self covers only the mit's owner", () => {
+    const m = mit({ player_slot_id: "s3" });
+    const t = mitType({ affects: "self" });
+    const h = hit({ target_pattern: "raidwide" });
+
+    expect(mitCovers(m, t, h, 3, ROSTER)).toBe(true);
+    expect(mitCovers(m, t, h, 0, ROSTER)).toBe(false);
+    expect(mitCovers(m, t, h, 7, ROSTER)).toBe(false);
+  });
+
+  it("raidwide + affects:boss_debuff covers all 8 players", () => {
+    const m = mit({ player_slot_id: "s4" });
+    const t = mitType({ affects: "boss_debuff" });
+    const h = hit({ target_pattern: "raidwide" });
+
+    for (let i = 0; i < 8; i++) {
+      expect(mitCovers(m, t, h, i, ROSTER)).toBe(true);
+    }
+  });
+
+  it("tankbuster_single + affects:self covers only when owner is the target", () => {
+    const t = mitType({ affects: "self" });
+    const h = hit({ target_pattern: "tankbuster_single", target_slot_ids: ["s0"] });
+
+    const ownedByTarget = mit({ player_slot_id: "s0" });
+    const ownedByOther = mit({ player_slot_id: "s1" });
+
+    expect(mitCovers(ownedByTarget, t, h, 0, ROSTER)).toBe(true);
+    // Non-target players don't take the hit at all → no coverage to compute.
+    expect(mitCovers(ownedByTarget, t, h, 1, ROSTER)).toBe(false);
+    // Owner is s1 but s1 isn't the target → mit only protects s1, but s1
+    // doesn't take the hit, so no coverage applies anywhere.
+    expect(mitCovers(ownedByOther, t, h, 0, ROSTER)).toBe(false);
+    expect(mitCovers(ownedByOther, t, h, 1, ROSTER)).toBe(false);
+  });
+
+  it("tankbuster_single + affects:party covers only the targeted player", () => {
+    const m = mit({ player_slot_id: "s2" });
+    const t = mitType({ affects: "party" });
+    const h = hit({ target_pattern: "tankbuster_single", target_slot_ids: ["s0"] });
+
+    expect(mitCovers(m, t, h, 0, ROSTER)).toBe(true); // hit lands on s0
+    expect(mitCovers(m, t, h, 1, ROSTER)).toBe(false); // hit doesn't land on s1
+  });
+
+  it("spread + affects:party covers all players", () => {
+    const m = mit({ player_slot_id: "s5" });
+    const t = mitType({ affects: "party" });
+    const h = hit({ target_pattern: "spread" });
+
+    for (let i = 0; i < 8; i++) {
+      expect(mitCovers(m, t, h, i, ROSTER)).toBe(true);
+    }
+  });
+
+  it("tankbuster_shared + affects:boss_debuff covers both designated tanks", () => {
+    const m = mit({ player_slot_id: "s4" });
+    const t = mitType({ affects: "boss_debuff" });
+    const h = hit({
+      target_pattern: "tankbuster_shared",
+      target_slot_ids: ["s0", "s1"],
+    });
+
+    expect(mitCovers(m, t, h, 0, ROSTER)).toBe(true);
+    expect(mitCovers(m, t, h, 1, ROSTER)).toBe(true);
+    expect(mitCovers(m, t, h, 2, ROSTER)).toBe(false);
+  });
+
+  it("affects:target is not supported in v0.1 (returns false)", () => {
+    const m = mit({ player_slot_id: "s0" });
+    const t = mitType({ affects: "target" });
+    const h = hit({ target_pattern: "raidwide" });
+
+    expect(mitCovers(m, t, h, 0, ROSTER)).toBe(false);
+  });
+});
+
+// ─── Temporal window ────────────────────────────────────────────────────────
+
+describe("mitCovers — temporal window", () => {
+  it("hit before the mit's effect_time is not covered", () => {
+    const m = mit({ player_slot_id: "s0", effect_time: 100 });
+    const t = mitType({ affects: "party", duration_seconds: 20 });
+
+    expect(mitCovers(m, t, hit({ effect_time: 99 }), 0, ROSTER)).toBe(false);
+  });
+
+  it("hit at the mit's effect_time (T) is covered", () => {
+    const m = mit({ player_slot_id: "s0", effect_time: 100 });
+    const t = mitType({ affects: "party", duration_seconds: 20 });
+
+    expect(mitCovers(m, t, hit({ effect_time: 100 }), 0, ROSTER)).toBe(true);
+  });
+
+  it("hit at T + duration is covered (inclusive end)", () => {
+    const m = mit({ player_slot_id: "s0", effect_time: 100 });
+    const t = mitType({ affects: "party", duration_seconds: 20 });
+
+    expect(mitCovers(m, t, hit({ effect_time: 120 }), 0, ROSTER)).toBe(true);
+  });
+
+  it("hit after T + duration is not covered", () => {
+    const m = mit({ player_slot_id: "s0", effect_time: 100 });
+    const t = mitType({ affects: "party", duration_seconds: 20 });
+
+    expect(mitCovers(m, t, hit({ effect_time: 121 }), 0, ROSTER)).toBe(false);
+  });
+});
+
+// ─── Damage type match ──────────────────────────────────────────────────────
+
+describe("mitCovers — damage type", () => {
+  it("does not cover when damage type is not in damage_types_affected", () => {
+    const m = mit({ player_slot_id: "s0" });
+    const t = mitType({ affects: "party", damage_types_affected: ["magical"] });
+
+    expect(mitCovers(m, t, hit({ damage_type: "physical" }), 0, ROSTER)).toBe(false);
+    expect(mitCovers(m, t, hit({ damage_type: "magical" }), 0, ROSTER)).toBe(true);
+  });
+});
+
+// Sanity: SLOT_IDS export above is intentional so any future test can grab
+// a canonical id; touching here keeps biome's unused-export warning quiet
+// without changing runtime behavior.
+describe("fixtures", () => {
+  it("roster has 8 stable IDs", () => {
+    expect(ROSTER.map((s) => s.id)).toEqual([...SLOT_IDS]);
+  });
+});

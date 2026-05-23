@@ -1,45 +1,72 @@
 import { MIT_LIBRARY } from "@/data/mit-library";
 import { type Job, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
+import { useTimelineStore } from "@/state/timeline-store";
+import { SetupWizard } from "./SetupWizard";
 
-// Placeholder UI for v0.1 scaffolding. Proves the type system + mit library
-// load end-to-end. Real Gantt timeline + drag-and-drop come in the next session.
+// v0.1 scaffolding UI. Real Gantt timeline + drag-and-drop come next session.
+// For now: if no timeline is loaded, show the SetupWizard. Otherwise, show the
+// roster + mit panel filtered to the roster's jobs.
 export function App() {
-  const byJob = MIT_LIBRARY.reduce<Map<Job, (typeof MIT_LIBRARY)[number][]>>((acc, mit) => {
-    const list = acc.get(mit.job) ?? [];
-    list.push(mit);
-    acc.set(mit.job, list);
-    return acc;
-  }, new Map());
+  const timeline = useTimelineStore((s) => s.timeline);
+  const closeTimeline = useTimelineStore((s) => s.closeTimeline);
+
+  if (!timeline) {
+    return <SetupWizard />;
+  }
+
+  const rosterJobs = new Set<Job>();
+  for (const slot of timeline.roster) {
+    if (slot.job !== "unset") rosterJobs.add(slot.job);
+  }
+
+  const mitsForRoster = MIT_LIBRARY.filter((m) => rosterJobs.has(m.job));
 
   return (
     <main className="app">
       <header>
-        <h1>FFXIV Raid Timeline</h1>
-        <p className="subtitle">v0.1 scaffolding · schema version {TIMELINE_SCHEMA_VERSION}</p>
+        <h1>{timeline.metadata.name}</h1>
+        <p className="subtitle">
+          schema v{TIMELINE_SCHEMA_VERSION} · updated{" "}
+          {new Date(timeline.metadata.updated_at).toLocaleTimeString()}{" "}
+          <button type="button" className="link-button" onClick={closeTimeline}>
+            close timeline
+          </button>
+        </p>
       </header>
 
       <section>
-        <h2>Mitigation Library ({MIT_LIBRARY.length} mits)</h2>
-        {Array.from(byJob.entries()).map(([job, mits]) => (
-          <div key={job} className="job-block">
-            <h3>{job}</h3>
-            <ul>
-              {mits.map((m) => (
-                <li key={m.id}>
-                  <strong>{m.name}</strong>
-                  <span className="meta">
-                    {" · "}
-                    {m.mitigation_percent}% {m.damage_types_affected.join("/")}
-                    {" · "}
-                    {m.duration_seconds}s dur / {m.cooldown_seconds}s CD
-                    {" · "}
-                    affects {m.affects}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+        <h2>Roster</h2>
+        <ol className="roster-list">
+          {timeline.roster.map((slot, i) => (
+            <li key={slot.id}>
+              <span className="slot-num">{i + 1}.</span>{" "}
+              <span className={slot.job === "unset" ? "unset" : ""}>{slot.job}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section>
+        <h2>Mitigations available ({mitsForRoster.length})</h2>
+        {mitsForRoster.length === 0 ? (
+          <p className="placeholder">
+            No mits for this roster. (v0.1 supports DRK, SCH, MNK, BLM — set a slot to one of
+            those.)
+          </p>
+        ) : (
+          <ul>
+            {mitsForRoster.map((m) => (
+              <li key={m.id}>
+                <strong>{m.name}</strong>
+                <span className="meta">
+                  {" · "}
+                  {m.job} · {m.mitigation_percent}% {m.damage_types_affected.join("/")} ·{" "}
+                  {m.duration_seconds}s dur / {m.cooldown_seconds}s CD · affects {m.affects}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="placeholder">

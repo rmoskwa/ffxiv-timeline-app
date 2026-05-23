@@ -12,6 +12,7 @@ Progress.md
 node_modules
 dist
 .vite
+*.tsbuildinfo
 
 ### Tauri / Rust
 src-tauri/target

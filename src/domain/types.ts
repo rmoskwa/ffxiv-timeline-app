@@ -71,6 +71,10 @@ export interface BossAbilityInstance {
   effect_time: number; // seconds from pull
   damage_override?: number;
   target_pattern_override?: TargetPattern;
+  // User-picked targets for patterns that need them (PRD §5.3, §18). Always
+  // present; empty for raidwide/spread/stack. One entry for tankbuster_single
+  // and targeted; two for tankbuster_shared.
+  target_slot_ids: string[];
   observed_damage: ObservedDamageEntry[]; // empty in v0.1; populated by FFLogs later (§17)
 }
 
