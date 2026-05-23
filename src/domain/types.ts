@@ -131,6 +131,11 @@ export interface MitigationInstance {
   type_id: string; // FK → MitigationType.id (a library entry)
   player_slot_id: string; // FK → PlayerSlot.id (REQUIRED — mits are slot-bound, §3.3)
   effect_time: number; // seconds from pull; cooldown begins here (§4)
+  // FK → PlayerSlot.id, only meaningful when type.affects === "target"
+  // (Oblation, Aquaveil, Exaltation). Undefined for all other affects modes
+  // AND for newly-dropped target-mits before the user picks (auto-opens
+  // the picker; coverage is 0 until set).
+  target_slot_id?: string;
   coverage_overrides: CoverageOverride[]; // deferred to v0.2 (§3.3); empty in v0.1
 }
 

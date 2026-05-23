@@ -140,12 +140,27 @@ describe("mitCovers — affects × target_pattern", () => {
     expect(mitCovers(m, t, h, 2, ROSTER)).toBe(false);
   });
 
-  it("affects:target is not supported in v0.1 (returns false)", () => {
-    const m = mit({ player_slot_id: "s0" });
+  it("affects:target covers only the picked target_slot_id", () => {
+    // Healer-cast target shield (e.g. Aquaveil) on a raidwide: only the named
+    // target benefits, even though the hit lands on everyone.
+    const m = mit({ player_slot_id: "s3", target_slot_id: "s1" });
     const t = mitType({ affects: "target" });
     const h = hit({ target_pattern: "raidwide" });
 
-    expect(mitCovers(m, t, h, 0, ROSTER)).toBe(false);
+    expect(mitCovers(m, t, h, 1, ROSTER)).toBe(true); // the picked target
+    expect(mitCovers(m, t, h, 0, ROSTER)).toBe(false); // someone else
+    expect(mitCovers(m, t, h, 3, ROSTER)).toBe(false); // the caster (not self)
+  });
+
+  it("affects:target with undefined target_slot_id covers nobody", () => {
+    // Newly-dropped target mit before the user picks a target.
+    const m = mit({ player_slot_id: "s3" });
+    const t = mitType({ affects: "target" });
+    const h = hit({ target_pattern: "raidwide" });
+
+    for (let i = 0; i < 8; i++) {
+      expect(mitCovers(m, t, h, i, ROSTER)).toBe(false);
+    }
   });
 });
 

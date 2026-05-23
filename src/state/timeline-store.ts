@@ -47,6 +47,7 @@ export interface TimelineStore {
   removeBossAbilityInstance: (id: string) => void;
 
   addMitigationInstance: (input: MitInstanceInput) => string;
+  updateMitigationInstance: (id: string, patch: Partial<MitInstanceInput>) => void;
   removeMitigationInstance: (id: string) => void;
 }
 
@@ -195,6 +196,19 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
     });
     return id;
   },
+
+  updateMitigationInstance: (id, patch) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      return {
+        timeline: touch({
+          ...s.timeline,
+          mitigation_instances: s.timeline.mitigation_instances.map((m) =>
+            m.id === id ? { ...m, ...patch } : m,
+          ),
+        }),
+      };
+    }),
 
   removeMitigationInstance: (id) =>
     set((s) => {

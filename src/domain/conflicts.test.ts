@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { type Conflict, detectConflicts } from "./conflicts";
-import type { MitigationInstance, MitigationType, Roster } from "./types";
+import type {
+  BossAbilityInstance,
+  BossAbilityType,
+  MitigationInstance,
+  MitigationType,
+  Roster,
+} from "./types";
 
 const ROSTER: Roster = [
   { id: "s0", job: "DRK" },
@@ -78,7 +84,11 @@ describe("detectConflicts — cooldown overlap", () => {
     const c = mit("c", "s0", 60);
     const conflicts = detectConflicts([a, b, c], lookup, ROSTER);
     expect(conflicts).toHaveLength(2);
-    expect(conflicts.map((c) => c.mit_instance_id).sort()).toEqual(["b", "c"]);
+    const ids = conflicts
+      .filter((x) => x.kind === "cooldown_overlap")
+      .map((x) => x.mit_instance_id)
+      .sort();
+    expect(ids).toEqual(["b", "c"]);
   });
 });
 
@@ -112,5 +122,99 @@ describe("detectConflicts — orphan mits", () => {
   it("does not flag matching job + slot", () => {
     const m = mit("a", "s0", 10); // s0 = DRK, Rampart = DRK
     expect(detectConflicts([m], lookup, ROSTER)).toHaveLength(0);
+  });
+});
+
+describe("detectConflicts — unset_target", () => {
+  const TANKBUSTER: BossAbilityType = {
+    id: "type-tb",
+    name: "Cleave",
+    base_damage: 200_000,
+    damage_type: "physical",
+    target_pattern: "tankbuster_single",
+  };
+  const SHARED: BossAbilityType = {
+    id: "type-shared",
+    name: "Beast's Maw",
+    base_damage: 300_000,
+    damage_type: "physical",
+    target_pattern: "tankbuster_shared",
+  };
+  const RAIDWIDE: BossAbilityType = {
+    id: "type-rw",
+    name: "Holy",
+    base_damage: 80_000,
+    damage_type: "magical",
+    target_pattern: "raidwide",
+  };
+  const bossLookup = [TANKBUSTER, SHARED, RAIDWIDE];
+
+  function bi(
+    id: string,
+    type_id: string,
+    effect_time: number,
+    target_slot_ids: string[] = [],
+  ): BossAbilityInstance {
+    return { id, type_id, effect_time, target_slot_ids, observed_damage: [] };
+  }
+
+  it("flags tankbuster_single with no target picked", () => {
+    const inst = bi("b1", TANKBUSTER.id, 30);
+    const conflicts = detectConflicts([], lookup, ROSTER, [inst], bossLookup);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject<Partial<Conflict>>({
+      kind: "unset_target",
+      target_kind: "boss_ability",
+      boss_instance_id: "b1",
+    });
+  });
+
+  it("does not flag tankbuster_single with a target picked", () => {
+    const inst = bi("b1", TANKBUSTER.id, 30, ["s0"]);
+    expect(detectConflicts([], lookup, ROSTER, [inst], bossLookup)).toHaveLength(0);
+  });
+
+  it("does not flag raidwide regardless of target_slot_ids", () => {
+    const inst = bi("b2", RAIDWIDE.id, 60);
+    expect(detectConflicts([], lookup, ROSTER, [inst], bossLookup)).toHaveLength(0);
+  });
+
+  it("flags tankbuster_shared with no targets picked", () => {
+    const inst = bi("b3", SHARED.id, 90);
+    const conflicts = detectConflicts([], lookup, ROSTER, [inst], bossLookup);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.kind).toBe("unset_target");
+  });
+
+  it("flags an affects:target mit with no target_slot_id", () => {
+    const TARGET_MIT: MitigationType = {
+      id: "sch.aquaveil",
+      name: "Aquaveil",
+      job: "WHM",
+      cooldown_seconds: 60,
+      duration_seconds: 8,
+      mitigation_per_type: { all: 15 },
+      affects: "target",
+      max_charges: 1,
+      mechanic: "mit",
+      wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Aquaveil",
+    };
+    // Roster slot s3 is WHM; coverage.test.ts already uses s3=WHM in ROSTER.
+    const targetLookup = (id: string): MitigationType | undefined =>
+      id === TARGET_MIT.id ? TARGET_MIT : id === RAMPART.id ? RAMPART : undefined;
+    const m: MitigationInstance = {
+      id: "m1",
+      type_id: TARGET_MIT.id,
+      player_slot_id: "s3",
+      effect_time: 30,
+      coverage_overrides: [],
+    };
+    const conflicts = detectConflicts([m], targetLookup, ROSTER);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject<Partial<Conflict>>({
+      kind: "unset_target",
+      target_kind: "mitigation",
+      mit_instance_id: "m1",
+    });
   });
 });

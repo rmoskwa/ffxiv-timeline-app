@@ -39,7 +39,13 @@ export function useConflicts(): Conflict[] {
   const timeline = useTimelineStore((s) => s.timeline);
   return useMemo(() => {
     if (!timeline) return [];
-    return detectConflicts(timeline.mitigation_instances, getMitById, timeline.roster);
+    return detectConflicts(
+      timeline.mitigation_instances,
+      getMitById,
+      timeline.roster,
+      timeline.boss_ability_instances,
+      timeline.boss_ability_types,
+    );
   }, [timeline]);
 }
 

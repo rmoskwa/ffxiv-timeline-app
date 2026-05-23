@@ -63,6 +63,7 @@ function hitLandsOnPlayer(hit: ResolvedHit, player: PlayerSlot): boolean {
 function mitReachesPlayer(
   affects: MitAffects,
   mitOwnerSlotId: string,
+  mitTargetSlotId: string | undefined,
   player: PlayerSlot,
 ): boolean {
   switch (affects) {
@@ -72,10 +73,9 @@ function mitReachesPlayer(
     case "boss_debuff":
       return true;
     case "target":
-      // affects:"target" abilities (Oblation, Aquaveil, Exaltation) exist in
-      // the library but are no-ops until v0.2 adds a per-instance target slot
-      // on MitigationInstance to resolve who's being shielded.
-      return false;
+      // Oblation / Aquaveil / Exaltation: covers only the user-picked target.
+      // Undefined target_slot_id means the user hasn't picked yet — no coverage.
+      return mitTargetSlotId !== undefined && player.id === mitTargetSlotId;
   }
 }
 
@@ -101,7 +101,8 @@ export function mitCovers(
   if (!hitLandsOnPlayer(hit, player)) return false;
 
   // 3b. Mit must actually reach this player.
-  if (!mitReachesPlayer(mitType.affects, mit.player_slot_id, player)) return false;
+  if (!mitReachesPlayer(mitType.affects, mit.player_slot_id, mit.target_slot_id, player))
+    return false;
 
   return true;
 }

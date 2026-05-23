@@ -4,11 +4,15 @@
 //     cooldown has elapsed.
 //   - orphan_mit: mit bound to a slot whose job no longer matches the mit's job
 //     (e.g., after a job swap; PRD §11.3).
+//   - unset_target: a tankbuster/targeted boss instance or affects:target mit
+//     instance whose target hasn't been picked yet — its damage math returns 0
+//     until the user resolves it.
 //
 // Pure function — no React, no I/O.
 
 import type { MitTypeLookup } from "./damage";
-import type { MitigationInstance, Roster } from "./types";
+import type { BossAbilityInstance, BossAbilityType, MitigationInstance, Roster } from "./types";
+import { resolveBossAbility } from "./types";
 
 export type Conflict =
   | {
@@ -21,12 +25,26 @@ export type Conflict =
       kind: "orphan_mit";
       mit_instance_id: string;
       message: string;
+    }
+  | {
+      kind: "unset_target";
+      target_kind: "boss_ability";
+      boss_instance_id: string;
+      message: string;
+    }
+  | {
+      kind: "unset_target";
+      target_kind: "mitigation";
+      mit_instance_id: string;
+      message: string;
     };
 
 export function detectConflicts(
   mits: readonly MitigationInstance[],
   lookupMitType: MitTypeLookup,
   roster: Roster,
+  bossInstances: readonly BossAbilityInstance[] = [],
+  bossTypes: readonly BossAbilityType[] = [],
 ): Conflict[] {
   const conflicts: Conflict[] = [];
   const slotById = new Map(roster.map((s) => [s.id, s]));
@@ -80,6 +98,41 @@ export function detectConflicts(
         });
       }
       prev = curr;
+    }
+  }
+
+  // ─── Unset target (boss instances) ────────────────────────────────────────
+  const bossTypeById = new Map(bossTypes.map((t) => [t.id, t]));
+  for (const inst of bossInstances) {
+    const type = bossTypeById.get(inst.type_id);
+    if (!type) continue;
+    const { target_pattern } = resolveBossAbility(inst, type);
+    if (
+      (target_pattern === "tankbuster_single" ||
+        target_pattern === "tankbuster_shared" ||
+        target_pattern === "targeted") &&
+      inst.target_slot_ids.length === 0
+    ) {
+      conflicts.push({
+        kind: "unset_target",
+        target_kind: "boss_ability",
+        boss_instance_id: inst.id,
+        message: `${type.name} (${target_pattern}) needs a target picked`,
+      });
+    }
+  }
+
+  // ─── Unset target (mit instances) ─────────────────────────────────────────
+  for (const m of mits) {
+    const mt = lookupMitType(m.type_id);
+    if (!mt) continue;
+    if (mt.affects === "target" && m.target_slot_id === undefined) {
+      conflicts.push({
+        kind: "unset_target",
+        target_kind: "mitigation",
+        mit_instance_id: m.id,
+        message: `${mt.name} needs a target picked`,
+      });
     }
   }
 
