@@ -909,8 +909,9 @@ button {
 .boss-marker-label {
   position: absolute;
   left: 0;
-  background: #f80;
-  color: #111;
+  /* Normal state: neutral background + theme-default text (PRD §"Label states"). */
+  background: #2a2a2a;
+  color: #e8e8e8;
   font-size: 0.7rem;
   font-weight: 600;
   padding: 1px 5px;
@@ -925,6 +926,10 @@ button {
   cursor: pointer;
   font-family: inherit;
   transform: translateX(-50%);
+}
+.lane-scroll.theme-light .boss-marker-label {
+  background: #ececec;
+  color: #1f1f1f;
 }
 .boss-marker--selected .boss-marker-label {
   border-color: #6cf;
@@ -1015,9 +1020,12 @@ button {
 .boss-marker--lethal .boss-marker-leader {
   background: rgba(238, 68, 68, 0.45);
 }
+/* Lethal state: red TEXT on the label; background stays neutral (PRD §"Label states"). */
 .boss-marker--lethal .boss-marker-label {
-  background: #e44;
-  color: #1a1a1a;
+  color: #ff5a5a;
+}
+.lane-scroll.theme-light .boss-marker--lethal .boss-marker-label {
+  color: #c62828;
 }
 .boss-marker--lethal .boss-marker-echo {
   color: #e44;
@@ -1383,11 +1391,17 @@ button {
   background: #fa3;
   box-shadow: 0 0 6px rgba(255, 170, 51, 0.7);
 }
+.boss-marker--needs-target .boss-marker-leader {
+  background: rgba(255, 170, 51, 0.55);
+}
+/* Unset target: whole label tinted yellow (PRD §"Label states"). */
 .boss-marker--needs-target .boss-marker-label {
   background: #fa3;
   color: #111;
-  outline: 1px dashed #fc6;
-  outline-offset: 1px;
+}
+/* Lethal + unset target: red text on yellow background (PRD §"Label states"). */
+.boss-marker--lethal.boss-marker--needs-target .boss-marker-label {
+  color: #b21010;
 }
 .boss-marker--needs-target .boss-marker-echo {
   color: #fa3;
