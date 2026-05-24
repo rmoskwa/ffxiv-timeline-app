@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatMitMagnitude, type MitigationInstance, type MitigationType } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
-import { JobIcon } from "./JobIcon";
 import { MitIcon } from "./MitIcon";
 import { jobColor } from "./role-color";
 import { TargetPicker } from "./TargetPicker";
@@ -52,6 +51,7 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
       className={
         `mit-bar${hasConflict ? " mit-bar--conflict" : ""}` +
         `${targetUnset ? " mit-bar--needs-target" : ""}` +
+        `${targetSlot ? " mit-bar--has-target" : ""}` +
         `${pickerOpen ? " has-picker-open" : ""}`
       }
       style={{ left }}
@@ -60,27 +60,23 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
     >
       <div
         className="mit-bar-duration"
-        style={{ width: durationPx, background: jobColor(type.job) }}
+        style={{
+          width: durationPx,
+          background: jobColor(type.job),
+          ...(targetSlot && { outlineColor: jobColor(targetSlot.job) }),
+        }}
       >
-        {needsTarget && (
+        {needsTarget && !targetSlot && !pickerOpen && (
           <button
             type="button"
-            className={`mit-bar-target-badge${targetUnset ? " is-unset" : ""}`}
-            title={
-              targetSlot
-                ? `Target: ${targetSlot.name_label ?? (targetSlot.job === "unset" ? "Unset" : targetSlot.job)} — click to change`
-                : "Click to pick target"
-            }
+            className="mit-bar-target-badge is-unset"
+            title="Click to pick target"
             onClick={(e) => {
               e.stopPropagation();
               setPickerOpen((o) => !o);
             }}
           >
-            {targetSlot ? (
-              <JobIcon job={targetSlot.job} size={14} title="" />
-            ) : (
-              <span className="mit-bar-target-badge-q">?</span>
-            )}
+            <span className="mit-bar-target-badge-q">?</span>
           </button>
         )}
         <button

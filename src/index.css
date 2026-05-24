@@ -1217,6 +1217,13 @@ button {
   border: 1px dashed #fa3;
 }
 
+/* Targeted mit: dashed outline in the target player's role color. Color set inline. */
+.mit-bar--has-target .mit-bar-duration {
+  outline-style: dashed;
+  outline-width: 2px;
+  outline-offset: -2px;
+}
+
 .mit-bar-target-badge {
   display: inline-flex;
   align-items: center;
