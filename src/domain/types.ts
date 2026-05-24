@@ -131,11 +131,11 @@ export interface MitigationInstance {
   type_id: string; // FK → MitigationType.id (a library entry)
   player_slot_id: string; // FK → PlayerSlot.id (REQUIRED — mits are slot-bound, §3.3)
   effect_time: number; // seconds from pull; cooldown begins here (§4)
-  // FK → PlayerSlot.id, only meaningful when type.affects === "target"
-  // (Oblation, Aquaveil, Exaltation). Undefined for all other affects modes
-  // AND for newly-dropped target-mits before the user picks (auto-opens
-  // the picker; coverage is 0 until set).
-  target_slot_id?: string;
+  // User-picked recipient for affects:target mits (Oblation, Aquaveil,
+  // Exaltation). Empty for all other affects modes AND for newly-dropped
+  // target-mits before the user picks (auto-opens the picker; coverage is
+  // 0 until set). See domain/targeting.ts.
+  target_slot_ids: string[];
   coverage_overrides: CoverageOverride[]; // deferred to v0.2 (§3.3); empty in v0.1
 }
 
@@ -180,7 +180,7 @@ export interface FreeformNote {
 
 // ─── Timeline File (PRD §12.1) ──────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 1 as const;
+export const TIMELINE_SCHEMA_VERSION = 2 as const;
 
 export interface TimelineFile {
   schema_version: typeof TIMELINE_SCHEMA_VERSION;

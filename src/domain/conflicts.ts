@@ -11,6 +11,7 @@
 // Pure function — no React, no I/O.
 
 import type { MitTypeLookup } from "./damage";
+import { targetingForBoss, targetingForMit } from "./targeting";
 import type { BossAbilityInstance, BossAbilityType, MitigationInstance, Roster } from "./types";
 import { resolveBossAbility } from "./types";
 
@@ -106,13 +107,8 @@ export function detectConflicts(
   for (const inst of bossInstances) {
     const type = bossTypeById.get(inst.type_id);
     if (!type) continue;
-    const { target_pattern } = resolveBossAbility(inst, type);
-    if (
-      (target_pattern === "tankbuster_single" ||
-        target_pattern === "tankbuster_shared" ||
-        target_pattern === "targeted") &&
-      inst.target_slot_ids.length === 0
-    ) {
+    if (!targetingForBoss(inst, type).isComplete) {
+      const { target_pattern } = resolveBossAbility(inst, type);
       conflicts.push({
         kind: "unset_target",
         target_kind: "boss_ability",
@@ -126,7 +122,7 @@ export function detectConflicts(
   for (const m of mits) {
     const mt = lookupMitType(m.type_id);
     if (!mt) continue;
-    if (mt.affects === "target" && m.target_slot_id === undefined) {
+    if (!targetingForMit(m, mt).isComplete) {
       conflicts.push({
         kind: "unset_target",
         target_kind: "mitigation",

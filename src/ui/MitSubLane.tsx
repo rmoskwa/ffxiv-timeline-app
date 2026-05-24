@@ -46,7 +46,7 @@ export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLane
     if (e.target !== e.currentTarget) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const sec = snapClientXToSecond(e.clientX, rect.left, pxPerSec);
-    addMit({ type_id: mitType.id, player_slot_id: slot.id, effect_time: sec });
+    addMit({ type_id: mitType.id, player_slot_id: slot.id, effect_time: sec, target_slot_ids: [] });
     setHoverSec(null);
   };
 

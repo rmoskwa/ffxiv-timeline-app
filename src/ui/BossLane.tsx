@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useState } from "react";
+import { targetingForBoss } from "@/domain/targeting";
 import type { BossAbilityInstance, BossAbilityType, Roster, TargetPattern } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossInstanceEditor } from "./BossInstanceEditor";
@@ -8,16 +9,6 @@ import { TargetPicker } from "./TargetPicker";
 import { PLAYER_MAX_HP, secondsToTimecode, snapClientXToSecond } from "./timeline-constants";
 import { useDamageByInstance } from "./use-derived";
 import { useZoom } from "./use-zoom";
-
-// Patterns whose damage math depends on user-picked target slots. Other patterns
-// (raidwide/spread/stack) ignore target_slot_ids entirely.
-function patternNeedsTarget(tp: TargetPattern): boolean {
-  return tp === "tankbuster_single" || tp === "tankbuster_shared" || tp === "targeted";
-}
-
-function maxTargetsFor(tp: TargetPattern): number {
-  return tp === "tankbuster_shared" ? 2 : 1;
-}
 
 export function BossLane() {
   const types = useTimelineStore((s) => s.timeline?.boss_ability_types ?? []);
@@ -144,8 +135,9 @@ function BossMarker({
 }) {
   const tp = instance.target_pattern_override ?? type.target_pattern;
   const damage = instance.damage_override ?? type.base_damage;
-  const needsTarget = patternNeedsTarget(tp);
-  const targetsUnset = needsTarget && instance.target_slot_ids.length === 0;
+  const targeting = targetingForBoss(instance, type);
+  const needsTarget = targeting.requiredCount > 0;
+  const targetsUnset = needsTarget && !targeting.isComplete;
 
   // One popover open at a time per marker. Auto-opens target picker when a
   // newly-placed instance still needs targets.
@@ -220,8 +212,8 @@ function BossMarker({
         <div className="boss-marker-popover">
           <TargetPicker
             roster={roster}
-            selectedIds={instance.target_slot_ids}
-            maxSelections={maxTargetsFor(tp)}
+            selectedIds={targeting.selection}
+            maxSelections={targeting.requiredCount}
             onChange={onPickTargets}
             onClose={() => setOpen("none")}
           />

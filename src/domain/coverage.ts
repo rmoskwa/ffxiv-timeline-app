@@ -63,7 +63,7 @@ function hitLandsOnPlayer(hit: ResolvedHit, player: PlayerSlot): boolean {
 function mitReachesPlayer(
   affects: MitAffects,
   mitOwnerSlotId: string,
-  mitTargetSlotId: string | undefined,
+  mitTargetSlotIds: readonly string[],
   player: PlayerSlot,
 ): boolean {
   switch (affects) {
@@ -74,8 +74,8 @@ function mitReachesPlayer(
       return true;
     case "target":
       // Oblation / Aquaveil / Exaltation: covers only the user-picked target.
-      // Undefined target_slot_id means the user hasn't picked yet — no coverage.
-      return mitTargetSlotId !== undefined && player.id === mitTargetSlotId;
+      // Empty target_slot_ids means the user hasn't picked yet — no coverage.
+      return mitTargetSlotIds.includes(player.id);
   }
 }
 
@@ -101,7 +101,7 @@ export function mitCovers(
   if (!hitLandsOnPlayer(hit, player)) return false;
 
   // 3b. Mit must actually reach this player.
-  if (!mitReachesPlayer(mitType.affects, mit.player_slot_id, mit.target_slot_id, player))
+  if (!mitReachesPlayer(mitType.affects, mit.player_slot_id, mit.target_slot_ids, player))
     return false;
 
   return true;

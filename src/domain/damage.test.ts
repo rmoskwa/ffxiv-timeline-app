@@ -49,6 +49,7 @@ function mit(
   return {
     id: `mit-${Math.random()}`,
     effect_time: 55,
+    target_slot_ids: [],
     coverage_overrides: [],
     ...overrides,
   };

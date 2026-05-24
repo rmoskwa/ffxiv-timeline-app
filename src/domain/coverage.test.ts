@@ -28,6 +28,7 @@ function mit(
     id: "mit-1",
     type_id: "drk.rampart",
     effect_time: 100,
+    target_slot_ids: [],
     coverage_overrides: [],
     ...overrides,
   };
@@ -140,10 +141,10 @@ describe("mitCovers — affects × target_pattern", () => {
     expect(mitCovers(m, t, h, 2, ROSTER)).toBe(false);
   });
 
-  it("affects:target covers only the picked target_slot_id", () => {
+  it("affects:target covers only the picked target slot", () => {
     // Healer-cast target shield (e.g. Aquaveil) on a raidwide: only the named
     // target benefits, even though the hit lands on everyone.
-    const m = mit({ player_slot_id: "s3", target_slot_id: "s1" });
+    const m = mit({ player_slot_id: "s3", target_slot_ids: ["s1"] });
     const t = mitType({ affects: "target" });
     const h = hit({ target_pattern: "raidwide" });
 
@@ -152,7 +153,7 @@ describe("mitCovers — affects × target_pattern", () => {
     expect(mitCovers(m, t, h, 3, ROSTER)).toBe(false); // the caster (not self)
   });
 
-  it("affects:target with undefined target_slot_id covers nobody", () => {
+  it("affects:target with empty target_slot_ids covers nobody", () => {
     // Newly-dropped target mit before the user picks a target.
     const m = mit({ player_slot_id: "s3" });
     const t = mitType({ affects: "target" });

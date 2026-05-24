@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { targetingForMit } from "@/domain/targeting";
 import { formatMitMagnitude, type MitigationInstance, type MitigationType } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { MitIcon } from "./MitIcon";
@@ -26,11 +27,10 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
   const cooldownTailSec = Math.max(0, type.cooldown_seconds - type.duration_seconds);
   const cooldownTailPx = cooldownTailSec * pxPerSec;
 
-  const needsTarget = type.affects === "target";
-  const targetUnset = needsTarget && instance.target_slot_id === undefined;
-  const targetSlot = needsTarget
-    ? roster?.find((s) => s.id === instance.target_slot_id)
-    : undefined;
+  const targeting = targetingForMit(instance, type);
+  const needsTarget = targeting.requiredCount > 0;
+  const targetUnset = needsTarget && !targeting.isComplete;
+  const targetSlot = needsTarget ? roster?.find((s) => s.id === targeting.selection[0]) : undefined;
 
   // Auto-open the picker for a newly-dropped target mit. The effect dep on
   // targetUnset re-opens if the field is somehow cleared later.
@@ -98,12 +98,9 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
         <div className="mit-bar-popover">
           <TargetPicker
             roster={roster}
-            selectedIds={instance.target_slot_id ? [instance.target_slot_id] : []}
-            maxSelections={1}
-            onChange={(ids) => {
-              const next = ids[0];
-              if (next) updateMit(instance.id, { target_slot_id: next });
-            }}
+            selectedIds={targeting.selection}
+            maxSelections={targeting.requiredCount}
+            onChange={(ids) => updateMit(instance.id, { target_slot_ids: ids })}
             onClose={() => setPickerOpen(false)}
           />
         </div>

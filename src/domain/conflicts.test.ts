@@ -41,7 +41,7 @@ function mit(
   effect_time: number,
   type_id = RAMPART.id,
 ): MitigationInstance {
-  return { id, type_id, player_slot_id, effect_time, coverage_overrides: [] };
+  return { id, type_id, player_slot_id, effect_time, target_slot_ids: [], coverage_overrides: [] };
 }
 
 describe("detectConflicts — cooldown overlap", () => {
@@ -186,7 +186,7 @@ describe("detectConflicts — unset_target", () => {
     expect(conflicts[0]?.kind).toBe("unset_target");
   });
 
-  it("flags an affects:target mit with no target_slot_id", () => {
+  it("flags an affects:target mit with empty target_slot_ids", () => {
     const TARGET_MIT: MitigationType = {
       id: "sch.aquaveil",
       name: "Aquaveil",
@@ -207,6 +207,7 @@ describe("detectConflicts — unset_target", () => {
       type_id: TARGET_MIT.id,
       player_slot_id: "s3",
       effect_time: 30,
+      target_slot_ids: [],
       coverage_overrides: [],
     };
     const conflicts = detectConflicts([m], targetLookup, ROSTER);
