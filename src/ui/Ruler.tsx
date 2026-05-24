@@ -1,27 +1,30 @@
 import {
-  LABEL_INTERVAL_SEC,
   LANE_DURATION_SEC,
-  LANE_WIDTH_PX,
-  PX_PER_SEC,
+  pickLabelIntervalSec,
+  pickTickIntervalSec,
   secondsToTimecode,
-  TICK_INTERVAL_SEC,
 } from "./timeline-constants";
+import { useZoom } from "./use-zoom";
 
 export function Ruler() {
+  const { pxPerSec, laneWidthPx } = useZoom();
+  const tickInterval = pickTickIntervalSec(pxPerSec);
+  const labelInterval = pickLabelIntervalSec(tickInterval);
+
   const ticks: number[] = [];
-  for (let t = 0; t <= LANE_DURATION_SEC; t += TICK_INTERVAL_SEC) ticks.push(t);
+  for (let t = 0; t <= LANE_DURATION_SEC; t += tickInterval) ticks.push(t);
 
   return (
     <div className="lane-row lane-row--ruler" aria-hidden>
       <div className="lane-label lane-label--ruler" />
-      <div className="lane-track ruler-track" style={{ width: LANE_WIDTH_PX }}>
+      <div className="lane-track ruler-track" style={{ width: laneWidthPx }}>
         {ticks.map((t) => {
-          const isLabeled = t % LABEL_INTERVAL_SEC === 0;
+          const isLabeled = t % labelInterval === 0;
           return (
             <div
               key={t}
               className={`tick${isLabeled ? " tick--labeled" : ""}`}
-              style={{ left: t * PX_PER_SEC }}
+              style={{ left: t * pxPerSec }}
             >
               {isLabeled && <span className="tick-label">{secondsToTimecode(t)}</span>}
             </div>

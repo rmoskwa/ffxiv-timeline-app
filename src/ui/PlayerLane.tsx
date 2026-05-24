@@ -9,13 +9,9 @@ import type {
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitBar } from "./MitBar";
-import {
-  DROP_TARGET_PLAYER_LANE,
-  LANE_WIDTH_PX,
-  PLAYER_MAX_HP,
-  PX_PER_SEC,
-} from "./timeline-constants";
+import { DROP_TARGET_PLAYER_LANE, PLAYER_MAX_HP } from "./timeline-constants";
 import { useCooldownOverlapMitIds, useDamageByInstance } from "./use-derived";
+import { useZoom } from "./use-zoom";
 
 interface PlayerLaneProps {
   slot: PlayerSlot;
@@ -38,6 +34,7 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
   const bossTypes = useTimelineStore((s) => s.timeline?.boss_ability_types ?? EMPTY_TYPES);
   const damageByInstance = useDamageByInstance();
   const conflictIds = useCooldownOverlapMitIds();
+  const { pxPerSec, laneWidthPx } = useZoom();
 
   const mits = allMits.filter((m) => m.player_slot_id === slot.id);
   const typeById = new Map(bossTypes.map((t) => [t.id, t]));
@@ -59,7 +56,7 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
       <div
         ref={setNodeRef}
         className={`lane-track player-lane-track${isOver ? " drop-active" : ""}`}
-        style={{ width: LANE_WIDTH_PX }}
+        style={{ width: laneWidthPx }}
       >
         <div className="lane-gridlines" aria-hidden />
         {bossInstances.map((inst) => {
@@ -74,7 +71,7 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
             <div
               key={inst.id}
               className={`damage-chip${lethal ? " damage-chip--lethal" : ""}`}
-              style={{ left: inst.effect_time * PX_PER_SEC }}
+              style={{ left: inst.effect_time * pxPerSec }}
               title={`${type?.name ?? "hit"} — ${Math.round(damage).toLocaleString()} damage`}
             >
               {formatDamage(damage)}

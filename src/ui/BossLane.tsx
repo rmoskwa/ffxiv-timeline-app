@@ -3,14 +3,9 @@ import { useEffect, useState } from "react";
 import type { BossAbilityInstance, BossAbilityType, Roster, TargetPattern } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { TargetPicker } from "./TargetPicker";
-import {
-  DROP_TARGET_BOSS_LANE,
-  LANE_WIDTH_PX,
-  PLAYER_MAX_HP,
-  PX_PER_SEC,
-  secondsToTimecode,
-} from "./timeline-constants";
+import { DROP_TARGET_BOSS_LANE, PLAYER_MAX_HP, secondsToTimecode } from "./timeline-constants";
 import { useDamageByInstance } from "./use-derived";
+import { useZoom } from "./use-zoom";
 
 // Patterns whose damage math depends on user-picked target slots. Other patterns
 // (raidwide/spread/stack) ignore target_slot_ids entirely.
@@ -29,6 +24,7 @@ export function BossLane() {
   const removeInstance = useTimelineStore((s) => s.removeBossAbilityInstance);
   const updateInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
   const damageByInstance = useDamageByInstance();
+  const { pxPerSec, laneWidthPx } = useZoom();
 
   const typeMap = new Map(types.map((t) => [t.id, t]));
 
@@ -45,7 +41,7 @@ export function BossLane() {
       <div
         ref={setNodeRef}
         className={`lane-track boss-lane-track${isOver ? " drop-active" : ""}`}
-        style={{ width: LANE_WIDTH_PX }}
+        style={{ width: laneWidthPx }}
       >
         <div className="lane-gridlines" aria-hidden />
         {instances.map((inst) => {
@@ -60,6 +56,7 @@ export function BossLane() {
               type={type}
               lethal={lethal}
               roster={roster}
+              pxPerSec={pxPerSec}
               onRemove={() => removeInstance(inst.id)}
               onPickTargets={(ids) => updateInstance(inst.id, { target_slot_ids: ids })}
             />
@@ -75,6 +72,7 @@ function BossMarker({
   type,
   lethal,
   roster,
+  pxPerSec,
   onRemove,
   onPickTargets,
 }: {
@@ -82,6 +80,7 @@ function BossMarker({
   type: BossAbilityType;
   lethal: boolean;
   roster: Roster;
+  pxPerSec: number;
   onRemove: () => void;
   onPickTargets: (ids: string[]) => void;
 }) {
@@ -109,7 +108,7 @@ function BossMarker({
         `${targetsUnset ? " boss-marker--needs-target" : ""}` +
         `${pickerOpen ? " has-picker-open" : ""}`
       }
-      style={{ left: instance.effect_time * PX_PER_SEC }}
+      style={{ left: instance.effect_time * pxPerSec }}
       title={title}
       data-boss-instance-id={instance.id}
     >

@@ -4,7 +4,8 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitIcon } from "./MitIcon";
 import { TargetPicker } from "./TargetPicker";
-import { PX_PER_SEC, secondsToTimecode } from "./timeline-constants";
+import { secondsToTimecode } from "./timeline-constants";
+import { useZoom } from "./use-zoom";
 
 interface MitBarProps {
   instance: MitigationInstance;
@@ -18,11 +19,12 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
   const remove = useTimelineStore((s) => s.removeMitigationInstance);
   const updateMit = useTimelineStore((s) => s.updateMitigationInstance);
   const roster = useTimelineStore((s) => s.timeline?.roster);
+  const { pxPerSec } = useZoom();
 
-  const left = instance.effect_time * PX_PER_SEC;
-  const durationPx = type.duration_seconds * PX_PER_SEC;
+  const left = instance.effect_time * pxPerSec;
+  const durationPx = type.duration_seconds * pxPerSec;
   const cooldownTailSec = Math.max(0, type.cooldown_seconds - type.duration_seconds);
-  const cooldownTailPx = cooldownTailSec * PX_PER_SEC;
+  const cooldownTailPx = cooldownTailSec * pxPerSec;
 
   const needsTarget = type.affects === "target";
   const targetUnset = needsTarget && instance.target_slot_id === undefined;

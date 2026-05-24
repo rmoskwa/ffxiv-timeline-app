@@ -10,8 +10,8 @@ import {
   DROP_TARGET_BOSS_LANE,
   DROP_TARGET_PLAYER_LANE,
   LANE_DURATION_SEC,
-  PX_PER_SEC,
 } from "./timeline-constants";
+import { useZoomStore } from "./use-zoom";
 
 export function TimelineEditor() {
   const addBossInstance = useTimelineStore((s) => s.addBossAbilityInstance);
@@ -28,7 +28,8 @@ export function TimelineEditor() {
     if (!rect) return;
     const cursorX = (activatorEvent as PointerEvent).clientX + delta.x;
     const dropX = cursorX - rect.left;
-    const effectTime = Math.max(0, Math.min(LANE_DURATION_SEC, Math.round(dropX / PX_PER_SEC)));
+    const pxPerSec = useZoomStore.getState().pxPerSec;
+    const effectTime = Math.max(0, Math.min(LANE_DURATION_SEC, Math.round(dropX / pxPerSec)));
 
     const overKind = over.data.current?.kind;
     const activeKind = active.data.current?.kind;
