@@ -177,15 +177,4 @@ describe("computeDamagePerPlayer", () => {
     const result = computeDamagePerPlayer(bossInstance(), bossType(), [m], lookup, ROSTER);
     expect(result).toEqual(new Array(8).fill(100_000));
   });
-
-  it("respects damage_override on the instance", () => {
-    const result = computeDamagePerPlayer(
-      bossInstance({ damage_override: 50_000 }),
-      bossType(),
-      [],
-      lookup,
-      ROSTER,
-    );
-    expect(result).toEqual(new Array(8).fill(50_000));
-  });
 });

@@ -1,9 +1,8 @@
 import type React from "react";
 import { useEffect, useState } from "react";
 import { targetingForBoss } from "@/domain/targeting";
-import type { BossAbilityInstance, BossAbilityType, Roster, TargetPattern } from "@/domain/types";
+import type { BossAbilityInstance, BossAbilityType, Roster } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
-import { BossInstanceEditor } from "./BossInstanceEditor";
 import { BossPlacementPicker } from "./BossPlacementPicker";
 import { TargetPicker } from "./TargetPicker";
 import { PLAYER_MAX_HP, secondsToTimecode, snapClientXToSecond } from "./timeline-constants";
@@ -17,7 +16,6 @@ export function BossLane() {
   const addInstance = useTimelineStore((s) => s.addBossAbilityInstance);
   const removeInstance = useTimelineStore((s) => s.removeBossAbilityInstance);
   const updateInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
-  const clearOverride = useTimelineStore((s) => s.clearBossAbilityInstanceOverride);
   const damageByInstance = useDamageByInstance();
   const { pxPerSec, laneWidthPx } = useZoom();
 
@@ -83,10 +81,6 @@ export function BossLane() {
               pxPerSec={pxPerSec}
               onRemove={() => removeInstance(inst.id)}
               onPickTargets={(ids) => updateInstance(inst.id, { target_slot_ids: ids })}
-              onSetDamage={(d) => updateInstance(inst.id, { damage_override: d })}
-              onClearDamage={() => clearOverride(inst.id, "damage_override")}
-              onSetPattern={(p) => updateInstance(inst.id, { target_pattern_override: p })}
-              onClearPattern={() => clearOverride(inst.id, "target_pattern_override")}
             />
           );
         })}
@@ -116,10 +110,6 @@ function BossMarker({
   pxPerSec,
   onRemove,
   onPickTargets,
-  onSetDamage,
-  onClearDamage,
-  onSetPattern,
-  onClearPattern,
 }: {
   instance: BossAbilityInstance;
   type: BossAbilityType;
@@ -128,28 +118,20 @@ function BossMarker({
   pxPerSec: number;
   onRemove: () => void;
   onPickTargets: (ids: string[]) => void;
-  onSetDamage: (damage: number) => void;
-  onClearDamage: () => void;
-  onSetPattern: (pattern: TargetPattern) => void;
-  onClearPattern: () => void;
 }) {
-  const tp = instance.target_pattern_override ?? type.target_pattern;
-  const damage = instance.damage_override ?? type.base_damage;
   const targeting = targetingForBoss(instance, type);
   const needsTarget = targeting.requiredCount > 0;
   const targetsUnset = needsTarget && !targeting.isComplete;
 
-  // One popover open at a time per marker. Auto-opens target picker when a
-  // newly-placed instance still needs targets.
-  type OpenPopover = "none" | "target" | "edit";
-  const [open, setOpen] = useState<OpenPopover>(targetsUnset ? "target" : "none");
+  // Auto-opens target picker when a newly-placed instance still needs targets.
+  const [targetPickerOpen, setTargetPickerOpen] = useState(targetsUnset);
   useEffect(() => {
-    if (targetsUnset) setOpen("target");
+    if (targetsUnset) setTargetPickerOpen(true);
   }, [targetsUnset]);
 
   const title =
     `${type.name} @ ${secondsToTimecode(instance.effect_time)}\n` +
-    `${damage > 0 ? `${damage.toLocaleString()} ` : ""}${type.damage_type} · ${tp}` +
+    `${type.base_damage > 0 ? `${type.base_damage.toLocaleString()} ` : ""}${type.damage_type} · ${type.target_pattern}` +
     (targetsUnset ? "\n⚠ no target picked — click to assign" : "") +
     (lethal ? "\n⚠ lethal to at least one player" : "");
 
@@ -158,24 +140,13 @@ function BossMarker({
       className={
         `boss-marker${lethal ? " boss-marker--lethal" : ""}` +
         `${targetsUnset ? " boss-marker--needs-target" : ""}` +
-        `${open !== "none" ? " has-picker-open" : ""}`
+        `${targetPickerOpen ? " has-picker-open" : ""}`
       }
       style={{ left: instance.effect_time * pxPerSec }}
       title={title}
       data-boss-instance-id={instance.id}
     >
       <div className="boss-marker-actions">
-        <button
-          type="button"
-          className="boss-marker-edit"
-          title="Edit damage / target pattern"
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((o) => (o === "edit" ? "none" : "edit"));
-          }}
-        >
-          ✎
-        </button>
         <button
           type="button"
           className="boss-marker-remove"
@@ -195,7 +166,7 @@ function BossMarker({
           aria-label="Pick target for this hit"
           onClick={(e) => {
             e.stopPropagation();
-            setOpen((o) => (o === "target" ? "none" : "target"));
+            setTargetPickerOpen((o) => !o);
           }}
         >
           <div className="boss-marker-pin" />
@@ -208,27 +179,14 @@ function BossMarker({
           <div className="boss-marker-label">{type.name}</div>
         </>
       )}
-      {open === "target" && needsTarget && (
+      {targetPickerOpen && needsTarget && (
         <div className="boss-marker-popover">
           <TargetPicker
             roster={roster}
             selectedIds={targeting.selection}
             maxSelections={targeting.requiredCount}
             onChange={onPickTargets}
-            onClose={() => setOpen("none")}
-          />
-        </div>
-      )}
-      {open === "edit" && (
-        <div className="boss-marker-popover boss-marker-popover--edit">
-          <BossInstanceEditor
-            instance={instance}
-            type={type}
-            onSetDamage={onSetDamage}
-            onClearDamage={onClearDamage}
-            onSetPattern={onSetPattern}
-            onClearPattern={onClearPattern}
-            onClose={() => setOpen("none")}
+            onClose={() => setTargetPickerOpen(false)}
           />
         </div>
       )}

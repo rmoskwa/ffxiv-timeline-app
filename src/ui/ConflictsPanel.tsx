@@ -102,7 +102,7 @@ export function ConflictsPanel() {
                 if (!inst) return null;
                 const type = bossTypeById.get(inst.type_id);
                 if (!type) return null;
-                const tp = inst.target_pattern_override ?? type.target_pattern;
+                const tp = type.target_pattern;
                 return (
                   <li key={`b-${c.boss_instance_id}`} className="conflict-row">
                     <div className="conflict-slot" title="Boss ability">

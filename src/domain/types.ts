@@ -69,8 +69,6 @@ export interface BossAbilityInstance {
   id: string;
   type_id: string; // FK → BossAbilityType.id
   effect_time: number; // seconds from pull
-  damage_override?: number;
-  target_pattern_override?: TargetPattern;
   // User-picked targets for patterns that need them (PRD §5.3, §18). Always
   // present; empty for raidwide/spread/stack. One entry for tankbuster_single
   // and targeted; two for tankbuster_shared.
@@ -180,7 +178,7 @@ export interface FreeformNote {
 
 // ─── Timeline File (PRD §12.1) ──────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 2 as const;
+export const TIMELINE_SCHEMA_VERSION = 3 as const;
 
 export interface TimelineFile {
   schema_version: typeof TIMELINE_SCHEMA_VERSION;
@@ -227,14 +225,15 @@ export function deriveRole(job: JobOrUnset): Role {
   return job === "unset" ? "unset" : JOB_ROLE[job];
 }
 
-// Resolve a boss ability instance's effective damage/pattern (instance override > type).
+// Resolve a boss ability instance's effective damage/pattern. Type-level edits
+// propagate to every instance — there are no per-instance overrides.
 export function resolveBossAbility(
-  instance: BossAbilityInstance,
+  _instance: BossAbilityInstance,
   type: BossAbilityType,
 ): { damage: number; target_pattern: TargetPattern; damage_type: DamageType } {
   return {
-    damage: instance.damage_override ?? type.base_damage,
-    target_pattern: instance.target_pattern_override ?? type.target_pattern,
+    damage: type.base_damage,
+    target_pattern: type.target_pattern,
     damage_type: type.damage_type,
   };
 }

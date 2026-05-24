@@ -882,8 +882,7 @@ button {
   display: flex;
   gap: 4px;
 }
-.boss-marker-remove,
-.boss-marker-edit {
+.boss-marker-remove {
   background: #222;
   border: 1px solid #555;
   color: #aaa;
@@ -897,20 +896,13 @@ button {
   opacity: 0;
   transition: opacity 0.1s;
 }
-.boss-marker:hover .boss-marker-remove,
-.boss-marker:hover .boss-marker-edit,
-.boss-marker.has-picker-open .boss-marker-edit {
+.boss-marker:hover .boss-marker-remove {
   opacity: 1;
 }
 .boss-marker-remove:hover {
   background: #3a1f1f;
   border-color: #c66;
   color: #f88;
-}
-.boss-marker-edit:hover {
-  background: #1f2a3a;
-  border-color: #6cf;
-  color: #8cf;
 }
 
 /* ─── Mit bar (duration + faded cooldown) ─────────────────────────────── */
@@ -1346,78 +1338,6 @@ button {
   left: 50%;
 }
 .boss-marker-popover .target-picker {
-  transform: translateX(-50%);
-}
-
-/* ─── Boss instance editor popover (damage / pattern overrides) ────────── */
-
-.boss-instance-editor {
-  background: #1a1a1a;
-  border: 1px solid #555;
-  border-radius: 5px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-  padding: 0.6rem;
-  min-width: 240px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.boss-instance-editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.72rem;
-  color: #ccc;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.boss-instance-editor-close {
-  background: transparent;
-  border: none;
-  color: #888;
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  padding: 0 0.25rem;
-}
-.boss-instance-editor-close:hover {
-  color: #fff;
-}
-.boss-instance-editor .field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.8rem;
-}
-.boss-instance-editor .field > span {
-  color: #aaa;
-}
-.boss-instance-editor input,
-.boss-instance-editor select {
-  background: #1a1a1a;
-  color: #e0e0e0;
-  border: 1px solid #444;
-  border-radius: 3px;
-  padding: 0.3rem 0.4rem;
-  font: inherit;
-  font-size: 0.85rem;
-}
-.boss-instance-editor-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.boss-instance-editor-row input,
-.boss-instance-editor-row select {
-  flex: 1;
-  min-width: 0;
-}
-.boss-instance-editor .hint {
-  color: #888;
-  font-style: normal;
-  font-weight: 400;
-}
-.boss-marker-popover .boss-instance-editor {
   transform: translateX(-50%);
 }
 

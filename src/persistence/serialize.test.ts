@@ -74,13 +74,69 @@ describe("deserialize — v1 → v2 migration", () => {
   });
 });
 
+describe("deserialize — v2 → v3 migration", () => {
+  function v2Json(bossInstances: Array<Record<string, unknown>>): string {
+    return JSON.stringify({
+      schema_version: 2,
+      metadata: {
+        name: "fixture",
+        created_at: "2025-01-01T00:00:00.000Z",
+        updated_at: "2025-01-01T00:00:00.000Z",
+      },
+      roster: Array.from({ length: 8 }, (_, i) => ({ id: `s${i}`, job: "unset" })),
+      boss_ability_types: [],
+      boss_ability_instances: bossInstances,
+      mitigation_instances: [],
+      phase_markers: [],
+      freeform_notes: [],
+    });
+  }
+
+  it("strips damage_override and target_pattern_override from boss instances", () => {
+    const json = v2Json([
+      {
+        id: "b1",
+        type_id: "t1",
+        effect_time: 30,
+        damage_override: 50_000,
+        target_pattern_override: "raidwide",
+        target_slot_ids: [],
+        observed_damage: [],
+      },
+    ]);
+    const tl = deserialize(json);
+    expect(tl.schema_version).toBe(TIMELINE_SCHEMA_VERSION);
+    const inst = tl.boss_ability_instances[0];
+    expect(inst).not.toHaveProperty("damage_override");
+    expect(inst).not.toHaveProperty("target_pattern_override");
+  });
+
+  it("preserves other boss-instance fields", () => {
+    const json = v2Json([
+      {
+        id: "b1",
+        type_id: "t1",
+        effect_time: 42,
+        target_slot_ids: ["s0", "s1"],
+        observed_damage: [],
+      },
+    ]);
+    const tl = deserialize(json);
+    const inst = tl.boss_ability_instances[0];
+    expect(inst?.id).toBe("b1");
+    expect(inst?.type_id).toBe("t1");
+    expect(inst?.effect_time).toBe(42);
+    expect(inst?.target_slot_ids).toEqual(["s0", "s1"]);
+  });
+});
+
 describe("deserialize — version gate", () => {
   it("rejects an unknown future version", () => {
     const json = JSON.stringify({ schema_version: 999 });
     expect(() => deserialize(json)).toThrow(SchemaVersionError);
   });
 
-  it("round-trips a v2 timeline unchanged", () => {
+  it("round-trips a v3 timeline unchanged", () => {
     const tl = deserialize(
       v1Json([
         {

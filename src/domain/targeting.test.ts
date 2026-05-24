@@ -99,17 +99,6 @@ describe("targetingForBoss — isComplete", () => {
   });
 });
 
-describe("targetingForBoss — respects instance target_pattern_override", () => {
-  it("override raidwide → tankbuster_single bumps requiredCount to 1", () => {
-    const inst = bossInstance({ target_pattern_override: "tankbuster_single" });
-    expect(targetingForBoss(inst, bossType("raidwide")).requiredCount).toBe(1);
-  });
-  it("override tankbuster_shared → raidwide drops requiredCount to 0", () => {
-    const inst = bossInstance({ target_pattern_override: "raidwide" });
-    expect(targetingForBoss(inst, bossType("tankbuster_shared")).requiredCount).toBe(0);
-  });
-});
-
 describe("targetingForMit — requiredCount by affects", () => {
   it("self → 0", () => {
     expect(targetingForMit(mitInstance(), mitType({ affects: "self" })).requiredCount).toBe(0);
