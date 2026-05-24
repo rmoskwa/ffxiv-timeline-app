@@ -57,7 +57,7 @@ The user-picked **player slots** an instance's effect is aimed at. Applies to bo
 _Avoid_: target assignment, target selection (use "Targeting" as the noun)
 
 **Target pattern**:
-A type-level enum on a boss ability describing how the hit distributes across the raid (`raidwide`, `tankbuster_single`, `tankbuster_shared`, `spread`, `stack`, `targeted`). Determines whether the instance requires **Targeting** and how many slots are needed (0, 1, or 2).
+A type-level enum on a boss ability with two values: `raidwide` (hits all 8 player slots; no **Targeting** needed) and `targeted` (hits a user-picked subset of 1–8 slots; requires **Targeting**). Finer-grained patterns such as `spread` and `stack` may be reintroduced as the UX matures.
 _Avoid_: attack type, distribution, spread pattern
 
 **Affects**:
@@ -77,7 +77,7 @@ The time interval `[effect_time, effect_time + duration_seconds]` during which a
 _Avoid_: uptime, buff window, duration window
 
 **Hit**:
-A boss ability instance's effect landing on one specific **player slot**. One instance produces 1–8 hits depending on its **target pattern** (`raidwide` → 8, `tankbuster_single` → 1, an instance with `unset_target` → 0). The granularity at which **Coverage** and damage math are evaluated.
+A boss ability instance's effect landing on one specific **player slot**. One instance produces 1–8 hits depending on its **target pattern** (`raidwide` → 8; `targeted` → the count of picked slots; an instance with `unset_target` → 0). The granularity at which **Coverage** and damage math are evaluated.
 _Avoid_: damage event, impact, strike
 
 **Coverage**:
@@ -95,7 +95,7 @@ A flagged problem in the current timeline detected by pure-function inspection. 
 _Avoid_: error, warning, problem
 
 **Schema version**:
-The integer at the root of a saved timeline file. The deserializer migrates older versions forward inline. Currently `3` (post the boss-instance override removal — `damage_override` and `target_pattern_override` are no longer modeled; type-level values are read directly).
+The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `4` (post the `TargetPattern` collapse to `raidwide` | `targeted`).
 _Avoid_: file version, format version
 
 ### Canvas
@@ -119,7 +119,7 @@ How a boss instance renders on the boss lane. A composite of three visually sepa
 _Avoid_: node, point
 
 **Pin**:
-The point-in-time visual on the boss-lane Track that anchors a **Marker** to its `effect_time`. Carries a small target-pattern glyph at its tip (the "pin echo"), encoding the instance's `target_pattern` visually. Not interactive — the **Label** is the sole click target for the marker.
+The point-in-time visual on the boss-lane Track that anchors a **Marker** to its `effect_time`. Not interactive — the **Label** is the sole click target for the marker.
 _Avoid_: dot, node, anchor
 
 **Label**:
