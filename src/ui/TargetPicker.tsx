@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Roster } from "@/domain/types";
 import { JobIcon } from "./JobIcon";
+import { jobColor } from "./role-color";
 
 interface TargetPickerProps {
   roster: Roster;
@@ -75,13 +76,15 @@ export function TargetPicker({
         {roster.map((slot, i) => {
           const selected = selectedIds.includes(slot.id);
           const label = slot.name_label ?? (slot.job === "unset" ? "Unset" : slot.job);
+          const isUnset = slot.job === "unset";
           return (
             <li key={slot.id}>
               <button
                 type="button"
-                className={`target-picker-slot${selected ? " is-selected" : ""}${slot.job === "unset" ? " is-unset" : ""}`}
+                className={`target-picker-slot${selected ? " is-selected" : ""}${isUnset ? " is-unset" : ""}`}
                 onClick={() => toggle(slot.id)}
                 title={`Slot ${i + 1} · ${label}`}
+                style={isUnset ? undefined : { backgroundColor: jobColor(slot.job) }}
               >
                 <span className="target-picker-num">{i + 1}</span>
                 <JobIcon job={slot.job} size={20} title={label} />

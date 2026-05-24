@@ -4,6 +4,7 @@ import type { BossAbilityInstance, MitigationInstance, PlayerSlot } from "@/doma
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitSubLane } from "./MitSubLane";
+import { jobColor } from "./role-color";
 import { PLAYER_MAX_HP } from "./timeline-constants";
 import { useDamageByInstance } from "./use-derived";
 import { useZoom } from "./use-zoom";
@@ -68,7 +69,10 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
   return (
     <div className={`player-parent-lane${isUnset ? " is-unset" : ""}`}>
       <div className="lane-row player-header-row">
-        <div className="lane-label lane-label--player-header">
+        <div
+          className="lane-label lane-label--player-header"
+          style={isUnset ? undefined : { background: jobColor(slot.job) }}
+        >
           <span className="lane-slot-num">{index + 1}</span>
           <JobIcon job={slot.job} size={22} title={label} />
           <span className="lane-slot-name">{label}</span>

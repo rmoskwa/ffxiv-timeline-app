@@ -3,6 +3,7 @@ import { formatMitMagnitude, type MitigationInstance, type MitigationType } from
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitIcon } from "./MitIcon";
+import { jobColor } from "./role-color";
 import { TargetPicker } from "./TargetPicker";
 import { secondsToTimecode } from "./timeline-constants";
 import { useZoom } from "./use-zoom";
@@ -57,7 +58,10 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
       title={title}
       data-mit-id={instance.id}
     >
-      <div className="mit-bar-duration" style={{ width: durationPx }}>
+      <div
+        className="mit-bar-duration"
+        style={{ width: durationPx, background: jobColor(type.job) }}
+      >
         <MitIcon name={type.name} size={16} title={type.name} />
         <span className="mit-bar-name">{type.name}</span>
         {needsTarget && (
