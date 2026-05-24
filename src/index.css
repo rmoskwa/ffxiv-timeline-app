@@ -549,7 +549,7 @@ button {
 .sub-lane {
   display: flex;
   flex-direction: row;
-  height: 34px;
+  min-height: 34px;
   border-bottom: 1px solid #242424;
 }
 .sub-lane:last-child {
@@ -571,9 +571,8 @@ button {
   color: #ccc;
 }
 .sub-lane-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
 }
 .sub-lane-track {
   background: #181818;
@@ -788,13 +787,15 @@ button {
   min-width: 8px;
   overflow: hidden;
 }
-.mit-bar-name {
-  color: #f5f5f5;
-  font-size: 0.72rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Overlay sits above the duration/cooldown bars so the icon stays legible at any zoom.
+   `left` (set inline to pxPerSec/2) centers it in the 1-second snap cell the user clicked. */
+.mit-bar-icon-overlay {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+  display: inline-flex;
 }
 .mit-bar-cooldown {
   height: 50%;

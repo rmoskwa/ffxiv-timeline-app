@@ -62,8 +62,6 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
         className="mit-bar-duration"
         style={{ width: durationPx, background: jobColor(type.job) }}
       >
-        <MitIcon name={type.name} size={16} title={type.name} />
-        <span className="mit-bar-name">{type.name}</span>
         {needsTarget && (
           <button
             type="button"
@@ -97,6 +95,9 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
       {cooldownTailPx > 0 && (
         <div className="mit-bar-cooldown" style={{ width: cooldownTailPx }} aria-hidden />
       )}
+      <span className="mit-bar-icon-overlay" style={{ left: pxPerSec / 2 }}>
+        <MitIcon name={type.name} size={16} title={type.name} />
+      </span>
       {pickerOpen && needsTarget && roster && (
         <div className="mit-bar-popover">
           <TargetPicker
