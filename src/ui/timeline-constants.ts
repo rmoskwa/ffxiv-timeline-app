@@ -56,6 +56,11 @@ export const LABEL_ROW_GAP = 4; // vertical gap between stacked strip rows
 export const LABEL_HORIZONTAL_GAP = 4; // horizontal padding between adjacent labels in the same row
 export const LABEL_HORIZONTAL_PADDING = 5; // matches CSS .boss-marker-label padding
 export const STRIP_BOTTOM_PADDING = 4; // gap between the bottom-row label and the pin top
+// Floors the label strip so it never reads as narrower than the pin track —
+// labels visually dominate the lane since there are no icons to widen the
+// interactive area. Matching the track height yields a 50/50 split at low
+// row counts; the strip naturally grows past this when packing needs more rows.
+export const MIN_BOSS_LABEL_STRIP_HEIGHT = BOSS_TRACK_HEIGHT;
 // Conservative per-character estimate for label width at 0.7rem bold sans-serif.
 // Over-estimating is safer than under-estimating — at worst we use one extra
 // row. If overlap is observed in practice, switch to measured widths
@@ -67,8 +72,9 @@ export function estimateLabelWidth(name: string): number {
 }
 
 export function bossLaneStripHeight(rowCount: number): number {
-  if (rowCount <= 0) return 0;
-  return STRIP_BOTTOM_PADDING + rowCount * LABEL_HEIGHT + (rowCount - 1) * LABEL_ROW_GAP;
+  if (rowCount <= 0) return MIN_BOSS_LABEL_STRIP_HEIGHT;
+  const packed = STRIP_BOTTOM_PADDING + rowCount * LABEL_HEIGHT + (rowCount - 1) * LABEL_ROW_GAP;
+  return Math.max(packed, MIN_BOSS_LABEL_STRIP_HEIGHT);
 }
 
 export function secondsToTimecode(sec: number): string {

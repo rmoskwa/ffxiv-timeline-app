@@ -20,6 +20,7 @@ import {
   LABEL_ROW_GAP,
   PLAYER_MAX_HP,
   parseTimecode,
+  STRIP_BOTTOM_PADDING,
   secondsToTimecode,
   snapClientXToSecond,
 } from "./timeline-constants";
@@ -149,7 +150,6 @@ export function BossLane() {
               pxPerSec={pxPerSec}
               laneWidthPx={laneWidthPx}
               rowIndex={rowIndex}
-              rowCount={packed.rowCount}
               stripHeight={stripHeight}
               onSelect={() => selectInstance(inst.id)}
               onPickTargets={(ids) => updateInstance(inst.id, { target_slot_ids: ids })}
@@ -175,7 +175,6 @@ function BossMarker({
   pxPerSec,
   laneWidthPx,
   rowIndex,
-  rowCount,
   stripHeight,
   onSelect,
   onPickTargets,
@@ -188,7 +187,6 @@ function BossMarker({
   pxPerSec: number;
   laneWidthPx: number;
   rowIndex: number;
-  rowCount: number;
   stripHeight: number;
   onSelect: () => void;
   onPickTargets: (ids: string[]) => void;
@@ -203,8 +201,11 @@ function BossMarker({
     if (targetsUnset) setTargetPickerOpen(true);
   }, [targetsUnset]);
 
-  // Label top offset from strip top — row 0 is the bottom row.
-  const labelTop = (rowCount - 1 - rowIndex) * (LABEL_HEIGHT + LABEL_ROW_GAP);
+  // Labels anchor to the bottom of the strip so that when the strip is taller
+  // than its packed rows (MIN_BOSS_LABEL_STRIP_HEIGHT floor), the empty space
+  // sits above the labels and they stay glued to the pins.
+  const labelTop =
+    stripHeight - STRIP_BOTTOM_PADDING - LABEL_HEIGHT - rowIndex * (LABEL_HEIGHT + LABEL_ROW_GAP);
   const labelBottom = labelTop + LABEL_HEIGHT;
   // Leader line spans from label bottom down to pin top (= stripHeight).
   const leaderTop = labelBottom;
