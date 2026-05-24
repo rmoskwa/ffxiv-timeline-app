@@ -1046,6 +1046,7 @@ button {
   letter-spacing: 0;
   width: 100%;
   min-width: 0;
+  text-align: center;
 }
 .lane-label--boss .boss-name-input::placeholder {
   color: rgba(255, 136, 0, 0.45);
@@ -1060,6 +1061,7 @@ button {
 .lane-label--boss .boss-length-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
   font-size: 0.7rem;
   font-weight: 600;
@@ -1079,8 +1081,9 @@ button {
   font: inherit;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  width: 100%;
+  width: 3.5rem;
   min-width: 0;
+  text-align: center;
 }
 .lane-label--boss .boss-length-input:hover,
 .lane-label--boss .boss-length-input:focus {
