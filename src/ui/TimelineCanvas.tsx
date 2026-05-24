@@ -11,6 +11,7 @@ import {
   pickTickIntervalSec,
   ZOOM_WHEEL_FACTOR,
 } from "./timeline-constants";
+import { useViewStore } from "./use-view";
 import { useZoom, useZoomStore } from "./use-zoom";
 
 // Shared horizontal scroll surface. Owns the ruler so it stays aligned with
@@ -24,6 +25,7 @@ import { useZoom, useZoomStore } from "./use-zoom";
 // otherwise the scroll snap and the zoom would race for the same paint frame.
 export function TimelineCanvas() {
   const roster = useTimelineStore((s) => s.timeline?.roster);
+  const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
   const { pxPerSec } = useZoom();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const setZoom = useZoomStore((s) => s.setZoom);
@@ -70,9 +72,9 @@ export function TimelineCanvas() {
         >
           <Ruler />
           <BossLane />
-          {roster.map((slot, i) => (
-            <PlayerLane key={slot.id} slot={slot} index={i} />
-          ))}
+          {roster.map((slot, i) =>
+            hiddenSlotIds.has(slot.id) ? null : <PlayerLane key={slot.id} slot={slot} index={i} />,
+          )}
         </div>
       </div>
     </div>
