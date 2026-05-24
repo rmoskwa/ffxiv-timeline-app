@@ -803,7 +803,8 @@ button {
   bottom: 4px;
   left: 4px;
   font-size: 0.7rem;
-  color: #aaa;
+  color: #fff;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -1088,7 +1089,8 @@ button {
   background: #888;
 }
 .lane-scroll.theme-light .tick-label {
-  color: #555;
+  color: #000;
+  font-weight: 700;
 }
 .lane-scroll.theme-light .lane-gridlines {
   background: repeating-linear-gradient(
