@@ -494,6 +494,22 @@ button {
   background: #3a1f1f;
   color: #f88;
 }
+.boss-type-chevron {
+  background: #1a1a1a;
+  color: #ccc;
+  border: 1px solid #4a4a4a;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.boss-type-chevron:hover {
+  color: #fff;
+  background: #2f2f2f;
+  border-color: #7a7a7a;
+}
 
 /* Collapsed type entry — shows just the name until clicked. */
 .boss-type-entry--collapsed {
@@ -689,6 +705,15 @@ button {
 .theme-light .boss-type-entry--collapsed:hover {
   background: #f0f0f0;
   border-color: #c0c0c0;
+}
+.theme-light .boss-type-chevron {
+  background: #fff;
+  color: #1a1a1a;
+  border-color: #c0c0c0;
+}
+.theme-light .boss-type-chevron:hover {
+  background: #f0f0f0;
+  border-color: #888;
 }
 .theme-light .boss-type-name-input:hover,
 .theme-light .boss-type-name-input:focus {

@@ -87,8 +87,8 @@ export function BossAbilityPanel() {
               instances={instancesByType.get(t.id) ?? []}
               roster={roster}
               expanded={expandedTypeId === t.id}
-              onExpand={() => {
-                setExpandedTypeId(t.id);
+              onToggle={() => {
+                setExpandedTypeId((prev) => (prev === t.id ? null : t.id));
                 deselectInstance();
               }}
             />
@@ -125,13 +125,13 @@ function TypeEntry({
   instances,
   roster,
   expanded,
-  onExpand,
+  onToggle,
 }: {
   type: BossAbilityType;
   instances: BossAbilityInstance[];
   roster: Roster;
   expanded: boolean;
-  onExpand: () => void;
+  onToggle: () => void;
 }) {
   const removeType = useTimelineStore((s) => s.removeBossAbilityType);
 
@@ -139,7 +139,19 @@ function TypeEntry({
     return (
       // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard nav lives on the canvas; the nested delete button stays focusable
       // biome-ignore lint/a11y/noStaticElementInteractions: collapsed entry is a click-to-expand wrapper around a focusable button
-      <section className="boss-type-entry boss-type-entry--collapsed" onClick={onExpand}>
+      <section className="boss-type-entry boss-type-entry--collapsed" onClick={onToggle}>
+        <button
+          type="button"
+          className="boss-type-chevron"
+          aria-label="Expand"
+          aria-expanded="false"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+        >
+          ▸
+        </button>
         <span className="boss-type-collapsed-name">{type.name}</span>
         <button
           type="button"
@@ -159,6 +171,15 @@ function TypeEntry({
   return (
     <section className="boss-type-entry">
       <header className="boss-type-header">
+        <button
+          type="button"
+          className="boss-type-chevron"
+          aria-label="Collapse"
+          aria-expanded="true"
+          onClick={onToggle}
+        >
+          ▾
+        </button>
         <TypeNameField type={type} />
         <button
           type="button"
