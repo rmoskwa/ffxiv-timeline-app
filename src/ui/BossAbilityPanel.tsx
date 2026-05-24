@@ -27,6 +27,7 @@ export function BossAbilityPanel() {
   const instances = useTimelineStore((s) => s.timeline?.boss_ability_instances ?? []);
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const selectedInstanceId = useTimelineStore((s) => s.selectedInstanceId);
+  const [newTypeFormOpen, setNewTypeFormOpen] = useState(false);
 
   const instancesByType = useMemo(() => {
     const m = new Map<string, BossAbilityInstance[]>();
@@ -54,12 +55,16 @@ export function BossAbilityPanel() {
 
   return (
     <section className="boss-panel">
-      <h3>Boss Abilities</h3>
+      <BossAbilityPanelHeader
+        formOpen={newTypeFormOpen}
+        onOpenForm={() => setNewTypeFormOpen(true)}
+      />
+      {newTypeFormOpen && <NewTypeForm onClose={() => setNewTypeFormOpen(false)} />}
       <p className="hint">Edit metadata here. Click the boss lane to place at a time.</p>
 
       <div className="boss-type-list">
         {types.length === 0 ? (
-          <p className="empty">None defined yet. Add one below.</p>
+          <p className="empty">None defined yet. Use “+ New Ability” above.</p>
         ) : (
           types.map((t) => (
             <TypeEntry
@@ -71,9 +76,26 @@ export function BossAbilityPanel() {
           ))
         )}
       </div>
-
-      <NewTypeForm />
     </section>
+  );
+}
+
+function BossAbilityPanelHeader({
+  formOpen,
+  onOpenForm,
+}: {
+  formOpen: boolean;
+  onOpenForm: () => void;
+}) {
+  return (
+    <header className="boss-panel-header">
+      <h3>Boss Abilities</h3>
+      {!formOpen && (
+        <button type="button" className="new-ability-toggle" onClick={onOpenForm}>
+          + New Ability
+        </button>
+      )}
+    </header>
   );
 }
 
@@ -519,10 +541,9 @@ function AddPlacementForm({ type, roster }: { type: BossAbilityType; roster: Ros
 
 // ─── New type form (type-only — instances added via canvas or per-type) ────
 
-function NewTypeForm() {
+function NewTypeForm({ onClose }: { onClose: () => void }) {
   const addType = useTimelineStore((s) => s.addBossAbilityType);
 
-  const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [baseDamage, setBaseDamage] = useState("0");
   const [damageType, setDamageType] = useState<DamageType>("magical");
@@ -530,15 +551,11 @@ function NewTypeForm() {
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
 
-  const reset = () => {
-    setName("");
-    setBaseDamage("0");
-    setDamageType("magical");
-    setTargetPattern("raidwide");
-    setDescription("");
-    setError(null);
-  };
+  useEffect(() => {
+    nameRef.current?.focus();
+  }, []);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -560,8 +577,7 @@ function NewTypeForm() {
         target_pattern: targetPattern,
         ...(description.trim() ? { description: description.trim() } : {}),
       });
-      reset();
-      setOpen(false);
+      onClose();
     } catch (err) {
       if (err instanceof DuplicateNameError) {
         setError(err.message);
@@ -571,19 +587,12 @@ function NewTypeForm() {
     }
   };
 
-  if (!open) {
-    return (
-      <button type="button" className="new-ability-toggle" onClick={() => setOpen(true)}>
-        + New Ability
-      </button>
-    );
-  }
-
   return (
     <form className="new-ability-form" onSubmit={submit} ref={formRef}>
       <label className="field">
         <span>Name *</span>
         <input
+          ref={nameRef}
           type="text"
           value={name}
           onChange={(e) => {
@@ -638,14 +647,7 @@ function NewTypeForm() {
       {error && <p className="form-error">{error}</p>}
 
       <div className="form-actions">
-        <button
-          type="button"
-          className="link-button"
-          onClick={() => {
-            reset();
-            setOpen(false);
-          }}
-        >
+        <button type="button" className="link-button" onClick={onClose}>
           cancel
         </button>
         <button type="submit">Add</button>

@@ -405,8 +405,17 @@ button {
 
 /* ─── Boss ability panel ─────────────────────────────────────────────── */
 
-.boss-panel h3 {
-  margin: 0 0 0.25rem;
+.boss-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #353535;
+}
+.boss-panel-header h3 {
+  margin: 0;
   font-size: 0.85rem;
   color: #ccc;
   text-transform: uppercase;
@@ -673,6 +682,9 @@ button {
   color: #1a1a1a;
   border-color: #d4d4d4;
 }
+.theme-light .boss-panel-header {
+  border-bottom-color: #d4d4d4;
+}
 .theme-light .boss-instance-list {
   border-top-color: #e0e0e0;
 }
@@ -690,14 +702,14 @@ button {
 /* ─── New ability form ───────────────────────────────────────────────── */
 
 .new-ability-toggle {
-  width: 100%;
   background: transparent;
   color: #9cf;
   border: 1px dashed #4a6a8a;
   border-radius: 4px;
-  padding: 0.4rem;
+  padding: 0.2rem 0.55rem;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 .new-ability-toggle:hover {
   background: #1f2a35;
@@ -710,6 +722,7 @@ button {
   border: 1px solid #333;
   border-radius: 4px;
   padding: 0.6rem;
+  margin-bottom: 0.75rem;
 }
 .new-ability-form .field {
   display: flex;
