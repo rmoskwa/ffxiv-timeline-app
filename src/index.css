@@ -872,11 +872,23 @@ button {
   font-size: 0.7rem;
   font-weight: 600;
   padding: 1px 5px;
+  border: 2px solid transparent;
   border-radius: 3px;
   white-space: nowrap;
   max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: inherit;
+}
+.boss-marker--selected .boss-marker-label {
+  border-color: #6cf;
+  box-shadow: 0 0 0 1px rgba(102, 204, 255, 0.4);
+}
+.lane-scroll.theme-light .boss-marker--selected .boss-marker-label {
+  border-color: #1565c0;
+  box-shadow: 0 0 0 1px rgba(21, 101, 192, 0.4);
 }
 .boss-marker-actions {
   display: flex;
@@ -1353,19 +1365,6 @@ button {
   outline: 1px dashed #fc6;
   outline-offset: 1px;
 }
-.boss-marker-pin-button {
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  cursor: pointer;
-  font: inherit;
-}
-
 .mit-bar--needs-target .mit-bar-duration {
   border: 1px dashed #fa3;
 }

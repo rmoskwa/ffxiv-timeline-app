@@ -30,6 +30,10 @@ function normalizeName(n: string): string {
 
 export interface TimelineStore {
   timeline: TimelineFile | null;
+  // The boss instance currently selected for editing in the BOSS ABILITIES
+  // panel. Cleared automatically on load/close, on instance removal (direct or
+  // via type cascade), and on explicit deselect.
+  selectedInstanceId: string | null;
 
   newTimeline: (name: string) => void;
   loadTimeline: (file: TimelineFile) => void;
@@ -46,6 +50,9 @@ export interface TimelineStore {
   updateBossAbilityInstance: (id: string, patch: Partial<BossInstanceInput>) => void;
   removeBossAbilityInstance: (id: string) => void;
 
+  selectInstance: (id: string) => void;
+  deselectInstance: () => void;
+
   addMitigationInstance: (input: MitInstanceInput) => string;
   updateMitigationInstance: (id: string, patch: Partial<MitInstanceInput>) => void;
   removeMitigationInstance: (id: string) => void;
@@ -58,10 +65,11 @@ function touch(tl: TimelineFile): TimelineFile {
 
 export const useTimelineStore = create<TimelineStore>((set) => ({
   timeline: null,
+  selectedInstanceId: null,
 
-  newTimeline: (name) => set({ timeline: makeNewTimeline(name) }),
-  loadTimeline: (file) => set({ timeline: file }),
-  closeTimeline: () => set({ timeline: null }),
+  newTimeline: (name) => set({ timeline: makeNewTimeline(name), selectedInstanceId: null }),
+  loadTimeline: (file) => set({ timeline: file, selectedInstanceId: null }),
+  closeTimeline: () => set({ timeline: null, selectedInstanceId: null }),
 
   setSlotJob: (slotIdx, job) =>
     set((s) => {
@@ -132,6 +140,9 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   removeBossAbilityType: (id) =>
     set((s) => {
       if (!s.timeline) return s;
+      const cascadedIds = new Set(
+        s.timeline.boss_ability_instances.filter((i) => i.type_id === id).map((i) => i.id),
+      );
       return {
         timeline: touch({
           ...s.timeline,
@@ -140,6 +151,9 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           // "dangling type_id" conflict category that's deferred to v0.2.
           boss_ability_instances: s.timeline.boss_ability_instances.filter((i) => i.type_id !== id),
         }),
+        ...(s.selectedInstanceId !== null && cascadedIds.has(s.selectedInstanceId)
+          ? { selectedInstanceId: null }
+          : {}),
       };
     }),
 
@@ -179,8 +193,12 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           ...s.timeline,
           boss_ability_instances: s.timeline.boss_ability_instances.filter((i) => i.id !== id),
         }),
+        ...(s.selectedInstanceId === id ? { selectedInstanceId: null } : {}),
       };
     }),
+
+  selectInstance: (id) => set({ selectedInstanceId: id }),
+  deselectInstance: () => set({ selectedInstanceId: null }),
 
   addMitigationInstance: (input) => {
     const id = crypto.randomUUID();

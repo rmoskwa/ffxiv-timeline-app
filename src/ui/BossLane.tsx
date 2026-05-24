@@ -16,6 +16,9 @@ export function BossLane() {
   const addInstance = useTimelineStore((s) => s.addBossAbilityInstance);
   const removeInstance = useTimelineStore((s) => s.removeBossAbilityInstance);
   const updateInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
+  const selectedInstanceId = useTimelineStore((s) => s.selectedInstanceId);
+  const selectInstance = useTimelineStore((s) => s.selectInstance);
+  const deselectInstance = useTimelineStore((s) => s.deselectInstance);
   const damageByInstance = useDamageByInstance();
   const { pxPerSec, laneWidthPx } = useZoom();
 
@@ -42,6 +45,7 @@ export function BossLane() {
     const rect = e.currentTarget.getBoundingClientRect();
     const sec = snapClientXToSecond(e.clientX, rect.left, pxPerSec);
     setPickerAtSec(sec);
+    deselectInstance();
   };
 
   if (!roster) return null;
@@ -77,9 +81,11 @@ export function BossLane() {
               instance={inst}
               type={type}
               lethal={lethal}
+              selected={selectedInstanceId === inst.id}
               roster={roster}
               pxPerSec={pxPerSec}
               onRemove={() => removeInstance(inst.id)}
+              onSelect={() => selectInstance(inst.id)}
               onPickTargets={(ids) => updateInstance(inst.id, { target_slot_ids: ids })}
             />
           );
@@ -106,17 +112,21 @@ function BossMarker({
   instance,
   type,
   lethal,
+  selected,
   roster,
   pxPerSec,
   onRemove,
+  onSelect,
   onPickTargets,
 }: {
   instance: BossAbilityInstance;
   type: BossAbilityType;
   lethal: boolean;
+  selected: boolean;
   roster: Roster;
   pxPerSec: number;
   onRemove: () => void;
+  onSelect: () => void;
   onPickTargets: (ids: string[]) => void;
 }) {
   const targeting = targetingForBoss(instance, type);
@@ -132,7 +142,7 @@ function BossMarker({
   const title =
     `${type.name} @ ${secondsToTimecode(instance.effect_time)}\n` +
     `${type.base_damage > 0 ? `${type.base_damage.toLocaleString()} ` : ""}${type.damage_type} · ${type.target_pattern}` +
-    (targetsUnset ? "\n⚠ no target picked — click to assign" : "") +
+    (targetsUnset ? "\n⚠ no target picked — pick in the panel" : "") +
     (lethal ? "\n⚠ lethal to at least one player" : "");
 
   return (
@@ -140,6 +150,7 @@ function BossMarker({
       className={
         `boss-marker${lethal ? " boss-marker--lethal" : ""}` +
         `${targetsUnset ? " boss-marker--needs-target" : ""}` +
+        `${selected ? " boss-marker--selected" : ""}` +
         `${targetPickerOpen ? " has-picker-open" : ""}`
       }
       style={{ left: instance.effect_time * pxPerSec }}
@@ -159,26 +170,17 @@ function BossMarker({
           ×
         </button>
       </div>
-      {needsTarget && (
-        <button
-          type="button"
-          className="boss-marker-pin-button"
-          aria-label="Pick target for this hit"
-          onClick={(e) => {
-            e.stopPropagation();
-            setTargetPickerOpen((o) => !o);
-          }}
-        >
-          <div className="boss-marker-pin" />
-          <div className="boss-marker-label">{type.name}</div>
-        </button>
-      )}
-      {!needsTarget && (
-        <>
-          <div className="boss-marker-pin" />
-          <div className="boss-marker-label">{type.name}</div>
-        </>
-      )}
+      <div className="boss-marker-pin" aria-hidden />
+      <button
+        type="button"
+        className="boss-marker-label"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+      >
+        {type.name}
+      </button>
       {targetPickerOpen && needsTarget && (
         <div className="boss-marker-popover">
           <TargetPicker
