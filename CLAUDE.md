@@ -59,3 +59,11 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ## 5. Verify Before Declaring Done
 
 Before reporting a task as complete, run `npx biome check .` and resolve every issue (both lint and format). A passing typecheck and test run is not enough — Biome catches a11y and style regressions that the compiler won't.
+
+## 6. Use the Glossary
+
+**`CONTEXT.md` is the canonical project vocabulary. Consult it whenever a domain term is ambiguous.**
+
+- When a term is unclear or you're about to coin a synonym, check `CONTEXT.md` first and use the canonical word.
+- Respect the `_Avoid_` lists. If existing code or prose uses an avoided word, flag it — don't silently rewrite it (see §3).
+- When new work introduces a load-bearing domain term not yet in the glossary, surface it. Ask whether to add an entry rather than letting fresh vocabulary leak in unannotated.
