@@ -16,8 +16,8 @@ import {
 export type MitTypeLookup = (id: string) => MitigationType | undefined;
 
 // Returns an 8-length array of post-mit damage. Players not targeted by the
-// hit get 0 (they don't take the hit at all). Patterns that hit everyone
-// (raidwide, spread, stack) give every player base × Π(1 - mit_i%).
+// hit get 0 (they don't take the hit at all). Raidwide hits give every player
+// base × Π(1 - mit_i%).
 export function computeDamagePerPlayer(
   hit: BossAbilityInstance,
   hitType: BossAbilityType,

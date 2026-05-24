@@ -4,16 +4,15 @@
 //     cooldown has elapsed.
 //   - orphan_mit: mit bound to a slot whose job no longer matches the mit's job
 //     (e.g., after a job swap).
-//   - unset_target: a tankbuster/targeted boss instance or affects:target mit
-//     instance whose target hasn't been picked yet — its damage math returns 0
-//     until the user resolves it.
+//   - unset_target: a `targeted` boss instance or affects:target mit instance
+//     whose target hasn't been picked yet — its damage math returns 0 until
+//     the user resolves it.
 //
 // Pure function — no React, no I/O.
 
 import type { MitTypeLookup } from "./damage";
 import { targetingForBoss, targetingForMit } from "./targeting";
 import type { BossAbilityInstance, BossAbilityType, MitigationInstance, Roster } from "./types";
-import { resolveBossAbility } from "./types";
 
 export type Conflict =
   | {
@@ -108,12 +107,11 @@ export function detectConflicts(
     const type = bossTypeById.get(inst.type_id);
     if (!type) continue;
     if (!targetingForBoss(inst, type).isComplete) {
-      const { target_pattern } = resolveBossAbility(inst, type);
       conflicts.push({
         kind: "unset_target",
         target_kind: "boss_ability",
         boss_instance_id: inst.id,
-        message: `${type.name} (${target_pattern}) needs a target picked`,
+        message: `${type.name} needs a target picked`,
       });
     }
   }

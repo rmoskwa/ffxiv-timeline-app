@@ -63,26 +63,6 @@ describe("targetingForBoss — min/max counts by pattern", () => {
     expect(t.minCount).toBe(0);
     expect(t.maxCount).toBe(0);
   });
-  it("spread → 0 min, 0 max", () => {
-    const t = targetingForBoss(bossInstance(), bossType("spread"));
-    expect(t.minCount).toBe(0);
-    expect(t.maxCount).toBe(0);
-  });
-  it("stack → 0 min, 0 max", () => {
-    const t = targetingForBoss(bossInstance(), bossType("stack"));
-    expect(t.minCount).toBe(0);
-    expect(t.maxCount).toBe(0);
-  });
-  it("tankbuster_single → 1 min, 1 max", () => {
-    const t = targetingForBoss(bossInstance(), bossType("tankbuster_single"));
-    expect(t.minCount).toBe(1);
-    expect(t.maxCount).toBe(1);
-  });
-  it("tankbuster_shared → 2 min, 2 max", () => {
-    const t = targetingForBoss(bossInstance(), bossType("tankbuster_shared"));
-    expect(t.minCount).toBe(2);
-    expect(t.maxCount).toBe(2);
-  });
   it("targeted → 1 min, 8 max (any non-empty subset)", () => {
     const t = targetingForBoss(bossInstance(), bossType("targeted"));
     expect(t.minCount).toBe(1);
@@ -93,21 +73,6 @@ describe("targetingForBoss — min/max counts by pattern", () => {
 describe("targetingForBoss — isComplete", () => {
   it("raidwide is complete regardless of selection", () => {
     expect(targetingForBoss(bossInstance(), bossType("raidwide")).isComplete).toBe(true);
-  });
-  it("tankbuster_single is incomplete when empty", () => {
-    expect(targetingForBoss(bossInstance(), bossType("tankbuster_single")).isComplete).toBe(false);
-  });
-  it("tankbuster_single is complete with one slot", () => {
-    const inst = bossInstance({ target_slot_ids: ["s0"] });
-    expect(targetingForBoss(inst, bossType("tankbuster_single")).isComplete).toBe(true);
-  });
-  it("tankbuster_shared is incomplete with only one slot", () => {
-    const inst = bossInstance({ target_slot_ids: ["s0"] });
-    expect(targetingForBoss(inst, bossType("tankbuster_shared")).isComplete).toBe(false);
-  });
-  it("tankbuster_shared is complete with two slots", () => {
-    const inst = bossInstance({ target_slot_ids: ["s0", "s1"] });
-    expect(targetingForBoss(inst, bossType("tankbuster_shared")).isComplete).toBe(true);
   });
   it("targeted is incomplete when empty", () => {
     expect(targetingForBoss(bossInstance(), bossType("targeted")).isComplete).toBe(false);
@@ -161,7 +126,7 @@ describe("targetingForMit — isComplete", () => {
 describe("targetingFor* — selection passthrough", () => {
   it("boss selection mirrors instance.target_slot_ids", () => {
     const inst = bossInstance({ target_slot_ids: ["s4", "s5"] });
-    expect(targetingForBoss(inst, bossType("tankbuster_shared")).selection).toEqual(["s4", "s5"]);
+    expect(targetingForBoss(inst, bossType("targeted")).selection).toEqual(["s4", "s5"]);
   });
   it("mit selection mirrors instance.target_slot_ids", () => {
     const m = mitInstance({ target_slot_ids: ["s7"] });

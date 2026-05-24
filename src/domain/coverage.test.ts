@@ -93,9 +93,9 @@ describe("mitCovers — affects × target_pattern", () => {
     }
   });
 
-  it("tankbuster_single + affects:self covers only when owner is the target", () => {
+  it("targeted (1 picked) + affects:self covers only when owner is the target", () => {
     const t = mitType({ affects: "self" });
-    const h = hit({ target_pattern: "tankbuster_single", target_slot_ids: ["s0"] });
+    const h = hit({ target_pattern: "targeted", target_slot_ids: ["s0"] });
 
     const ownedByTarget = mit({ player_slot_id: "s0" });
     const ownedByOther = mit({ player_slot_id: "s1" });
@@ -109,30 +109,20 @@ describe("mitCovers — affects × target_pattern", () => {
     expect(mitCovers(ownedByOther, t, h, 1, ROSTER)).toBe(false);
   });
 
-  it("tankbuster_single + affects:party covers only the targeted player", () => {
+  it("targeted (1 picked) + affects:party covers only the targeted player", () => {
     const m = mit({ player_slot_id: "s2" });
     const t = mitType({ affects: "party" });
-    const h = hit({ target_pattern: "tankbuster_single", target_slot_ids: ["s0"] });
+    const h = hit({ target_pattern: "targeted", target_slot_ids: ["s0"] });
 
     expect(mitCovers(m, t, h, 0, ROSTER)).toBe(true); // hit lands on s0
     expect(mitCovers(m, t, h, 1, ROSTER)).toBe(false); // hit doesn't land on s1
   });
 
-  it("spread + affects:party covers all players", () => {
-    const m = mit({ player_slot_id: "s5" });
-    const t = mitType({ affects: "party" });
-    const h = hit({ target_pattern: "spread" });
-
-    for (let i = 0; i < 8; i++) {
-      expect(mitCovers(m, t, h, i, ROSTER)).toBe(true);
-    }
-  });
-
-  it("tankbuster_shared + affects:boss_debuff covers both designated tanks", () => {
+  it("targeted (2 picked) + affects:boss_debuff covers both designated targets", () => {
     const m = mit({ player_slot_id: "s4" });
     const t = mitType({ affects: "boss_debuff" });
     const h = hit({
-      target_pattern: "tankbuster_shared",
+      target_pattern: "targeted",
       target_slot_ids: ["s0", "s1"],
     });
 

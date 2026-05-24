@@ -6,12 +6,12 @@ import { jobColor } from "./role-color";
 interface TargetPickerProps {
   roster: Roster;
   selectedIds: readonly string[];
-  // Max slots the user may pick. 1 for tankbuster_single / affects:target,
-  // 2 for tankbuster_shared, up to 8 for `targeted`.
+  // Max slots the user may pick. 1 for affects:target mits; up to 8 for the
+  // `targeted` boss pattern.
   maxSelections: number;
   // Minimum slots required for a valid pick. Defaults to maxSelections so the
-  // header reads "(X/N)" for fixed-cardinality patterns. When min < max (only
-  // `targeted` today), the header reads "(X selected)".
+  // header reads "(X/N)" for fixed-cardinality picks. When min < max (only
+  // boss `targeted` today), the header reads "(X selected)".
   minSelections?: number;
   onChange: (ids: string[]) => void;
   onClose: () => void;

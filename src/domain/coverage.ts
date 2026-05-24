@@ -49,11 +49,7 @@ export function hitLandsOn(hit: ResolvedHit, playerSlotIdx: number, roster: Rost
 function hitLandsOnPlayer(hit: ResolvedHit, player: PlayerSlot): boolean {
   switch (hit.target_pattern) {
     case "raidwide":
-    case "spread":
-    case "stack":
       return true;
-    case "tankbuster_single":
-    case "tankbuster_shared":
     case "targeted":
       return hit.target_slot_ids.includes(player.id);
   }

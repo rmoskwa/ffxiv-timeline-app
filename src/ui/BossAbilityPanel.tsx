@@ -13,14 +13,7 @@ import { TargetPicker } from "./TargetPicker";
 import { parseTimecode, secondsToTimecode } from "./timeline-constants";
 
 const DAMAGE_TYPES: DamageType[] = ["magical", "physical", "unaspected"];
-const TARGET_PATTERNS: TargetPattern[] = [
-  "raidwide",
-  "tankbuster_single",
-  "tankbuster_shared",
-  "spread",
-  "stack",
-  "targeted",
-];
+const TARGET_PATTERNS: TargetPattern[] = ["raidwide", "targeted"];
 
 export function BossAbilityPanel() {
   const types = useTimelineStore((s) => s.timeline?.boss_ability_types ?? []);

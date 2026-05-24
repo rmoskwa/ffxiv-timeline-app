@@ -156,11 +156,11 @@ describe("computeDamagePerPlayer", () => {
     expect(result).toEqual(new Array(8).fill(100_000));
   });
 
-  it("returns 0 damage for non-target players on tankbuster_single", () => {
-    // Tankbuster on s0. Only s0 takes damage; others get 0.
+  it("returns 0 damage for non-target players on a targeted hit", () => {
+    // Targeted at s0. Only s0 takes damage; others get 0.
     const result = computeDamagePerPlayer(
       bossInstance({ target_slot_ids: ["s0"] }),
-      bossType({ target_pattern: "tankbuster_single" }),
+      bossType({ target_pattern: "targeted" }),
       [],
       lookup,
       ROSTER,

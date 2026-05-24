@@ -5,13 +5,7 @@
 
 export type DamageType = "magical" | "physical" | "unaspected";
 
-export type TargetPattern =
-  | "raidwide"
-  | "tankbuster_single"
-  | "tankbuster_shared"
-  | "spread"
-  | "stack"
-  | "targeted";
+export type TargetPattern = "raidwide" | "targeted";
 
 export type MitAffects = "self" | "target" | "party" | "boss_debuff";
 
@@ -68,9 +62,8 @@ export interface BossAbilityInstance {
   id: string;
   type_id: string; // FK → BossAbilityType.id
   effect_time: number; // seconds from pull
-  // User-picked targets for patterns that need them. Always
-  // present; empty for raidwide/spread/stack. One entry for tankbuster_single
-  // and targeted; two for tankbuster_shared.
+  // User-picked targets for `targeted` instances; empty for `raidwide`.
+  // Always present (defaults to []).
   target_slot_ids: string[];
   observed_damage: ObservedDamageEntry[]; // empty in v0.1; populated by FFLogs later
 }
@@ -177,7 +170,7 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 3 as const;
+export const TIMELINE_SCHEMA_VERSION = 4 as const;
 
 export interface TimelineFile {
   schema_version: typeof TIMELINE_SCHEMA_VERSION;

@@ -15,10 +15,11 @@ import { resolveBossAbility } from "./types";
 
 export interface TargetingState {
   // Minimum slots that must be selected for the instance to be "complete".
-  minCount: 0 | 1 | 2;
-  // Maximum slots allowed. Equals minCount for fixed-cardinality patterns;
-  // for `targeted` the max is the full party (8) so users can pick any subset.
-  maxCount: 0 | 1 | 2 | 8;
+  minCount: 0 | 1;
+  // Maximum slots allowed. Boss `raidwide` → 0; boss `targeted` → 8 (any
+  // non-empty subset of the party). Mit affects:target → 1; all other mit
+  // affects → 0.
+  maxCount: 0 | 1 | 8;
   selection: readonly string[];
   isComplete: boolean;
 }
@@ -26,18 +27,13 @@ export interface TargetingState {
 // Pattern → (min/max). Exposed so type-only callers (e.g. the panel's
 // "+ Add placement" form) can compute counts without fabricating an instance.
 export function targetingCountsForPattern(pattern: TargetPattern): {
-  minCount: 0 | 1 | 2;
-  maxCount: 0 | 1 | 2 | 8;
+  minCount: 0 | 1;
+  maxCount: 0 | 8;
 } {
   switch (pattern) {
-    case "tankbuster_shared":
-      return { minCount: 2, maxCount: 2 };
-    case "tankbuster_single":
-      return { minCount: 1, maxCount: 1 };
     case "targeted":
-      // At least one target required; any non-empty subset of the party allowed.
       return { minCount: 1, maxCount: 8 };
-    default:
+    case "raidwide":
       return { minCount: 0, maxCount: 0 };
   }
 }

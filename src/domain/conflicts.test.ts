@@ -126,19 +126,12 @@ describe("detectConflicts — orphan mits", () => {
 });
 
 describe("detectConflicts — unset_target", () => {
-  const TANKBUSTER: BossAbilityType = {
-    id: "type-tb",
+  const TARGETED: BossAbilityType = {
+    id: "type-targeted",
     name: "Cleave",
     base_damage: 200_000,
     damage_type: "physical",
-    target_pattern: "tankbuster_single",
-  };
-  const SHARED: BossAbilityType = {
-    id: "type-shared",
-    name: "Beast's Maw",
-    base_damage: 300_000,
-    damage_type: "physical",
-    target_pattern: "tankbuster_shared",
+    target_pattern: "targeted",
   };
   const RAIDWIDE: BossAbilityType = {
     id: "type-rw",
@@ -147,7 +140,7 @@ describe("detectConflicts — unset_target", () => {
     damage_type: "magical",
     target_pattern: "raidwide",
   };
-  const bossLookup = [TANKBUSTER, SHARED, RAIDWIDE];
+  const bossLookup = [TARGETED, RAIDWIDE];
 
   function bi(
     id: string,
@@ -158,8 +151,8 @@ describe("detectConflicts — unset_target", () => {
     return { id, type_id, effect_time, target_slot_ids, observed_damage: [] };
   }
 
-  it("flags tankbuster_single with no target picked", () => {
-    const inst = bi("b1", TANKBUSTER.id, 30);
+  it("flags a targeted instance with no target picked", () => {
+    const inst = bi("b1", TARGETED.id, 30);
     const conflicts = detectConflicts([], lookup, ROSTER, [inst], bossLookup);
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]).toMatchObject<Partial<Conflict>>({
@@ -169,8 +162,8 @@ describe("detectConflicts — unset_target", () => {
     });
   });
 
-  it("does not flag tankbuster_single with a target picked", () => {
-    const inst = bi("b1", TANKBUSTER.id, 30, ["s0"]);
+  it("does not flag a targeted instance with a target picked", () => {
+    const inst = bi("b1", TARGETED.id, 30, ["s0"]);
     expect(detectConflicts([], lookup, ROSTER, [inst], bossLookup)).toHaveLength(0);
   });
 
@@ -179,11 +172,10 @@ describe("detectConflicts — unset_target", () => {
     expect(detectConflicts([], lookup, ROSTER, [inst], bossLookup)).toHaveLength(0);
   });
 
-  it("flags tankbuster_shared with no targets picked", () => {
-    const inst = bi("b3", SHARED.id, 90);
+  it("boss unset_target message drops the pattern suffix", () => {
+    const inst = bi("b1", TARGETED.id, 30);
     const conflicts = detectConflicts([], lookup, ROSTER, [inst], bossLookup);
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.kind).toBe("unset_target");
+    expect(conflicts[0]?.message).toBe("Cleave needs a target picked");
   });
 
   it("flags an affects:target mit with empty target_slot_ids", () => {

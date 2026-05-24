@@ -5,7 +5,6 @@ import type { BossAbilityInstance, BossAbilityType, Roster } from "@/domain/type
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossPlacementPicker } from "./BossPlacementPicker";
 import { packLabelRows } from "./boss-label-packing";
-import { PinEchoGlyph } from "./PinEchoGlyph";
 import { TargetPicker } from "./TargetPicker";
 import {
   BOSS_PIN_HEIGHT,
@@ -234,9 +233,6 @@ function BossMarker({
         style={{ top: stripHeight, height: BOSS_PIN_HEIGHT }}
         aria-hidden
       />
-      <div className="boss-marker-echo" style={{ top: stripHeight + BOSS_PIN_HEIGHT }}>
-        <PinEchoGlyph pattern={type.target_pattern} />
-      </div>
       {targetPickerOpen && needsTarget && (
         <div className="boss-marker-popover" style={{ top: stripHeight + BOSS_PIN_HEIGHT + 4 }}>
           <TargetPicker
