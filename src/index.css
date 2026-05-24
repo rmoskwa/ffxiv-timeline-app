@@ -527,11 +527,6 @@ button {
   resize: vertical;
   font-family: inherit;
 }
-.field-row--three {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.4rem;
-}
 
 /* ─── Instance sub-rows ───────────────────────────────────────────────── */
 

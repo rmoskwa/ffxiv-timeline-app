@@ -206,44 +206,40 @@ function TypeFields({ type }: { type: BossAbilityType }) {
 
   return (
     <div className="boss-type-fields">
-      <div className="field-row field-row--three">
-        <div className="field">
-          <span>Base damage</span>
-          <NumberInput
-            value={type.base_damage}
-            ariaLabel="Base damage"
-            onCommit={(n) => updateType(type.id, { base_damage: n })}
-          />
-        </div>
-        <label className="field">
-          <span>Damage type</span>
-          <select
-            value={type.damage_type}
-            onChange={(e) => updateType(type.id, { damage_type: e.target.value as DamageType })}
-          >
-            {DAMAGE_TYPES.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>Pattern</span>
-          <select
-            value={type.target_pattern}
-            onChange={(e) =>
-              updateType(type.id, { target_pattern: e.target.value as TargetPattern })
-            }
-          >
-            {TARGET_PATTERNS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="field">
+        <span>Base damage</span>
+        <NumberInput
+          value={type.base_damage}
+          ariaLabel="Base damage"
+          onCommit={(n) => updateType(type.id, { base_damage: n })}
+        />
       </div>
+      <label className="field">
+        <span>Damage type</span>
+        <select
+          value={type.damage_type}
+          onChange={(e) => updateType(type.id, { damage_type: e.target.value as DamageType })}
+        >
+          {DAMAGE_TYPES.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
+        <span>Pattern</span>
+        <select
+          value={type.target_pattern}
+          onChange={(e) => updateType(type.id, { target_pattern: e.target.value as TargetPattern })}
+        >
+          {TARGET_PATTERNS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="field">
         <span>Description</span>
         <DescriptionField type={type} />
