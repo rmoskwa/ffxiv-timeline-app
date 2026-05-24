@@ -27,7 +27,9 @@ export function BossAbilityPanel() {
   const instances = useTimelineStore((s) => s.timeline?.boss_ability_instances ?? []);
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const selectedInstanceId = useTimelineStore((s) => s.selectedInstanceId);
+  const deselectInstance = useTimelineStore((s) => s.deselectInstance);
   const [newTypeFormOpen, setNewTypeFormOpen] = useState(false);
+  const [expandedTypeId, setExpandedTypeId] = useState<string | null>(null);
 
   const instancesByType = useMemo(() => {
     const m = new Map<string, BossAbilityInstance[]>();
@@ -40,16 +42,28 @@ export function BossAbilityPanel() {
     return m;
   }, [instances]);
 
+  // When an instance is selected anywhere (canvas marker, panel sub-row,
+  // conflicts panel), make sure its parent type is the one expanded so the
+  // sub-row is actually rendered to scroll to.
+  useEffect(() => {
+    if (!selectedInstanceId) return;
+    const inst = instances.find((i) => i.id === selectedInstanceId);
+    if (inst) setExpandedTypeId(inst.type_id);
+  }, [selectedInstanceId, instances]);
+
   // Canvas → panel sync: scroll the selected sub-row into view whenever
   // selection changes (no-op if the row is already visible). Instance ids
   // are crypto.randomUUID — no CSS-attribute-selector escaping needed.
+  // expandedTypeId is required: the queried row only exists in the DOM
+  // once its parent type is the expanded one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: expandedTypeId gates DOM presence of the queried row
   useEffect(() => {
     if (!selectedInstanceId) return;
     const el = document.querySelector<HTMLElement>(
       `.boss-instance-row[data-boss-instance-id="${selectedInstanceId}"]`,
     );
     el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [selectedInstanceId]);
+  }, [selectedInstanceId, expandedTypeId]);
 
   if (!roster) return null;
 
@@ -72,6 +86,11 @@ export function BossAbilityPanel() {
               type={t}
               instances={instancesByType.get(t.id) ?? []}
               roster={roster}
+              expanded={expandedTypeId === t.id}
+              onExpand={() => {
+                setExpandedTypeId(t.id);
+                deselectInstance();
+              }}
             />
           ))
         )}
@@ -105,12 +124,38 @@ function TypeEntry({
   type,
   instances,
   roster,
+  expanded,
+  onExpand,
 }: {
   type: BossAbilityType;
   instances: BossAbilityInstance[];
   roster: Roster;
+  expanded: boolean;
+  onExpand: () => void;
 }) {
   const removeType = useTimelineStore((s) => s.removeBossAbilityType);
+
+  if (!expanded) {
+    return (
+      // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard nav lives on the canvas; the nested delete button stays focusable
+      // biome-ignore lint/a11y/noStaticElementInteractions: collapsed entry is a click-to-expand wrapper around a focusable button
+      <section className="boss-type-entry boss-type-entry--collapsed" onClick={onExpand}>
+        <span className="boss-type-collapsed-name">{type.name}</span>
+        <button
+          type="button"
+          className="boss-type-remove"
+          title="Delete type (also removes its instances)"
+          onClick={(e) => {
+            e.stopPropagation();
+            removeType(type.id);
+          }}
+        >
+          ×
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section className="boss-type-entry">
       <header className="boss-type-header">

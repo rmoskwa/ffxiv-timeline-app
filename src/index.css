@@ -495,6 +495,26 @@ button {
   color: #f88;
 }
 
+/* Collapsed type entry — shows just the name until clicked. */
+.boss-type-entry--collapsed {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+}
+.boss-type-entry--collapsed:hover {
+  border-color: #555;
+  background: #2a2a2a;
+}
+.boss-type-collapsed-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #f0f0f0;
+  padding: 0.2rem 0.3rem;
+}
+
 .boss-type-fields {
   display: flex;
   flex-direction: column;
@@ -662,8 +682,13 @@ button {
   background: #fafafa;
   border-color: #d4d4d4;
 }
-.theme-light .boss-type-name-input {
+.theme-light .boss-type-name-input,
+.theme-light .boss-type-collapsed-name {
   color: #1a1a1a;
+}
+.theme-light .boss-type-entry--collapsed:hover {
+  background: #f0f0f0;
+  border-color: #c0c0c0;
 }
 .theme-light .boss-type-name-input:hover,
 .theme-light .boss-type-name-input:focus {

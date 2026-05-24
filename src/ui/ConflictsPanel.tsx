@@ -23,6 +23,7 @@ export function ConflictsPanel() {
   const bossTypes = useTimelineStore((s) => s.timeline?.boss_ability_types);
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const removeMit = useTimelineStore((s) => s.removeMitigationInstance);
+  const selectInstance = useTimelineStore((s) => s.selectInstance);
 
   if (!roster) return null;
 
@@ -120,10 +121,8 @@ export function ConflictsPanel() {
                     <button
                       type="button"
                       className="conflict-action"
-                      title="Scroll to this boss ability"
-                      onClick={() =>
-                        flashElement(`[data-boss-instance-id="${c.boss_instance_id}"]`)
-                      }
+                      title="Select this boss ability"
+                      onClick={() => selectInstance(c.boss_instance_id)}
                     >
                       →
                     </button>
