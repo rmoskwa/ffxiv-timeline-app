@@ -44,6 +44,11 @@ export interface TimelineStore {
 
   addBossAbilityInstance: (input: BossInstanceInput) => string;
   updateBossAbilityInstance: (id: string, patch: Partial<BossInstanceInput>) => void;
+  // exactOptionalPropertyTypes can't represent "clear an optional key" via patch.
+  clearBossAbilityInstanceOverride: (
+    id: string,
+    field: "damage_override" | "target_pattern_override",
+  ) => void;
   removeBossAbilityInstance: (id: string) => void;
 
   addMitigationInstance: (input: MitInstanceInput) => string;
@@ -167,6 +172,21 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           boss_ability_instances: s.timeline.boss_ability_instances.map((i) =>
             i.id === id ? { ...i, ...patch } : i,
           ),
+        }),
+      };
+    }),
+
+  clearBossAbilityInstanceOverride: (id, field) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      return {
+        timeline: touch({
+          ...s.timeline,
+          boss_ability_instances: s.timeline.boss_ability_instances.map((i) => {
+            if (i.id !== id) return i;
+            const { [field]: _drop, ...rest } = i;
+            return rest as BossAbilityInstance;
+          }),
         }),
       };
     }),
