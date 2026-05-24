@@ -1,6 +1,6 @@
 # FFXIV Raid Timeline
 
-Local desktop app for building FFXIV raid timelines with drag-and-drop boss abilities and per-player mitigation planning. See [`PRD.md`](./PRD.md) for full product requirements.
+Local desktop app for building FFXIV raid timelines with drag-and-drop boss abilities and per-player mitigation planning.
 
 **Status:** v0.1 scaffolding — data model + mit library populated, drag-and-drop and damage math pending.
 
@@ -64,12 +64,11 @@ src/
 └── ui/             React components
 
 src-tauri/          Rust crate for the desktop shell
-PRD.md              Product requirements (gitignored locally)
 CLAUDE.md           Working agreement with Claude Code
 ```
 
 ## Known gaps surfaced during v0.1 scaffolding
 
 - **Split-damage-type mits aren't representable in the current schema.** Feint (10% phys + 5% mag) and Addle (10% mag + 5% phys) reduce two damage types at different percentages, but `mitigation_percent` is a single number per mit type. v0.1 models only the dominant effect. Resolve in v0.2 by either splitting into paired entries or extending the schema to `mitigation_per_type: Record<DamageType, %>`.
-- **Multi-charge mits (e.g., DRK Oblation) are deferred indefinitely** per PRD §13.2, so they are intentionally absent from the library.
-- **SCH's in-scope kit looks thin** because heals/shields are excluded (PRD §3.7, §16). Adloquium, Succor, and Protraction are not modeled.
+- **Multi-charge mits (e.g., DRK Oblation) are deferred indefinitely**, so they are intentionally absent from the library.
+- **SCH's in-scope kit looks thin** because heals/shields are excluded. Adloquium, Succor, and Protraction are not modeled.

@@ -1,4 +1,4 @@
-// On-mount load of the auto-saved working file (PRD §12.2).
+// On-mount load of the auto-saved working file.
 // App.tsx withholds the editor (and the auto-save hook) until hydration
 // completes — that order is what prevents auto-save from echoing the load
 // back to disk.

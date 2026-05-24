@@ -19,10 +19,10 @@ export function TimelineEditor() {
   );
 }
 
-// Document-level Delete/Esc handlers for the boss-instance selection model
-// (boss-label redesign PRD §"Interaction model"). Skipped while the user is
-// editing a form field or while a TargetPicker is open (the picker owns Esc
-// and the user shouldn't be able to delete the instance whose picker is up).
+// Document-level Delete/Esc handlers for the boss-instance selection model.
+// Skipped while the user is editing a form field or while a TargetPicker is
+// open (the picker owns Esc and the user shouldn't be able to delete the
+// instance whose picker is up).
 function useSelectionKeyboardHandlers() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

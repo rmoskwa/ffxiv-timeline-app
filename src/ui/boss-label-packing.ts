@@ -1,4 +1,4 @@
-// Greedy row-packing for the boss-label strip (boss-label redesign PRD §"Design").
+// Greedy row-packing for the boss-label strip.
 //
 // Walk instances in time order; place each label in the lowest existing row
 // whose rightmost neighbor doesn't horizontally collide with the new label.

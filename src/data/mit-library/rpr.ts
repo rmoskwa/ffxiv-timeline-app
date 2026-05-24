@@ -2,7 +2,7 @@ import type { MitigationType } from "@/domain/types";
 
 // RPR mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Only the melee role action Feint applies. Arcane Crest is a small shield —
-// excluded per PRD §3.7.
+// excluded.
 export const RPR_MITS: MitigationType[] = [
   {
     id: "rpr.feint",

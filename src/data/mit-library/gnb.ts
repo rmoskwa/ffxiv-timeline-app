@@ -2,7 +2,7 @@ import type { MitigationType } from "@/domain/types";
 
 // GNB mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Nebula is omitted — it upgrades to Great Nebula via trait at L92.
-// Heart of Corundum is excluded as conditional per PRD scope.
+// Heart of Corundum is excluded as conditional.
 export const GNB_MITS: MitigationType[] = [
   {
     id: "gnb.rampart",

@@ -1,4 +1,4 @@
-// Setup wizard modal — PRD §11.1.
+// Setup wizard modal.
 // Asks for fight name + roster of up to 8 jobs. Unfilled slots stay "unset".
 // Mounted by App when no timeline is loaded.
 

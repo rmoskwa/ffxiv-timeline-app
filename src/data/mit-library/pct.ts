@@ -1,7 +1,7 @@
 import type { MitigationType } from "@/domain/types";
 
 // PCT mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Tempera Coat / Tempera Grassa are excluded — shield-only per PRD §3.7.
+// Tempera Coat / Tempera Grassa are excluded — shield-only.
 // Only the caster role action Addle applies.
 export const PCT_MITS: MitigationType[] = [
   {

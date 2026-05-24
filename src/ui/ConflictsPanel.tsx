@@ -1,10 +1,10 @@
-// Right-sidebar conflict list. PRD §10.
+// Right-sidebar conflict list.
 // v0.1 categories: cooldown_overlap, orphan_mit, unset_target.
 // Each row gives enough context to act:
 //   - slot index + job icon + mit name  (or boss ability name)
 //   - times (placement, prior-cooldown end)
 //   - [→] flashes the offending bar or marker in the timeline
-//   - orphans get [×] for one-click delete (PRD §11.3 cleanup action)
+//   - orphans get [×] for one-click delete
 
 import { getMitById } from "@/data/mit-library";
 import type { MitigationInstance, PlayerSlot } from "@/domain/types";

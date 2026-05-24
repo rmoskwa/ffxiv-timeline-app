@@ -1179,7 +1179,7 @@ button {
 .boss-marker-label {
   position: absolute;
   left: 0;
-  /* Normal state: neutral background + theme-default text (PRD §"Label states"). */
+  /* Normal state: neutral background + theme-default text. */
   background: #2a2a2a;
   color: #e8e8e8;
   font-size: 0.7rem;
@@ -1281,7 +1281,7 @@ button {
   color: #f88;
 }
 
-/* ─── Lethal heatmap on boss markers (PRD §6.1, green/red lethal-only) ─── */
+/* ─── Lethal heatmap on boss markers (green/red lethal-only) ─────────────── */
 
 .boss-marker--lethal .boss-marker-pin {
   background: #e44;
@@ -1290,7 +1290,7 @@ button {
 .boss-marker--lethal .boss-marker-leader {
   background: rgba(238, 68, 68, 0.45);
 }
-/* Lethal state: red TEXT on the label; background stays neutral (PRD §"Label states"). */
+/* Lethal state: red TEXT on the label; background stays neutral. */
 .boss-marker--lethal .boss-marker-label {
   color: #ff5a5a;
 }
@@ -1668,12 +1668,12 @@ button {
 .boss-marker--needs-target .boss-marker-leader {
   background: rgba(255, 170, 51, 0.55);
 }
-/* Unset target: whole label tinted yellow (PRD §"Label states"). */
+/* Unset target: whole label tinted yellow. */
 .boss-marker--needs-target .boss-marker-label {
   background: #fa3;
   color: #111;
 }
-/* Lethal + unset target: red text on yellow background (PRD §"Label states"). */
+/* Lethal + unset target: red text on yellow background. */
 .boss-marker--lethal.boss-marker--needs-target .boss-marker-label {
   color: #b21010;
 }

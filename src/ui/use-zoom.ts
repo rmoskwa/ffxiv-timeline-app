@@ -1,7 +1,7 @@
 // Ephemeral UI state for the timeline canvas zoom level.
 //
 // Deliberately separate from `timeline-store`: zoom is per-viewer, not part of
-// the shareable timeline file (PRD §12.1), so it must not roundtrip through
+// the shareable timeline file, so it must not roundtrip through
 // auto-save / serialize. Keeping it in its own store also means timeline-store
 // selectors don't recompute when only zoom changes.
 

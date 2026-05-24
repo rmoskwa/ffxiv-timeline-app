@@ -1,9 +1,9 @@
-// Conflict detection for the timeline. PRD §10.
+// Conflict detection for the timeline.
 // v0.1 categories:
 //   - cooldown_overlap: a player's mit placed before the previous instance's
 //     cooldown has elapsed.
 //   - orphan_mit: mit bound to a slot whose job no longer matches the mit's job
-//     (e.g., after a job swap; PRD §11.3).
+//     (e.g., after a job swap).
 //   - unset_target: a tankbuster/targeted boss instance or affects:target mit
 //     instance whose target hasn't been picked yet — its damage math returns 0
 //     until the user resolves it.
@@ -53,7 +53,7 @@ export function detectConflicts(
   // ─── Orphan mits ──────────────────────────────────────────────────────────
   for (const m of mits) {
     const mt = lookupMitType(m.type_id);
-    if (!mt) continue; // schema/reference error — deferred to v0.2 per PRD §10
+    if (!mt) continue; // schema/reference error — deferred to v0.2
     const slot = slotById.get(m.player_slot_id);
     if (!slot) continue; // dangling FK — also v0.2
     if (slot.job !== mt.job) {

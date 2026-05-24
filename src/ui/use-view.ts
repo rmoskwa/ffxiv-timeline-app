@@ -1,7 +1,7 @@
 // Ephemeral UI state for per-slot lane visibility.
 //
 // Deliberately separate from `timeline-store`: visibility is per-viewer, not
-// part of the shareable timeline file (PRD §12.1), so it must not roundtrip
+// part of the shareable timeline file, so it must not roundtrip
 // through auto-save / serialize. Mit math is unaffected — hidden lanes are
 // visual-only; their mits still mitigate.
 

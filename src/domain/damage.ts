@@ -1,6 +1,6 @@
-// Per-player damage math. PRD §5.
+// Per-player damage math.
 // For a given boss hit, compute the post-mitigation damage taken by each of
-// the 8 player slots. Mits stack multiplicatively (§5.2).
+// the 8 player slots. Mits stack multiplicatively.
 
 import { hitLandsOn, mitCovers, resolveHit } from "./coverage";
 import {

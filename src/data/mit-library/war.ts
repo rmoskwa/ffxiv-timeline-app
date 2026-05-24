@@ -3,7 +3,7 @@ import type { MitigationType } from "@/domain/types";
 // WAR mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Vengeance is omitted — it upgrades to Damnation via trait at L92.
 // Shake It Off is excluded — wiki confirms it is barrier-only, not flat %.
-// Bloodwhetting / Raw Intuition are excluded as conditional per PRD scope.
+// Bloodwhetting / Raw Intuition are excluded as conditional.
 export const WAR_MITS: MitigationType[] = [
   {
     id: "war.rampart",

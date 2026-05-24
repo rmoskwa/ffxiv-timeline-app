@@ -1,4 +1,4 @@
-// Tauri FS wiring for timeline persistence (PRD §12.2).
+// Tauri FS wiring for timeline persistence.
 //
 // Working-file model: a single auto-saved JSON in the app data directory that
 // the editor restores on launch. Export/import use OS dialogs at user-chosen

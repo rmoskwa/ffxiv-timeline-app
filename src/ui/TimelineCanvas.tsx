@@ -19,8 +19,8 @@ import { useZoom, useZoomStore } from "./use-zoom";
 // Shared horizontal scroll surface. Owns the ruler so it stays aligned with
 // every lane below it. Boss lane on top, then one row per roster slot.
 //
-// The toolbar above the canvas hosts the zoom controls (PRD §18 — fixed-zoom
-// resolution lifted in favor of a 1s/5s/15s/30s/60s ladder, see Ruler).
+// The toolbar above the canvas hosts the zoom controls (fixed-zoom resolution
+// lifted in favor of a 1s/5s/15s/30s/60s ladder, see Ruler).
 //
 // Ctrl/Alt + wheel zooms around the cursor: we use flushSync so the new px/s
 // is committed before we recompute scrollLeft from the post-zoom geometry —

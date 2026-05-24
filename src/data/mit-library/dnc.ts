@@ -2,7 +2,7 @@ import type { MitigationType } from "@/domain/types";
 
 // DNC mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Physical ranged DPS have no mit role action; only job-specific entries here.
-// Improvised Finish (shield) is excluded per PRD §3.7.
+// Improvised Finish (shield) is excluded.
 export const DNC_MITS: MitigationType[] = [
   {
     id: "dnc.shield_samba",

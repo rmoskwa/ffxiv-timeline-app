@@ -3,7 +3,7 @@ import type { MitigationType } from "@/domain/types";
 // AST mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Post-Dawntrail card rework: cards no longer carry damage mit.
 // Macrocosmos is excluded — it's a damage-storage/heal mechanic, not flat %.
-// Sun Sign is excluded — Suntouched-gated, conditional per PRD scope.
+// Sun Sign is excluded — Suntouched-gated, conditional.
 export const AST_MITS: MitigationType[] = [
   {
     id: "ast.collective_unconscious",

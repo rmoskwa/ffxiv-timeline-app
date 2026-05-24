@@ -1,6 +1,6 @@
-// Debounced auto-save of the in-memory timeline to the working file
-// (PRD §12.2). Mounted by App.tsx only AFTER hydration completes, so the
-// hydration assignment itself is never echoed back to disk.
+// Debounced auto-save of the in-memory timeline to the working file.
+// Mounted by App.tsx only AFTER hydration completes, so the hydration
+// assignment itself is never echoed back to disk.
 
 import { useEffect, useState } from "react";
 import { useTimelineStore } from "@/state/timeline-store";

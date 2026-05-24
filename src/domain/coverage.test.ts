@@ -60,7 +60,7 @@ function hit(overrides: Partial<ResolvedHit> = {}): ResolvedHit {
   };
 }
 
-// ─── Affects × target_pattern matrix (PRD §5.3) ─────────────────────────────
+// ─── Affects × target_pattern matrix ────────────────────────────────────────
 
 describe("mitCovers — affects × target_pattern", () => {
   it("raidwide + affects:party covers all 8 players", () => {

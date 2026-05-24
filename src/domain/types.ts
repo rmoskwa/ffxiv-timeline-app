@@ -1,5 +1,4 @@
 // Domain types for the FFXIV Raid Timeline app.
-// Mirrors PRD §3 (data model) and §15 (future-proofing stubs).
 // Pure types — no React, no I/O. Safe to import anywhere.
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
@@ -48,7 +47,7 @@ export type JobOrUnset = Job | "unset";
 
 export type Role = "tank" | "healer" | "melee" | "ranged" | "caster" | "unset";
 
-// ─── Boss Abilities (PRD §3.2) ──────────────────────────────────────────────
+// ─── Boss Abilities ─────────────────────────────────────────────────────────
 
 export interface BossAbilityType {
   id: string;
@@ -69,17 +68,17 @@ export interface BossAbilityInstance {
   id: string;
   type_id: string; // FK → BossAbilityType.id
   effect_time: number; // seconds from pull
-  // User-picked targets for patterns that need them (PRD §5.3, §18). Always
+  // User-picked targets for patterns that need them. Always
   // present; empty for raidwide/spread/stack. One entry for tankbuster_single
   // and targeted; two for tankbuster_shared.
   target_slot_ids: string[];
-  observed_damage: ObservedDamageEntry[]; // empty in v0.1; populated by FFLogs later (§17)
+  observed_damage: ObservedDamageEntry[]; // empty in v0.1; populated by FFLogs later
 }
 
-// ─── Mitigations (PRD §3.3) ─────────────────────────────────────────────────
+// ─── Mitigations ────────────────────────────────────────────────────────────
 
 export interface MitigationType {
-  id: string; // "{job_short}.{ability_short}" — stable forever (§7)
+  id: string; // "{job_short}.{ability_short}" — stable forever
   name: string;
   job: Job;
   cooldown_seconds: number;
@@ -127,17 +126,17 @@ export interface CoverageOverride {
 export interface MitigationInstance {
   id: string;
   type_id: string; // FK → MitigationType.id (a library entry)
-  player_slot_id: string; // FK → PlayerSlot.id (REQUIRED — mits are slot-bound, §3.3)
-  effect_time: number; // seconds from pull; cooldown begins here (§4)
+  player_slot_id: string; // FK → PlayerSlot.id (REQUIRED — mits are slot-bound)
+  effect_time: number; // seconds from pull; cooldown begins here
   // User-picked recipient for affects:target mits (Oblation, Aquaveil,
   // Exaltation). Empty for all other affects modes AND for newly-dropped
   // target-mits before the user picks (auto-opens the picker; coverage is
   // 0 until set). See domain/targeting.ts.
   target_slot_ids: string[];
-  coverage_overrides: CoverageOverride[]; // deferred to v0.2 (§3.3); empty in v0.1
+  coverage_overrides: CoverageOverride[]; // deferred to v0.2; empty in v0.1
 }
 
-// ─── Roster (PRD §3.4) ──────────────────────────────────────────────────────
+// ─── Roster ─────────────────────────────────────────────────────────────────
 
 export interface PlayerSlot {
   id: string;
@@ -146,7 +145,7 @@ export interface PlayerSlot {
   // role is DERIVED from job — not stored. See deriveRole() below.
 }
 
-// Roster is always exactly 8 slots (PRD §3.4).
+// Roster is always exactly 8 slots.
 export type Roster = readonly [
   PlayerSlot,
   PlayerSlot,
@@ -158,7 +157,7 @@ export type Roster = readonly [
   PlayerSlot,
 ];
 
-// ─── Phase Markers (PRD §3.5) — data model from day 1, UI deferred to v0.2 ──
+// ─── Phase Markers — data model from day 1, UI deferred to v0.2 ────────────
 
 export interface PhaseMarker {
   id: string;
@@ -167,7 +166,7 @@ export interface PhaseMarker {
   color?: string;
 }
 
-// ─── Freeform Notes (PRD §3.6) — data model from day 1, UI deferred to v0.2 ─
+// ─── Freeform Notes — data model from day 1, UI deferred to v0.2 ───────────
 
 export interface FreeformNote {
   id: string;
@@ -176,7 +175,7 @@ export interface FreeformNote {
   text: string;
 }
 
-// ─── Timeline File (PRD §12.1) ──────────────────────────────────────────────
+// ─── Timeline File ──────────────────────────────────────────────────────────
 
 export const TIMELINE_SCHEMA_VERSION = 3 as const;
 

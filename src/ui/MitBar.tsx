@@ -16,7 +16,7 @@ interface MitBarProps {
 }
 
 // Solid segment for the active window (T → T+duration), faded segment for the
-// remaining cooldown (T+duration → T+cooldown). PRD §6.1, §8.
+// remaining cooldown (T+duration → T+cooldown).
 export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
   const remove = useTimelineStore((s) => s.removeMitigationInstance);
   const updateMit = useTimelineStore((s) => s.updateMitigationInstance);

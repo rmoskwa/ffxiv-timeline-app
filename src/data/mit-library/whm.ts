@@ -1,7 +1,7 @@
 import type { MitigationType } from "@/domain/types";
 
 // WHM mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Divine Benison and Aspected Helios are excluded — shield/heal only per PRD §3.7.
+// Divine Benison and Aspected Helios are excluded — shield/heal only.
 export const WHM_MITS: MitigationType[] = [
   {
     id: "whm.temperance",

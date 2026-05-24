@@ -1,7 +1,7 @@
 import type { MitigationType } from "@/domain/types";
 
 // SMN mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Radiant Aegis is excluded — shield-only per PRD §3.7. Only the caster role
+// Radiant Aegis is excluded — shield-only. Only the caster role
 // action Addle applies.
 export const SMN_MITS: MitigationType[] = [
   {

@@ -1,4 +1,4 @@
-// JSON serialization for timeline files (PRD §12).
+// JSON serialization for timeline files.
 // Pure functions — no I/O. Tauri FS wiring lives separately and calls these.
 
 import {
@@ -76,9 +76,8 @@ function migrateV1ToV2(v1: V1TimelineFile): V2TimelineFile {
 }
 
 // v2 boss instances carried optional damage_override / target_pattern_override.
-// v3 drops both — type-level fields are the sole source of truth (boss-label
-// redesign PRD §"Data model"). Migration is destructive for the overrides but
-// non-destructive for everything else.
+// v3 drops both — type-level fields are the sole source of truth. Migration is
+// destructive for the overrides but non-destructive for everything else.
 interface V2BossAbilityInstance {
   id: string;
   type_id: string;

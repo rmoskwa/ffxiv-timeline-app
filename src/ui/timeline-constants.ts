@@ -2,7 +2,7 @@
 //
 // Zoom is reactive (see `use-zoom.ts`); the px/s value is read at render time
 // by every renderer that positions or sizes by time. Lane duration is fixed
-// per v0.1 (PRD §13.2). Only px/s scales.
+// per v0.1. Only px/s scales.
 
 export const LANE_DURATION_SEC = 600; // 10-minute default canvas
 
@@ -41,11 +41,11 @@ export function clampZoom(pxPerSec: number): number {
   return Math.min(MAX_PX_PER_SEC, Math.max(MIN_PX_PER_SEC, pxPerSec));
 }
 
-// v0.1 heatmap: party-wide HP constant (PRD §6.1 — real per-job HP deferred).
+// v0.1 heatmap: party-wide HP constant (real per-job HP deferred).
 // A hit is "lethal" if any player's post-mit damage ≥ PLAYER_MAX_HP.
 export const PLAYER_MAX_HP = 100_000;
 
-// ─── Boss-lane geometry (boss-label redesign PRD §"Design", §"Layout") ────
+// ─── Boss-lane geometry ───────────────────────────────────────────────────
 // The boss lane is a stack: a label strip above a pin track. Strip height
 // grows with the deepest row in greedy row-packing. Pin track is fixed.
 
@@ -59,7 +59,7 @@ export const STRIP_BOTTOM_PADDING = 4; // gap between the bottom-row label and t
 // Conservative per-character estimate for label width at 0.7rem bold sans-serif.
 // Over-estimating is safer than under-estimating — at worst we use one extra
 // row. If overlap is observed in practice, switch to measured widths
-// (getBoundingClientRect) and re-pack — see PRD §"Layout".
+// (getBoundingClientRect) and re-pack.
 export const AVG_CHAR_PX = 7;
 
 export function estimateLabelWidth(name: string): number {

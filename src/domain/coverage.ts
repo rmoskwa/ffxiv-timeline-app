@@ -1,5 +1,5 @@
 // Coverage logic: does a given mitigation reduce damage for a given player on
-// a given hit? Pure function — no React, no I/O. PRD §4, §5.3.
+// a given hit? Pure function — no React, no I/O.
 //
 // Three conditions must hold for coverage:
 //   1. The hit's effect_time falls within the mit's active window.

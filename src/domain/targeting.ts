@@ -1,6 +1,6 @@
 // Targeting — the user-picked player slots an instance's effect is aimed at.
 // Applies to both boss instances (who is hit) and mit instances (who is
-// protected). See CONTEXT.md and PRD §5.3, §10.
+// protected). See CONTEXT.md.
 //
 // Pure functions — no React, no I/O.
 

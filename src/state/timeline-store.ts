@@ -1,4 +1,4 @@
-// Single in-memory source of truth for the current timeline. PRD §11–§12.
+// Single in-memory source of truth for the current timeline.
 // No persistence wiring yet — that lands when the Tauri FS plugin is hooked up.
 
 import { create } from "zustand";
@@ -15,7 +15,7 @@ type BossTypeInput = Omit<BossAbilityType, "id">;
 type BossInstanceInput = Omit<BossAbilityInstance, "id" | "observed_damage">;
 type MitInstanceInput = Omit<MitigationInstance, "id" | "coverage_overrides">;
 
-// PRD §3.2: boss ability type names are unique within a timeline. Compared
+// Boss ability type names are unique within a timeline. Compared
 // case-insensitively after trim so "Replication I" and " replication i " collide.
 export class DuplicateNameError extends Error {
   constructor(name: string) {
