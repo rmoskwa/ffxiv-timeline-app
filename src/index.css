@@ -576,6 +576,10 @@ button {
   align-items: center;
   gap: 0.4rem;
 }
+.boss-instance-caution {
+  color: #fa3;
+  flex-shrink: 0;
+}
 .boss-instance-delete {
   background: transparent;
   color: #666;
@@ -1429,13 +1433,17 @@ button {
 }
 .conflict-row {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto auto 1fr auto;
   gap: 0.4rem;
   align-items: center;
   background: #232323;
   border: 1px solid #333;
   border-radius: 4px;
   padding: 0.35rem 0.45rem;
+}
+.conflict-caution {
+  color: #fa3;
+  flex-shrink: 0;
 }
 .conflict-slot {
   display: flex;

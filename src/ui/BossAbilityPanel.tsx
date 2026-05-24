@@ -8,6 +8,7 @@ import type {
   TargetPattern,
 } from "@/domain/types";
 import { DuplicateNameError, useTimelineStore } from "@/state/timeline-store";
+import { CautionIcon } from "./CautionIcon";
 import { TargetPicker } from "./TargetPicker";
 import { parseTimecode, secondsToTimecode } from "./timeline-constants";
 
@@ -286,6 +287,9 @@ function InstanceSubRow({
           onCommit={(n) => updateInstance(instance.id, { effect_time: n })}
         />
         <div className="boss-instance-actions">
+          {targeting.maxCount > 0 && !targeting.isComplete && (
+            <CautionIcon className="boss-instance-caution" title="Targets not set" />
+          )}
           {targeting.maxCount > 0 && (
             <button
               type="button"

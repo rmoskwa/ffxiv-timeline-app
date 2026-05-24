@@ -9,6 +9,7 @@
 import { getMitById } from "@/data/mit-library";
 import type { MitigationInstance, PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
+import { CautionIcon } from "./CautionIcon";
 import { JobIcon } from "./JobIcon";
 import { secondsToTimecode } from "./timeline-constants";
 import { useConflicts } from "./use-derived";
@@ -68,6 +69,7 @@ export function ConflictsPanel() {
               const cdEnd = prev.effect_time + mt.cooldown_seconds;
               return (
                 <li key={c.mit_instance_id} className="conflict-row">
+                  <CautionIcon className="conflict-caution" />
                   <SlotChip slot={slot} index={idx} />
                   <div className="conflict-body">
                     <div className="conflict-title">{mt.name}</div>
@@ -105,6 +107,7 @@ export function ConflictsPanel() {
                 const tp = type.target_pattern;
                 return (
                   <li key={`b-${c.boss_instance_id}`} className="conflict-row">
+                    <CautionIcon className="conflict-caution" />
                     <div className="conflict-slot" title="Boss ability">
                       <span className="conflict-slot-num">⌬</span>
                     </div>
@@ -136,6 +139,7 @@ export function ConflictsPanel() {
               const idx = slotIndex.get(slot.id) ?? -1;
               return (
                 <li key={`m-${c.mit_instance_id}`} className="conflict-row">
+                  <CautionIcon className="conflict-caution" />
                   <SlotChip slot={slot} index={idx} />
                   <div className="conflict-body">
                     <div className="conflict-title">{mt.name}</div>
@@ -172,6 +176,7 @@ export function ConflictsPanel() {
               const idx = slotIndex.get(slot.id) ?? -1;
               return (
                 <li key={c.mit_instance_id} className="conflict-row">
+                  <CautionIcon className="conflict-caution" />
                   <SlotChip slot={slot} index={idx} />
                   <div className="conflict-body">
                     <div className="conflict-title">{mt.name}</div>
