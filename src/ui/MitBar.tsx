@@ -64,7 +64,7 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
         className="mit-bar-duration"
         style={{
           width: durationPx,
-          background: jobColor(type.job),
+          background: `color-mix(in srgb, ${jobColor(type.job)} 33%, transparent)`,
           ...(targetSlot && { outlineColor: jobColor(targetSlot.job) }),
         }}
       >

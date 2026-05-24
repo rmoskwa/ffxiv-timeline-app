@@ -16,13 +16,14 @@ interface RowSizeDimensions {
   mitIconSize: number;
 }
 
-// `md` matches the pre-feature CSS (sub-lane min-height 34, mit-bar height 26,
-// icon 16) so existing layouts are unchanged on first launch. Bar height tracks
-// `subLaneHeight - 8` to preserve the 4px top + 4px bottom inset from .mit-bar.
+// `md` matches the pre-feature CSS sub-lane/bar dimensions (sub-lane min-height
+// 34, mit-bar height 26). Bar height tracks `subLaneHeight - 8` to preserve the
+// 4px top + 4px bottom inset from .mit-bar. Icon size is `mitBarHeight - 2` to
+// leave 1px of breathing room above and below the bar's border.
 const DIMENSIONS: Record<RowSize, RowSizeDimensions> = {
-  sm: { subLaneHeight: 28, mitBarHeight: 20, mitIconSize: 14 },
-  md: { subLaneHeight: 34, mitBarHeight: 26, mitIconSize: 16 },
-  lg: { subLaneHeight: 44, mitBarHeight: 36, mitIconSize: 22 },
+  sm: { subLaneHeight: 28, mitBarHeight: 20, mitIconSize: 18 },
+  md: { subLaneHeight: 34, mitBarHeight: 26, mitIconSize: 24 },
+  lg: { subLaneHeight: 44, mitBarHeight: 36, mitIconSize: 34 },
 };
 
 interface RowSizeStore {
