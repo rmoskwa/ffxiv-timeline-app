@@ -444,8 +444,8 @@ button {
 /* ─── Type entry (control room) ───────────────────────────────────────── */
 
 .boss-type-entry {
-  background: #232323;
-  border: 1px solid #353535;
+  background: #2a2a2a;
+  border: 1px solid #454545;
   border-radius: 4px;
   padding: 0.5rem;
   display: flex;
@@ -504,8 +504,8 @@ button {
   cursor: pointer;
 }
 .boss-type-entry--collapsed:hover {
-  border-color: #555;
-  background: #2a2a2a;
+  border-color: #6a6a6a;
+  background: #333333;
 }
 .boss-type-collapsed-name {
   flex: 1;
