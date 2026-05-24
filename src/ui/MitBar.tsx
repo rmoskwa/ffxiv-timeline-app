@@ -6,6 +6,7 @@ import { MitIcon } from "./MitIcon";
 import { jobColor } from "./role-color";
 import { TargetPicker } from "./TargetPicker";
 import { secondsToTimecode } from "./timeline-constants";
+import { useRowSize } from "./use-row-size";
 import { useZoom } from "./use-zoom";
 
 interface MitBarProps {
@@ -21,6 +22,7 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
   const updateMit = useTimelineStore((s) => s.updateMitigationInstance);
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const { pxPerSec } = useZoom();
+  const { mitBarHeight, mitIconSize } = useRowSize();
 
   const left = instance.effect_time * pxPerSec;
   const durationPx = type.duration_seconds * pxPerSec;
@@ -54,7 +56,7 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
         `${targetSlot ? " mit-bar--has-target" : ""}` +
         `${pickerOpen ? " has-picker-open" : ""}`
       }
-      style={{ left }}
+      style={{ left, height: mitBarHeight }}
       title={title}
       data-mit-id={instance.id}
     >
@@ -92,7 +94,7 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
         <div className="mit-bar-cooldown" style={{ width: cooldownTailPx }} aria-hidden />
       )}
       <span className="mit-bar-icon-overlay" style={{ left: pxPerSec / 2 }}>
-        <MitIcon name={type.name} size={16} title={type.name} />
+        <MitIcon name={type.name} size={mitIconSize} title={type.name} />
       </span>
       {pickerOpen && needsTarget && roster && (
         <div className="mit-bar-popover">

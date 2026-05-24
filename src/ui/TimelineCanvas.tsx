@@ -11,6 +11,7 @@ import {
   pickTickIntervalSec,
   ZOOM_WHEEL_FACTOR,
 } from "./timeline-constants";
+import { type RowSize, useRowSizeStore } from "./use-row-size";
 import { useViewStore } from "./use-view";
 import { useZoom, useZoomStore } from "./use-zoom";
 
@@ -86,13 +87,21 @@ function ZoomToolbar() {
   const zoomIn = useZoomStore((s) => s.zoomIn);
   const zoomOut = useZoomStore((s) => s.zoomOut);
   const reset = useZoomStore((s) => s.reset);
+  const rowSize = useRowSizeStore((s) => s.size);
+  const setRowSize = useRowSizeStore((s) => s.setSize);
   const tickIntervalSec = pickTickIntervalSec(pxPerSec);
   const percent = Math.round((pxPerSec / DEFAULT_PX_PER_SEC) * 100);
   const tickLabel = tickIntervalSec >= 60 ? "1m" : `${tickIntervalSec}s`;
 
+  const rowOptions: readonly { value: RowSize; label: string }[] = [
+    { value: "sm", label: "Small" },
+    { value: "md", label: "Medium" },
+    { value: "lg", label: "Large" },
+  ];
+
   return (
     <div className="timeline-toolbar">
-      <span className="timeline-toolbar-title">Timeline</span>
+      <span className="timeline-toolbar-title">Timeline Zoom:</span>
       <div className="timeline-toolbar-zoom">
         <button
           type="button"
@@ -121,6 +130,20 @@ function ZoomToolbar() {
         >
           +
         </button>
+      </div>
+      <span className="timeline-toolbar-title">Timeline Row Size:</span>
+      <div className="timeline-toolbar-zoom">
+        {rowOptions.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            className={`toolbar-toggle${rowSize === opt.value ? " is-selected" : ""}`}
+            onClick={() => setRowSize(opt.value)}
+            aria-pressed={rowSize === opt.value}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
     </div>
   );

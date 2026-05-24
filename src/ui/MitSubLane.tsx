@@ -6,6 +6,7 @@ import { MitBar } from "./MitBar";
 import { MitIcon } from "./MitIcon";
 import { snapClientXToSecond } from "./timeline-constants";
 import { useCooldownOverlapMitIds } from "./use-derived";
+import { useRowSize } from "./use-row-size";
 import { useZoom } from "./use-zoom";
 
 interface DamageMark {
@@ -29,6 +30,7 @@ export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLane
   const addMit = useTimelineStore((s) => s.addMitigationInstance);
   const conflictIds = useCooldownOverlapMitIds();
   const { pxPerSec, laneWidthPx } = useZoom();
+  const { subLaneHeight } = useRowSize();
   const [hoverSec, setHoverSec] = useState<number | null>(null);
 
   const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -51,7 +53,7 @@ export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLane
   };
 
   return (
-    <div className="sub-lane">
+    <div className="sub-lane" style={{ minHeight: subLaneHeight }}>
       <div className="sub-lane-label" title={mitType.name}>
         <MitIcon name={mitType.name} size={18} title={mitType.name} />
         <span className="sub-lane-name">{mitType.name}</span>
