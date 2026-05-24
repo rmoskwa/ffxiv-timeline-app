@@ -19,7 +19,27 @@ export interface PackResult {
   rowCount: number;
 }
 
-export function packLabelRows(items: readonly PackInput[], pxPerSec: number): PackResult {
+// Keep a label fully inside the lane: a centered label near t=0 or t=end
+// would otherwise hang past the lane edge. The pin still anchors at the
+// natural center; only the label's render position shifts. Returns the
+// natural center unchanged when laneWidthPx is omitted, so callers that
+// don't care about lane bounds (and tests) keep the old behavior.
+export function clampLabelCenter(
+  naturalCenter: number,
+  width: number,
+  laneWidthPx?: number,
+): number {
+  if (laneWidthPx === undefined) return naturalCenter;
+  const half = width / 2;
+  if (laneWidthPx < width) return laneWidthPx / 2;
+  return Math.max(half, Math.min(laneWidthPx - half, naturalCenter));
+}
+
+export function packLabelRows(
+  items: readonly PackInput[],
+  pxPerSec: number,
+  laneWidthPx?: number,
+): PackResult {
   const sorted = [...items].sort((a, b) =>
     a.effect_time === b.effect_time ? a.id.localeCompare(b.id) : a.effect_time - b.effect_time,
   );
@@ -30,7 +50,7 @@ export function packLabelRows(items: readonly PackInput[], pxPerSec: number): Pa
 
   for (const item of sorted) {
     const width = estimateLabelWidth(item.name);
-    const center = item.effect_time * pxPerSec;
+    const center = clampLabelCenter(item.effect_time * pxPerSec, width, laneWidthPx);
     const left = center - width / 2;
     const right = center + width / 2;
 

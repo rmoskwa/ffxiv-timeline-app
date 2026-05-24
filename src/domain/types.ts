@@ -170,12 +170,16 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 4 as const;
+export const TIMELINE_SCHEMA_VERSION = 5 as const;
+
+export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 
 export interface TimelineFile {
   schema_version: typeof TIMELINE_SCHEMA_VERSION;
   metadata: {
     name: string; // user-given fight name
+    boss_name: string; // user-given boss name shown on the BOSS lane label
+    fight_duration_sec: number; // total timeline length; canvas cannot extend past this
     created_at: string; // ISO-8601
     updated_at: string;
   };

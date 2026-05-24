@@ -346,6 +346,7 @@ function InstanceSubRow({
   const selectInstance = useTimelineStore((s) => s.selectInstance);
   const removeInstance = useTimelineStore((s) => s.removeBossAbilityInstance);
   const updateInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
+  const fightDurationSec = useTimelineStore((s) => s.timeline?.metadata.fight_duration_sec ?? 0);
 
   const targeting = targetingForBoss(instance, type);
   const selected = selectedInstanceId === instance.id;
@@ -361,6 +362,7 @@ function InstanceSubRow({
       <div className="boss-instance-row-body" onClick={() => selectInstance(instance.id)}>
         <TimecodeField
           value={instance.effect_time}
+          maxSec={fightDurationSec}
           onCommit={(n) => updateInstance(instance.id, { effect_time: n })}
         />
         <div className="boss-instance-actions">
@@ -411,7 +413,15 @@ function InstanceSubRow({
 
 // ─── Inline timecode + numeric fields ──────────────────────────────────────
 
-function TimecodeField({ value, onCommit }: { value: number; onCommit: (n: number) => void }) {
+function TimecodeField({
+  value,
+  maxSec,
+  onCommit,
+}: {
+  value: number;
+  maxSec?: number;
+  onCommit: (n: number) => void;
+}) {
   const [draft, setDraft] = useState(secondsToTimecode(value));
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -420,7 +430,7 @@ function TimecodeField({ value, onCommit }: { value: number; onCommit: (n: numbe
 
   const commit = () => {
     const parsed = parseTimecode(draft);
-    if (parsed === null) {
+    if (parsed === null || (maxSec !== undefined && parsed > maxSec)) {
       setError(true);
       setDraft(secondsToTimecode(value));
       return;
@@ -491,6 +501,7 @@ function NumberInput({
 
 function AddPlacementForm({ type, roster }: { type: BossAbilityType; roster: Roster }) {
   const addInstance = useTimelineStore((s) => s.addBossAbilityInstance);
+  const fightDurationSec = useTimelineStore((s) => s.timeline?.metadata.fight_duration_sec ?? 0);
   const [open, setOpen] = useState(false);
   const [timecode, setTimecode] = useState("");
   const [targetIds, setTargetIds] = useState<string[]>([]);
@@ -525,6 +536,10 @@ function AddPlacementForm({ type, roster }: { type: BossAbilityType; roster: Ros
     const parsed = parseTimecode(timecode);
     if (parsed === null) {
       setError("Enter a time like 1:30 or 90.");
+      return;
+    }
+    if (parsed > fightDurationSec) {
+      setError(`Time must be within the fight length (${secondsToTimecode(fightDurationSec)}).`);
       return;
     }
     addInstance({ type_id: type.id, effect_time: parsed, target_slot_ids: targetIds });

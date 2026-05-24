@@ -2,6 +2,7 @@
 // Pure functions — no I/O. Tauri FS wiring lives separately and calls these.
 
 import {
+  DEFAULT_FIGHT_DURATION_SEC,
   type PlayerSlot,
   type Roster,
   TIMELINE_SCHEMA_VERSION,
@@ -59,7 +60,13 @@ export function newTimeline(name: string): TimelineFile {
   const now = new Date().toISOString();
   return {
     schema_version: TIMELINE_SCHEMA_VERSION,
-    metadata: { name, created_at: now, updated_at: now },
+    metadata: {
+      name,
+      boss_name: "",
+      fight_duration_sec: DEFAULT_FIGHT_DURATION_SEC,
+      created_at: now,
+      updated_at: now,
+    },
     roster: emptyRoster(),
     boss_ability_types: [],
     boss_ability_instances: [],

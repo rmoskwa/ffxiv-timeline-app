@@ -1,6 +1,7 @@
 import type React from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
+import { DEFAULT_FIGHT_DURATION_SEC } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossLane } from "./BossLane";
 import { PlayerLane } from "./PlayerLane";
@@ -25,13 +26,39 @@ import { useZoom, useZoomStore } from "./use-zoom";
 // Ctrl/Alt + wheel zooms around the cursor: we use flushSync so the new px/s
 // is committed before we recompute scrollLeft from the post-zoom geometry —
 // otherwise the scroll snap and the zoom would race for the same paint frame.
+// Width of the sticky lane label column. Subtracted from the scroll container's
+// width to derive the visible track region — must stay in sync with the
+// `.lane-label` width in index.css.
+const LANE_LABEL_WIDTH_PX = 130;
+
 export function TimelineCanvas() {
   const roster = useTimelineStore((s) => s.timeline?.roster);
+  const fightDurationSec = useTimelineStore(
+    (s) => s.timeline?.metadata.fight_duration_sec ?? DEFAULT_FIGHT_DURATION_SEC,
+  );
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
   const { pxPerSec } = useZoom();
   const theme = useAppearanceStore((s) => s.theme);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const setZoom = useZoomStore((s) => s.setZoom);
+  const setMinPxPerSec = useZoomStore((s) => s.setMinPxPerSec);
+
+  // Floor zoom at "the full fight fits in the visible track region" so users
+  // can never zoom out into empty space past the end of the timeline. Re-runs
+  // whenever the viewport resizes or the fight duration changes.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const recompute = () => {
+      const trackWidth = Math.max(0, el.clientWidth - LANE_LABEL_WIDTH_PX);
+      if (trackWidth <= 0 || fightDurationSec <= 0) return;
+      setMinPxPerSec(trackWidth / fightDurationSec);
+    };
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fightDurationSec, setMinPxPerSec]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLDivElement>) => {
@@ -47,7 +74,7 @@ export function TimelineCanvas() {
       const timeAtCursor = (e.clientX - trackRect.left) / oldPxPerSec;
 
       const factor = e.deltaY < 0 ? ZOOM_WHEEL_FACTOR : 1 / ZOOM_WHEEL_FACTOR;
-      const newPxPerSec = clampZoom(oldPxPerSec * factor);
+      const newPxPerSec = clampZoom(oldPxPerSec * factor, useZoomStore.getState().minPxPerSec);
       if (newPxPerSec === oldPxPerSec) return;
 
       const oldScrollLeft = scrollEl.scrollLeft;

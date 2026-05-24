@@ -39,6 +39,9 @@ export interface TimelineStore {
   loadTimeline: (file: TimelineFile) => void;
   closeTimeline: () => void;
 
+  setBossName: (name: string) => void;
+  setFightDuration: (sec: number) => void;
+
   setSlotJob: (slotIdx: number, job: JobOrUnset) => void;
   setSlotLabel: (slotIdx: number, label: string | undefined) => void;
 
@@ -70,6 +73,36 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   newTimeline: (name) => set({ timeline: makeNewTimeline(name), selectedInstanceId: null }),
   loadTimeline: (file) => set({ timeline: file, selectedInstanceId: null }),
   closeTimeline: () => set({ timeline: null, selectedInstanceId: null }),
+
+  setBossName: (name) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      return {
+        timeline: touch({ ...s.timeline, metadata: { ...s.timeline.metadata, boss_name: name } }),
+      };
+    }),
+
+  setFightDuration: (sec) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      const clamped = Math.max(1, Math.round(sec));
+      const survivingBoss = s.timeline.boss_ability_instances.filter(
+        (i) => i.effect_time <= clamped,
+      );
+      const survivingMits = s.timeline.mitigation_instances.filter((m) => m.effect_time <= clamped);
+      const survivingBossIds = new Set(survivingBoss.map((i) => i.id));
+      const selectionStillValid =
+        s.selectedInstanceId === null || survivingBossIds.has(s.selectedInstanceId);
+      return {
+        timeline: touch({
+          ...s.timeline,
+          metadata: { ...s.timeline.metadata, fight_duration_sec: clamped },
+          boss_ability_instances: survivingBoss,
+          mitigation_instances: survivingMits,
+        }),
+        ...(selectionStillValid ? {} : { selectedInstanceId: null }),
+      };
+    }),
 
   setSlotJob: (slotIdx, job) =>
     set((s) => {

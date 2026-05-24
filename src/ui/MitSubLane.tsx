@@ -29,13 +29,13 @@ interface MitSubLaneProps {
 export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLaneProps) {
   const addMit = useTimelineStore((s) => s.addMitigationInstance);
   const conflictIds = useCooldownOverlapMitIds();
-  const { pxPerSec, laneWidthPx } = useZoom();
+  const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
   const { subLaneHeight } = useRowSize();
   const [hoverSec, setHoverSec] = useState<number | null>(null);
 
   const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setHoverSec(snapClientXToSecond(e.clientX, rect.left, pxPerSec));
+    setHoverSec(snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec));
   };
 
   const handleLeave = () => setHoverSec(null);
@@ -47,7 +47,7 @@ export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLane
     // damage-guide, gridlines) pass clicks through to currentTarget.
     if (e.target !== e.currentTarget) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const sec = snapClientXToSecond(e.clientX, rect.left, pxPerSec);
+    const sec = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec);
     addMit({ type_id: mitType.id, player_slot_id: slot.id, effect_time: sec, target_slot_ids: [] });
     setHoverSec(null);
   };

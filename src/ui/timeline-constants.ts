@@ -4,12 +4,12 @@
 // by every renderer that positions or sizes by time. Lane duration is fixed
 // per v0.1. Only px/s scales.
 
-export const LANE_DURATION_SEC = 600; // 10-minute default canvas
-
 // Zoom bounds. DEFAULT_PX_PER_SEC = 12 matches the prior fixed zoom so existing
-// layouts feel unchanged on first launch. MIN fits the full 10-min lane in a
-// ~600px viewport; MAX gives ~80px per second for sub-second placement work.
-export const MIN_PX_PER_SEC = 1;
+// layouts feel unchanged on first launch. The minimum is dynamic
+// (viewport_width / fight_duration_sec) and lives in use-zoom — see
+// FALLBACK_MIN_PX_PER_SEC for the bootstrap value before the viewport is
+// measured. MAX gives ~80px per second for sub-second placement work.
+export const FALLBACK_MIN_PX_PER_SEC = 1;
 export const MAX_PX_PER_SEC = 80;
 export const DEFAULT_PX_PER_SEC = 12;
 
@@ -36,9 +36,9 @@ export function pickLabelIntervalSec(tickIntervalSec: number): number {
   return TICK_LADDER[idx + 1] ?? tickIntervalSec;
 }
 
-export function clampZoom(pxPerSec: number): number {
-  if (!Number.isFinite(pxPerSec)) return DEFAULT_PX_PER_SEC;
-  return Math.min(MAX_PX_PER_SEC, Math.max(MIN_PX_PER_SEC, pxPerSec));
+export function clampZoom(pxPerSec: number, minPxPerSec: number = FALLBACK_MIN_PX_PER_SEC): number {
+  if (!Number.isFinite(pxPerSec)) return Math.max(DEFAULT_PX_PER_SEC, minPxPerSec);
+  return Math.min(MAX_PX_PER_SEC, Math.max(minPxPerSec, pxPerSec));
 }
 
 // v0.1 heatmap: party-wide HP constant (real per-job HP deferred).
@@ -103,7 +103,8 @@ export function snapClientXToSecond(
   cursorClientX: number,
   laneLeft: number,
   pxPerSec: number,
+  laneDurationSec: number,
 ): number {
   const offsetX = cursorClientX - laneLeft;
-  return Math.max(0, Math.min(LANE_DURATION_SEC, Math.round(offsetX / pxPerSec)));
+  return Math.max(0, Math.min(laneDurationSec, Math.round(offsetX / pxPerSec)));
 }

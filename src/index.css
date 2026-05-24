@@ -1026,8 +1026,71 @@ button {
   color: #f80;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
   font-size: 0.7rem;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.4rem 0.5rem;
+  text-transform: none;
+}
+.lane-label--boss .boss-name-input {
+  background: transparent;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 0.15rem 0.3rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  width: 100%;
+  min-width: 0;
+}
+.lane-label--boss .boss-name-input::placeholder {
+  color: rgba(255, 136, 0, 0.45);
+  font-style: italic;
+}
+.lane-label--boss .boss-name-input:hover,
+.lane-label--boss .boss-name-input:focus {
+  border-color: rgba(255, 136, 0, 0.45);
+  background: rgba(0, 0, 0, 0.25);
+  outline: none;
+}
+.lane-label--boss .boss-length-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.lane-label--boss .boss-length-prefix {
+  color: rgba(255, 136, 0, 0.75);
+  flex-shrink: 0;
+}
+.lane-label--boss .boss-length-input {
+  background: transparent;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 0.1rem 0.25rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+  min-width: 0;
+}
+.lane-label--boss .boss-length-input:hover,
+.lane-label--boss .boss-length-input:focus {
+  border-color: rgba(255, 136, 0, 0.45);
+  background: rgba(0, 0, 0, 0.25);
+  outline: none;
+}
+.lane-label--boss .boss-length-input.is-invalid {
+  border-color: #e44;
+  color: #ff8a8a;
 }
 .lane-label--player {
   background: #1c1c1c;
@@ -1163,11 +1226,12 @@ button {
 }
 .boss-marker-leader {
   position: absolute;
-  left: 0;
-  width: 1px;
-  background: rgba(255, 136, 0, 0.45);
-  transform: translateX(-50%);
+  overflow: visible;
   pointer-events: none;
+}
+.boss-marker-leader line {
+  stroke: rgba(255, 136, 0, 0.45);
+  stroke-width: 1;
 }
 .boss-marker-label {
   position: absolute;
@@ -1280,8 +1344,8 @@ button {
   background: #e44;
   box-shadow: 0 0 6px rgba(238, 68, 68, 0.6);
 }
-.boss-marker--lethal .boss-marker-leader {
-  background: rgba(238, 68, 68, 0.45);
+.boss-marker--lethal .boss-marker-leader line {
+  stroke: rgba(238, 68, 68, 0.45);
 }
 /* Lethal state: red TEXT on the label; background stays neutral. */
 .boss-marker--lethal .boss-marker-label {
@@ -1365,6 +1429,19 @@ button {
 .lane-scroll.theme-light .lane-label--boss {
   background: #fff1e0;
   color: #b86200;
+}
+.lane-scroll.theme-light .lane-label--boss .boss-name-input::placeholder {
+  color: rgba(184, 98, 0, 0.5);
+}
+.lane-scroll.theme-light .lane-label--boss .boss-name-input:hover,
+.lane-scroll.theme-light .lane-label--boss .boss-name-input:focus,
+.lane-scroll.theme-light .lane-label--boss .boss-length-input:hover,
+.lane-scroll.theme-light .lane-label--boss .boss-length-input:focus {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(184, 98, 0, 0.5);
+}
+.lane-scroll.theme-light .lane-label--boss .boss-length-prefix {
+  color: rgba(184, 98, 0, 0.8);
 }
 .lane-scroll.theme-light .lane-row--boss {
   border-bottom-color: #fff1e0;
@@ -1658,8 +1735,8 @@ button {
   background: #fa3;
   box-shadow: 0 0 6px rgba(255, 170, 51, 0.7);
 }
-.boss-marker--needs-target .boss-marker-leader {
-  background: rgba(255, 170, 51, 0.55);
+.boss-marker--needs-target .boss-marker-leader line {
+  stroke: rgba(255, 170, 51, 0.55);
 }
 /* Unset target: whole label tinted yellow. */
 .boss-marker--needs-target .boss-marker-label {
