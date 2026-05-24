@@ -32,7 +32,7 @@ button {
   border: 1px solid #333;
   border-radius: 8px;
   padding: 1.5rem 2rem;
-  width: min(560px, 100%);
+  width: min(760px, 100%);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -60,16 +60,141 @@ button {
   padding: 0.4rem 0.6rem;
   font: inherit;
 }
-.slot-grid {
+.wizard-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem 1rem;
+  grid-template-columns: 1fr 220px;
+  gap: 1.25rem;
+  align-items: start;
 }
-.slot {
+.job-picker {
   display: flex;
   flex-direction: column;
+  gap: 0.6rem;
+}
+.job-picker-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.job-picker-role {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fff;
+  font-weight: 600;
+}
+.job-picker-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.job-picker-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 0.2rem;
-  font-size: 0.85rem;
+  padding: 0.35rem 0.45rem;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 5px;
+  color: #ccc;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 52px;
+}
+.job-picker-tile:hover {
+  border-color: #555;
+  background: #242424;
+}
+.job-picker-tile.selected {
+  color: #fff;
+  border-color: transparent;
+}
+.job-picker-tile.selected:hover {
+  filter: brightness(1.15);
+}
+.add-to-roster {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+  background: #2d4d3f;
+  color: #cfe;
+  border: 1px solid #4a8;
+  border-radius: 4px;
+  padding: 0.45rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.add-to-roster:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.roster-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 0.6rem 0.7rem;
+}
+.roster-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #888;
+  font-weight: 600;
+}
+.roster-preview-count {
+  color: #ccc;
+}
+.roster-preview-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.roster-preview-slot {
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+}
+.roster-preview-slot.empty {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  color: #666;
+  border: 1px dashed #333;
+  border-radius: 4px;
+}
+.roster-preview-slot.filled button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.roster-preview-slot.filled .remove-hint {
+  margin-left: auto;
+  font-size: 1rem;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.roster-preview-slot.filled button:hover .remove-hint,
+.roster-preview-slot.filled button:focus-visible .remove-hint {
+  opacity: 0.8;
 }
 .wizard-actions {
   display: flex;
