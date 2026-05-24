@@ -30,7 +30,7 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
   const cooldownTailPx = cooldownTailSec * pxPerSec;
 
   const targeting = targetingForMit(instance, type);
-  const needsTarget = targeting.requiredCount > 0;
+  const needsTarget = targeting.maxCount > 0;
   const targetUnset = needsTarget && !targeting.isComplete;
   const targetSlot = needsTarget ? roster?.find((s) => s.id === targeting.selection[0]) : undefined;
 
@@ -101,7 +101,8 @@ export function MitBar({ instance, type, hasConflict = false }: MitBarProps) {
           <TargetPicker
             roster={roster}
             selectedIds={targeting.selection}
-            maxSelections={targeting.requiredCount}
+            minSelections={targeting.minCount}
+            maxSelections={targeting.maxCount}
             onChange={(ids) => updateMit(instance.id, { target_slot_ids: ids })}
             onClose={() => setPickerOpen(false)}
           />

@@ -35,6 +35,16 @@ export function BossLane() {
   const [hoverSec, setHoverSec] = useState<number | null>(null);
   const [pickerAtSec, setPickerAtSec] = useState<number | null>(null);
 
+  // Panel → canvas sync: when selection changes (from any source), center the
+  // corresponding marker horizontally. No-op if already in view.
+  useEffect(() => {
+    if (!selectedInstanceId) return;
+    const el = document.querySelector<HTMLElement>(
+      `.boss-marker[data-boss-instance-id="${selectedInstanceId}"]`,
+    );
+    el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [selectedInstanceId]);
+
   const typeMap = useMemo(() => new Map(types.map((t) => [t.id, t])), [types]);
   const inert = types.length === 0;
 
@@ -167,7 +177,7 @@ function BossMarker({
   onPickTargets: (ids: string[]) => void;
 }) {
   const targeting = targetingForBoss(instance, type);
-  const needsTarget = targeting.requiredCount > 0;
+  const needsTarget = targeting.maxCount > 0;
   const targetsUnset = needsTarget && !targeting.isComplete;
 
   // Auto-opens target picker when a newly-placed instance still needs targets.
@@ -232,7 +242,8 @@ function BossMarker({
           <TargetPicker
             roster={roster}
             selectedIds={targeting.selection}
-            maxSelections={targeting.requiredCount}
+            minSelections={targeting.minCount}
+            maxSelections={targeting.maxCount}
             onChange={onPickTargets}
             onClose={() => setTargetPickerOpen(false)}
           />

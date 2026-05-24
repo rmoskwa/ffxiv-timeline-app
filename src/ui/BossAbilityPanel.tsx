@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { targetingForBoss } from "@/domain/targeting";
+import { targetingCountsForPattern, targetingForBoss } from "@/domain/targeting";
 import type {
   BossAbilityInstance,
   BossAbilityType,
@@ -8,7 +8,6 @@ import type {
   TargetPattern,
 } from "@/domain/types";
 import { DuplicateNameError, useTimelineStore } from "@/state/timeline-store";
-import { JobIcon } from "./JobIcon";
 import { TargetPicker } from "./TargetPicker";
 import { parseTimecode, secondsToTimecode } from "./timeline-constants";
 
@@ -26,6 +25,7 @@ export function BossAbilityPanel() {
   const types = useTimelineStore((s) => s.timeline?.boss_ability_types ?? []);
   const instances = useTimelineStore((s) => s.timeline?.boss_ability_instances ?? []);
   const roster = useTimelineStore((s) => s.timeline?.roster);
+  const selectedInstanceId = useTimelineStore((s) => s.selectedInstanceId);
 
   const instancesByType = useMemo(() => {
     const m = new Map<string, BossAbilityInstance[]>();
@@ -37,6 +37,17 @@ export function BossAbilityPanel() {
     for (const list of m.values()) list.sort((a, b) => a.effect_time - b.effect_time);
     return m;
   }, [instances]);
+
+  // Canvas → panel sync: scroll the selected sub-row into view whenever
+  // selection changes (no-op if the row is already visible). Instance ids
+  // are crypto.randomUUID — no CSS-attribute-selector escaping needed.
+  useEffect(() => {
+    if (!selectedInstanceId) return;
+    const el = document.querySelector<HTMLElement>(
+      `.boss-instance-row[data-boss-instance-id="${selectedInstanceId}"]`,
+    );
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [selectedInstanceId]);
 
   if (!roster) return null;
 
@@ -274,17 +285,8 @@ function InstanceSubRow({
           value={instance.effect_time}
           onCommit={(n) => updateInstance(instance.id, { effect_time: n })}
         />
-        <div className="boss-instance-targets">
-          {targeting.requiredCount === 0 ? (
-            <span className="boss-instance-targets-none">—</span>
-          ) : instance.target_slot_ids.length === 0 ? (
-            <span className="boss-instance-targets-unset">no target</span>
-          ) : (
-            <TargetChips roster={roster} ids={instance.target_slot_ids} />
-          )}
-        </div>
         <div className="boss-instance-actions">
-          {targeting.requiredCount > 0 && (
+          {targeting.maxCount > 0 && (
             <button
               type="button"
               className="link-button"
@@ -310,38 +312,19 @@ function InstanceSubRow({
           </button>
         </div>
       </div>
-      {retargetOpen && targeting.requiredCount > 0 && (
+      {retargetOpen && targeting.maxCount > 0 && (
         <div className="re-target-popover">
           <TargetPicker
             roster={roster}
             selectedIds={targeting.selection}
-            maxSelections={targeting.requiredCount}
+            minSelections={targeting.minCount}
+            maxSelections={targeting.maxCount}
             onChange={(ids) => updateInstance(instance.id, { target_slot_ids: ids })}
             onClose={() => setRetargetOpen(false)}
           />
         </div>
       )}
     </li>
-  );
-}
-
-function TargetChips({ roster, ids }: { roster: Roster; ids: readonly string[] }) {
-  const slotByIdAndIdx = new Map(roster.map((s, i) => [s.id, { slot: s, idx: i }]));
-  return (
-    <ul className="target-chip-list">
-      {ids.map((id) => {
-        const entry = slotByIdAndIdx.get(id);
-        if (!entry) return null;
-        const label =
-          entry.slot.name_label ?? (entry.slot.job === "unset" ? "Unset" : entry.slot.job);
-        return (
-          <li key={id} className="target-chip" title={`Slot ${entry.idx + 1} · ${label}`}>
-            <span className="target-chip-num">{entry.idx + 1}</span>
-            <JobIcon job={entry.slot.job} size={14} title={label} />
-          </li>
-        );
-      })}
-    </ul>
   );
 }
 
@@ -440,12 +423,7 @@ function AddPlacementForm({ type, roster }: { type: BossAbilityType; roster: Ros
     if (open) timecodeRef.current?.focus();
   }, [open]);
 
-  const requiredCount: 0 | 1 | 2 =
-    type.target_pattern === "tankbuster_shared"
-      ? 2
-      : type.target_pattern === "tankbuster_single" || type.target_pattern === "targeted"
-        ? 1
-        : 0;
+  const { minCount, maxCount } = targetingCountsForPattern(type.target_pattern);
 
   const reset = () => {
     setTimecode("");
@@ -497,7 +475,7 @@ function AddPlacementForm({ type, roster }: { type: BossAbilityType; roster: Ros
             }
           }}
         />
-        {requiredCount > 0 && (
+        {maxCount > 0 && (
           <button type="button" className="link-button" onClick={() => setPickerOpen((o) => !o)}>
             {targetIds.length > 0 ? `Targets (${targetIds.length})` : "Pick targets…"}
           </button>
@@ -519,12 +497,13 @@ function AddPlacementForm({ type, roster }: { type: BossAbilityType; roster: Ros
           Save
         </button>
       </div>
-      {pickerOpen && requiredCount > 0 && (
+      {pickerOpen && maxCount > 0 && (
         <div className="re-target-popover">
           <TargetPicker
             roster={roster}
             selectedIds={targetIds}
-            maxSelections={requiredCount}
+            minSelections={minCount}
+            maxSelections={maxCount}
             onChange={setTargetIds}
             onClose={() => setPickerOpen(false)}
           />

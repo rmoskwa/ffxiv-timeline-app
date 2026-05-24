@@ -550,8 +550,7 @@ button {
   box-shadow: 0 0 0 1px rgba(102, 204, 255, 0.4);
 }
 .boss-instance-row-body {
-  display: grid;
-  grid-template-columns: 64px 1fr auto;
+  display: flex;
   align-items: center;
   gap: 0.4rem;
   padding: 0.3rem 0.4rem;
@@ -565,48 +564,14 @@ button {
   padding: 0.2rem 0.3rem;
   font: inherit;
   font-size: 0.8rem;
-  width: 100%;
+  width: 64px;
   font-variant-numeric: tabular-nums;
 }
 .boss-instance-timecode.is-invalid {
   border-color: #e44;
 }
-.boss-instance-targets {
-  font-size: 0.75rem;
-  color: #ccc;
-  overflow: hidden;
-}
-.boss-instance-targets-none {
-  color: #555;
-}
-.boss-instance-targets-unset {
-  color: #fa3;
-  font-style: italic;
-}
-.target-chip-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-}
-.target-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  background: #252525;
-  border: 1px solid #383838;
-  border-radius: 3px;
-  padding: 0.05rem 0.25rem;
-  font-size: 0.7rem;
-  color: #ddd;
-}
-.target-chip-num {
-  color: #888;
-  font-size: 0.65rem;
-}
 .boss-instance-actions {
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -718,15 +683,6 @@ button {
   color: #1a1a1a;
   border-color: #c0c0c0;
 }
-.theme-light .target-chip {
-  background: #ececec;
-  border-color: #d4d4d4;
-  color: #1a1a1a;
-}
-.theme-light .target-chip-num {
-  color: #666;
-}
-
 /* ─── New ability form ───────────────────────────────────────────────── */
 
 .new-ability-toggle {

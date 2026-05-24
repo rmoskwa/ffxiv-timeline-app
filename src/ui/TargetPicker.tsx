@@ -6,8 +6,13 @@ import { jobColor } from "./role-color";
 interface TargetPickerProps {
   roster: Roster;
   selectedIds: readonly string[];
-  // 1 for tankbuster_single / targeted / affects:target mit. 2 for tankbuster_shared.
+  // Max slots the user may pick. 1 for tankbuster_single / affects:target,
+  // 2 for tankbuster_shared, up to 8 for `targeted`.
   maxSelections: number;
+  // Minimum slots required for a valid pick. Defaults to maxSelections so the
+  // header reads "(X/N)" for fixed-cardinality patterns. When min < max (only
+  // `targeted` today), the header reads "(X selected)".
+  minSelections?: number;
   onChange: (ids: string[]) => void;
   onClose: () => void;
 }
@@ -19,9 +24,11 @@ export function TargetPicker({
   roster,
   selectedIds,
   maxSelections,
+  minSelections,
   onChange,
   onClose,
 }: TargetPickerProps) {
+  const min = minSelections ?? maxSelections;
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,7 +68,9 @@ export function TargetPicker({
         <span>
           {maxSelections === 1
             ? "Pick target"
-            : `Pick targets (${selectedIds.length}/${maxSelections})`}
+            : min === maxSelections
+              ? `Pick targets (${selectedIds.length}/${maxSelections})`
+              : `Pick targets (${selectedIds.length} selected)`}
         </span>
         <button
           type="button"

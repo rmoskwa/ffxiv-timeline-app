@@ -57,24 +57,36 @@ function mitInstance(overrides: Partial<MitigationInstance> = {}): MitigationIns
   };
 }
 
-describe("targetingForBoss — requiredCount by pattern", () => {
-  it("raidwide → 0", () => {
-    expect(targetingForBoss(bossInstance(), bossType("raidwide")).requiredCount).toBe(0);
+describe("targetingForBoss — min/max counts by pattern", () => {
+  it("raidwide → 0 min, 0 max", () => {
+    const t = targetingForBoss(bossInstance(), bossType("raidwide"));
+    expect(t.minCount).toBe(0);
+    expect(t.maxCount).toBe(0);
   });
-  it("spread → 0", () => {
-    expect(targetingForBoss(bossInstance(), bossType("spread")).requiredCount).toBe(0);
+  it("spread → 0 min, 0 max", () => {
+    const t = targetingForBoss(bossInstance(), bossType("spread"));
+    expect(t.minCount).toBe(0);
+    expect(t.maxCount).toBe(0);
   });
-  it("stack → 0", () => {
-    expect(targetingForBoss(bossInstance(), bossType("stack")).requiredCount).toBe(0);
+  it("stack → 0 min, 0 max", () => {
+    const t = targetingForBoss(bossInstance(), bossType("stack"));
+    expect(t.minCount).toBe(0);
+    expect(t.maxCount).toBe(0);
   });
-  it("tankbuster_single → 1", () => {
-    expect(targetingForBoss(bossInstance(), bossType("tankbuster_single")).requiredCount).toBe(1);
+  it("tankbuster_single → 1 min, 1 max", () => {
+    const t = targetingForBoss(bossInstance(), bossType("tankbuster_single"));
+    expect(t.minCount).toBe(1);
+    expect(t.maxCount).toBe(1);
   });
-  it("targeted → 1", () => {
-    expect(targetingForBoss(bossInstance(), bossType("targeted")).requiredCount).toBe(1);
+  it("tankbuster_shared → 2 min, 2 max", () => {
+    const t = targetingForBoss(bossInstance(), bossType("tankbuster_shared"));
+    expect(t.minCount).toBe(2);
+    expect(t.maxCount).toBe(2);
   });
-  it("tankbuster_shared → 2", () => {
-    expect(targetingForBoss(bossInstance(), bossType("tankbuster_shared")).requiredCount).toBe(2);
+  it("targeted → 1 min, 8 max (any non-empty subset)", () => {
+    const t = targetingForBoss(bossInstance(), bossType("targeted"));
+    expect(t.minCount).toBe(1);
+    expect(t.maxCount).toBe(8);
   });
 });
 
@@ -97,22 +109,39 @@ describe("targetingForBoss — isComplete", () => {
     const inst = bossInstance({ target_slot_ids: ["s0", "s1"] });
     expect(targetingForBoss(inst, bossType("tankbuster_shared")).isComplete).toBe(true);
   });
+  it("targeted is incomplete when empty", () => {
+    expect(targetingForBoss(bossInstance(), bossType("targeted")).isComplete).toBe(false);
+  });
+  it("targeted is complete with one slot (minimum met)", () => {
+    const inst = bossInstance({ target_slot_ids: ["s0"] });
+    expect(targetingForBoss(inst, bossType("targeted")).isComplete).toBe(true);
+  });
+  it("targeted remains complete with multiple slots (under the 8 cap)", () => {
+    const inst = bossInstance({ target_slot_ids: ["s0", "s3", "s7"] });
+    expect(targetingForBoss(inst, bossType("targeted")).isComplete).toBe(true);
+  });
 });
 
-describe("targetingForMit — requiredCount by affects", () => {
-  it("self → 0", () => {
-    expect(targetingForMit(mitInstance(), mitType({ affects: "self" })).requiredCount).toBe(0);
+describe("targetingForMit — min/max counts by affects", () => {
+  it("self → 0/0", () => {
+    const t = targetingForMit(mitInstance(), mitType({ affects: "self" }));
+    expect(t.minCount).toBe(0);
+    expect(t.maxCount).toBe(0);
   });
-  it("party → 0", () => {
-    expect(targetingForMit(mitInstance(), mitType({ affects: "party" })).requiredCount).toBe(0);
+  it("party → 0/0", () => {
+    const t = targetingForMit(mitInstance(), mitType({ affects: "party" }));
+    expect(t.minCount).toBe(0);
+    expect(t.maxCount).toBe(0);
   });
-  it("boss_debuff → 0", () => {
-    expect(targetingForMit(mitInstance(), mitType({ affects: "boss_debuff" })).requiredCount).toBe(
-      0,
-    );
+  it("boss_debuff → 0/0", () => {
+    const t = targetingForMit(mitInstance(), mitType({ affects: "boss_debuff" }));
+    expect(t.minCount).toBe(0);
+    expect(t.maxCount).toBe(0);
   });
-  it("target → 1", () => {
-    expect(targetingForMit(mitInstance(), mitType({ affects: "target" })).requiredCount).toBe(1);
+  it("target → 1/1", () => {
+    const t = targetingForMit(mitInstance(), mitType({ affects: "target" }));
+    expect(t.minCount).toBe(1);
+    expect(t.maxCount).toBe(1);
   });
 });
 

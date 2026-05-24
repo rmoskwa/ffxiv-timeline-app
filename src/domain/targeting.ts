@@ -9,40 +9,59 @@ import type {
   BossAbilityType,
   MitigationInstance,
   MitigationType,
+  TargetPattern,
 } from "./types";
 import { resolveBossAbility } from "./types";
 
 export interface TargetingState {
-  requiredCount: 0 | 1 | 2;
+  // Minimum slots that must be selected for the instance to be "complete".
+  minCount: 0 | 1 | 2;
+  // Maximum slots allowed. Equals minCount for fixed-cardinality patterns;
+  // for `targeted` the max is the full party (8) so users can pick any subset.
+  maxCount: 0 | 1 | 2 | 8;
   selection: readonly string[];
   isComplete: boolean;
 }
 
-// tankbuster_shared needs two slots; tankbuster_single and targeted need one;
-// raidwide / spread / stack need none.
+// Pattern → (min/max). Exposed so type-only callers (e.g. the panel's
+// "+ Add placement" form) can compute counts without fabricating an instance.
+export function targetingCountsForPattern(pattern: TargetPattern): {
+  minCount: 0 | 1 | 2;
+  maxCount: 0 | 1 | 2 | 8;
+} {
+  switch (pattern) {
+    case "tankbuster_shared":
+      return { minCount: 2, maxCount: 2 };
+    case "tankbuster_single":
+      return { minCount: 1, maxCount: 1 };
+    case "targeted":
+      // At least one target required; any non-empty subset of the party allowed.
+      return { minCount: 1, maxCount: 8 };
+    default:
+      return { minCount: 0, maxCount: 0 };
+  }
+}
+
 export function targetingForBoss(inst: BossAbilityInstance, type: BossAbilityType): TargetingState {
   const { target_pattern } = resolveBossAbility(inst, type);
-  const requiredCount: 0 | 1 | 2 =
-    target_pattern === "tankbuster_shared"
-      ? 2
-      : target_pattern === "tankbuster_single" || target_pattern === "targeted"
-        ? 1
-        : 0;
+  const { minCount, maxCount } = targetingCountsForPattern(target_pattern);
   const selection = inst.target_slot_ids;
   return {
-    requiredCount,
+    minCount,
+    maxCount,
     selection,
-    isComplete: selection.length >= requiredCount,
+    isComplete: selection.length >= minCount,
   };
 }
 
 // affects:target is the only mit kind that needs a user-picked recipient.
 export function targetingForMit(inst: MitigationInstance, type: MitigationType): TargetingState {
-  const requiredCount: 0 | 1 = type.affects === "target" ? 1 : 0;
+  const needed = type.affects === "target" ? 1 : 0;
   const selection = inst.target_slot_ids;
   return {
-    requiredCount,
+    minCount: needed,
+    maxCount: needed,
     selection,
-    isComplete: selection.length >= requiredCount,
+    isComplete: selection.length >= needed,
   };
 }
