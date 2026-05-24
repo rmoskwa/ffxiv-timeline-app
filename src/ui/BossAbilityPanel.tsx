@@ -1,8 +1,6 @@
-import { useDraggable } from "@dnd-kit/core";
 import { useState } from "react";
 import type { BossAbilityType, DamageType, TargetPattern } from "@/domain/types";
 import { DuplicateNameError, useTimelineStore } from "@/state/timeline-store";
-import { DRAG_TYPE_BOSS_ABILITY_TYPE } from "./timeline-constants";
 
 const DAMAGE_TYPES: DamageType[] = ["magical", "physical", "unaspected"];
 const TARGET_PATTERNS: TargetPattern[] = [
@@ -21,7 +19,7 @@ export function BossAbilityPanel() {
   return (
     <section className="boss-panel">
       <h3>Boss Abilities</h3>
-      <p className="hint">Drag onto the boss lane to place at a time.</p>
+      <p className="hint">Click the boss lane on the timeline to place at a time.</p>
 
       <ul className="boss-type-list">
         {types.length === 0 ? (
@@ -37,18 +35,8 @@ export function BossAbilityPanel() {
 }
 
 function BossTypeRow({ type, onRemove }: { type: BossAbilityType; onRemove: () => void }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `type-${type.id}`,
-    data: { kind: DRAG_TYPE_BOSS_ABILITY_TYPE, typeId: type.id },
-  });
-
   return (
-    <li
-      ref={setNodeRef}
-      className={`boss-type-row${isDragging ? " dragging" : ""}`}
-      {...attributes}
-      {...listeners}
-    >
+    <li className="boss-type-row">
       <div className="boss-type-name">{type.name}</div>
       <div className="boss-type-meta">
         {type.base_damage > 0 ? `${type.base_damage.toLocaleString()} ` : ""}
@@ -58,11 +46,7 @@ function BossTypeRow({ type, onRemove }: { type: BossAbilityType; onRemove: () =
         type="button"
         className="boss-type-remove"
         title="Delete type (also removes its instances)"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onClick={onRemove}
       >
         ×
       </button>

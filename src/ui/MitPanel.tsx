@@ -1,10 +1,8 @@
-import { useDraggable } from "@dnd-kit/core";
 import { getMitsForJob } from "@/data/mit-library";
 import { formatMitMagnitude, type MitigationType, type PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitIcon } from "./MitIcon";
-import { DRAG_TYPE_MIT } from "./timeline-constants";
 
 export function MitPanel() {
   const roster = useTimelineStore((s) => s.timeline?.roster);
@@ -13,7 +11,7 @@ export function MitPanel() {
   return (
     <section className="mit-panel">
       <h3>Mitigations</h3>
-      <p className="hint">Drag onto the player's own lane to place at a time.</p>
+      <p className="hint">Reference list. Click a player's sub-lane on the timeline to place.</p>
 
       <ul className="mit-slot-list">
         {roster.map((slot, i) => (
@@ -41,30 +39,21 @@ function MitSlotRow({ slot, index }: { slot: PlayerSlot; index: number }) {
         ) : mits.length === 0 ? (
           <span className="mit-empty">No v0.1 mits for {slot.job}</span>
         ) : (
-          mits.map((m) => <MitChip key={m.id} mit={m} slotId={slot.id} />)
+          mits.map((m) => <MitChip key={m.id} mit={m} />)
         )}
       </div>
     </li>
   );
 }
 
-function MitChip({ mit, slotId }: { mit: MitigationType; slotId: string }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `mit-${slotId}-${mit.id}`,
-    data: { kind: DRAG_TYPE_MIT, mitTypeId: mit.id, slotId },
-  });
-
+function MitChip({ mit }: { mit: MitigationType }) {
   return (
-    <button
-      type="button"
-      ref={setNodeRef}
-      className={`mit-chip${isDragging ? " dragging" : ""}`}
+    <span
+      className="mit-chip"
       title={`${mit.name} · ${formatMitMagnitude(mit)} · ${mit.duration_seconds}s/${mit.cooldown_seconds}s`}
-      {...attributes}
-      {...listeners}
     >
       <MitIcon name={mit.name} size={18} title={mit.name} />
       <span className="mit-chip-name">{mit.name}</span>
-    </button>
+    </span>
   );
 }

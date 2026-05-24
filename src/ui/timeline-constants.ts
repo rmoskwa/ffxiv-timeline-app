@@ -45,15 +45,21 @@ export function clampZoom(pxPerSec: number): number {
 // A hit is "lethal" if any player's post-mit damage ≥ PLAYER_MAX_HP.
 export const PLAYER_MAX_HP = 100_000;
 
-// dnd-kit drag-data type tags. Lets onDragEnd route on what kind of payload was dropped.
-export const DRAG_TYPE_BOSS_ABILITY_TYPE = "boss-ability-type" as const;
-export const DROP_TARGET_BOSS_LANE = "boss-lane" as const;
-export const DRAG_TYPE_MIT = "mit" as const;
-export const DROP_TARGET_PLAYER_LANE = "player-lane" as const;
-
 export function secondsToTimecode(sec: number): string {
   const s = Math.max(0, Math.round(sec));
   const m = Math.floor(s / 60);
   const r = s % 60;
   return `${m}:${r.toString().padStart(2, "0")}`;
+}
+
+// Snap a viewport-relative cursor X to the nearest whole second within the lane,
+// clamped to the lane bounds. Shared by every click-to-place / hover-ghost
+// renderer so click commits and ghost previews always agree.
+export function snapClientXToSecond(
+  cursorClientX: number,
+  laneLeft: number,
+  pxPerSec: number,
+): number {
+  const offsetX = cursorClientX - laneLeft;
+  return Math.max(0, Math.min(LANE_DURATION_SEC, Math.round(offsetX / pxPerSec)));
 }

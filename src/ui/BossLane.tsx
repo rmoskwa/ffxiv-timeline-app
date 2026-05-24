@@ -1,9 +1,10 @@
-import { useDroppable } from "@dnd-kit/core";
+import type React from "react";
 import { useEffect, useState } from "react";
 import type { BossAbilityInstance, BossAbilityType, Roster, TargetPattern } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
+import { BossPlacementPicker } from "./BossPlacementPicker";
 import { TargetPicker } from "./TargetPicker";
-import { DROP_TARGET_BOSS_LANE, PLAYER_MAX_HP, secondsToTimecode } from "./timeline-constants";
+import { PLAYER_MAX_HP, secondsToTimecode, snapClientXToSecond } from "./timeline-constants";
 import { useDamageByInstance } from "./use-derived";
 import { useZoom } from "./use-zoom";
 
@@ -21,29 +22,59 @@ export function BossLane() {
   const types = useTimelineStore((s) => s.timeline?.boss_ability_types ?? []);
   const instances = useTimelineStore((s) => s.timeline?.boss_ability_instances ?? []);
   const roster = useTimelineStore((s) => s.timeline?.roster);
+  const addInstance = useTimelineStore((s) => s.addBossAbilityInstance);
   const removeInstance = useTimelineStore((s) => s.removeBossAbilityInstance);
   const updateInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
   const damageByInstance = useDamageByInstance();
   const { pxPerSec, laneWidthPx } = useZoom();
 
-  const typeMap = new Map(types.map((t) => [t.id, t]));
+  const [hoverSec, setHoverSec] = useState<number | null>(null);
+  const [pickerAtSec, setPickerAtSec] = useState<number | null>(null);
 
-  const { isOver, setNodeRef } = useDroppable({
-    id: DROP_TARGET_BOSS_LANE,
-    data: { kind: DROP_TARGET_BOSS_LANE },
-  });
+  const typeMap = new Map(types.map((t) => [t.id, t]));
+  const inert = types.length === 0;
+
+  const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (inert) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHoverSec(snapClientXToSecond(e.clientX, rect.left, pxPerSec));
+  };
+
+  const handleLeave = () => setHoverSec(null);
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (inert) return;
+    // Only fire on clicks landing on the lane-track itself. Clicks on markers
+    // or the open picker have a different target and pass through harmlessly;
+    // overlays with pointer-events: none (ghost, gridlines) fall through.
+    if (e.target !== e.currentTarget) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const sec = snapClientXToSecond(e.clientX, rect.left, pxPerSec);
+    setPickerAtSec(sec);
+  };
 
   if (!roster) return null;
 
   return (
     <div className="lane-row lane-row--boss">
       <div className="lane-label lane-label--boss">Boss</div>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: lane track is a mouse-only placement surface; keyboard placement deferred */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above */}
       <div
-        ref={setNodeRef}
-        className={`lane-track boss-lane-track${isOver ? " drop-active" : ""}`}
+        className={`lane-track boss-lane-track${inert ? " is-inert" : ""}`}
         style={{ width: laneWidthPx }}
+        onPointerMove={inert ? undefined : handleMove}
+        onPointerLeave={inert ? undefined : handleLeave}
+        onClick={inert ? undefined : handleClick}
       >
         <div className="lane-gridlines" aria-hidden />
+        {hoverSec !== null && pickerAtSec === null && (
+          <div
+            className="hover-ghost"
+            style={{ left: hoverSec * pxPerSec, width: Math.max(pxPerSec, 2) }}
+            aria-hidden
+          />
+        )}
         {instances.map((inst) => {
           const type = typeMap.get(inst.type_id);
           if (!type) return null; // orphan instance — store cascade should prevent this
@@ -62,6 +93,19 @@ export function BossLane() {
             />
           );
         })}
+        {pickerAtSec !== null && (
+          <div className="boss-placement-anchor" style={{ left: pickerAtSec * pxPerSec }}>
+            <BossPlacementPicker
+              types={types}
+              onPick={(typeId) => {
+                addInstance({ type_id: typeId, effect_time: pickerAtSec, target_slot_ids: [] });
+                setPickerAtSec(null);
+                setHoverSec(null);
+              }}
+              onClose={() => setPickerAtSec(null)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -89,7 +133,7 @@ function BossMarker({
   const needsTarget = patternNeedsTarget(tp);
   const targetsUnset = needsTarget && instance.target_slot_ids.length === 0;
 
-  // Auto-open picker for newly-dropped instances that still need a target.
+  // Auto-open picker for newly-placed instances that still need a target.
   const [pickerOpen, setPickerOpen] = useState(targetsUnset);
   useEffect(() => {
     if (targetsUnset) setPickerOpen(true);
@@ -116,7 +160,10 @@ function BossMarker({
         type="button"
         className="boss-marker-remove"
         title="Remove this placement"
-        onClick={onRemove}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
       >
         ×
       </button>
@@ -125,7 +172,10 @@ function BossMarker({
           type="button"
           className="boss-marker-pin-button"
           aria-label="Pick target for this hit"
-          onClick={() => setPickerOpen((o) => !o)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setPickerOpen((o) => !o);
+          }}
         >
           <div className="boss-marker-pin" />
           <div className="boss-marker-label">{type.name}</div>
