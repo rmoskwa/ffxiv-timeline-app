@@ -922,6 +922,7 @@ button {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+  min-width: 100%;
   width: max-content; /* sum of label + track width per row */
 }
 
@@ -937,7 +938,11 @@ button {
   z-index: 3;
 }
 .lane-row--boss {
-  /* Height is set inline — grows with the label strip's row count. */
+  /* Height is set inline — grows with the label strip's row count.
+     content-box so the separator border sits below the explicit height
+     instead of being overpainted by .boss-lane-content. */
+  box-sizing: content-box;
+  border-bottom: 10px solid #2a1f15;
 }
 
 /* ─── Player parent lane (header row + N MitSubLanes) ─────────────────── */
@@ -1360,6 +1365,9 @@ button {
 .lane-scroll.theme-light .lane-label--boss {
   background: #fff1e0;
   color: #b86200;
+}
+.lane-scroll.theme-light .lane-row--boss {
+  border-bottom-color: #fff1e0;
 }
 .lane-scroll.theme-light .lane-slot-num {
   color: #888;
