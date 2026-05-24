@@ -45,6 +45,32 @@ export function clampZoom(pxPerSec: number): number {
 // A hit is "lethal" if any player's post-mit damage ≥ PLAYER_MAX_HP.
 export const PLAYER_MAX_HP = 100_000;
 
+// ─── Boss-lane geometry (boss-label redesign PRD §"Design", §"Layout") ────
+// The boss lane is a stack: a label strip above a pin track. Strip height
+// grows with the deepest row in greedy row-packing. Pin track is fixed.
+
+export const BOSS_PIN_HEIGHT = 56;
+export const BOSS_TRACK_HEIGHT = 64; // pin + small breathing room below
+export const LABEL_HEIGHT = 18; // includes 2px transparent border for selection swap
+export const LABEL_ROW_GAP = 4; // vertical gap between stacked strip rows
+export const LABEL_HORIZONTAL_GAP = 4; // horizontal padding between adjacent labels in the same row
+export const LABEL_HORIZONTAL_PADDING = 5; // matches CSS .boss-marker-label padding
+export const STRIP_BOTTOM_PADDING = 4; // gap between the bottom-row label and the pin top
+// Conservative per-character estimate for label width at 0.7rem bold sans-serif.
+// Over-estimating is safer than under-estimating — at worst we use one extra
+// row. If overlap is observed in practice, switch to measured widths
+// (getBoundingClientRect) and re-pack — see PRD §"Layout".
+export const AVG_CHAR_PX = 7;
+
+export function estimateLabelWidth(name: string): number {
+  return name.length * AVG_CHAR_PX + LABEL_HORIZONTAL_PADDING * 2 + 4; // +4 for 2px borders on each side
+}
+
+export function bossLaneStripHeight(rowCount: number): number {
+  if (rowCount <= 0) return 0;
+  return STRIP_BOTTOM_PADDING + rowCount * LABEL_HEIGHT + (rowCount - 1) * LABEL_ROW_GAP;
+}
+
 export function secondsToTimecode(sec: number): string {
   const s = Math.max(0, Math.round(sec));
   const m = Math.floor(s / 60);

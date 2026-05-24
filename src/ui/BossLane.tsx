@@ -1,11 +1,21 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { targetingForBoss } from "@/domain/targeting";
 import type { BossAbilityInstance, BossAbilityType, Roster } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossPlacementPicker } from "./BossPlacementPicker";
+import { packLabelRows } from "./boss-label-packing";
 import { TargetPicker } from "./TargetPicker";
-import { PLAYER_MAX_HP, secondsToTimecode, snapClientXToSecond } from "./timeline-constants";
+import {
+  BOSS_PIN_HEIGHT,
+  BOSS_TRACK_HEIGHT,
+  bossLaneStripHeight,
+  LABEL_HEIGHT,
+  LABEL_ROW_GAP,
+  PLAYER_MAX_HP,
+  secondsToTimecode,
+  snapClientXToSecond,
+} from "./timeline-constants";
 import { useDamageByInstance } from "./use-derived";
 import { useZoom } from "./use-zoom";
 
@@ -14,7 +24,6 @@ export function BossLane() {
   const instances = useTimelineStore((s) => s.timeline?.boss_ability_instances ?? []);
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const addInstance = useTimelineStore((s) => s.addBossAbilityInstance);
-  const removeInstance = useTimelineStore((s) => s.removeBossAbilityInstance);
   const updateInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
   const selectedInstanceId = useTimelineStore((s) => s.selectedInstanceId);
   const selectInstance = useTimelineStore((s) => s.selectInstance);
@@ -25,8 +34,21 @@ export function BossLane() {
   const [hoverSec, setHoverSec] = useState<number | null>(null);
   const [pickerAtSec, setPickerAtSec] = useState<number | null>(null);
 
-  const typeMap = new Map(types.map((t) => [t.id, t]));
+  const typeMap = useMemo(() => new Map(types.map((t) => [t.id, t])), [types]);
   const inert = types.length === 0;
+
+  // Greedy row-packing for label strip. Recomputes whenever the instances,
+  // their type names, or the zoom changes.
+  const packed = useMemo(() => {
+    const items = instances.flatMap((inst) => {
+      const t = typeMap.get(inst.type_id);
+      return t ? [{ id: inst.id, effect_time: inst.effect_time, name: t.name }] : [];
+    });
+    return packLabelRows(items, pxPerSec);
+  }, [instances, typeMap, pxPerSec]);
+
+  const stripHeight = bossLaneStripHeight(packed.rowCount);
+  const contentHeight = stripHeight + BOSS_TRACK_HEIGHT;
 
   const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (inert) return;
@@ -36,7 +58,7 @@ export function BossLane() {
 
   const handleLeave = () => setHoverSec(null);
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (inert) return;
     // Only fire on clicks landing on the lane-track itself. Clicks on markers
     // or the open picker have a different target and pass through harmlessly;
@@ -51,30 +73,51 @@ export function BossLane() {
   if (!roster) return null;
 
   return (
-    <div className="lane-row lane-row--boss">
+    <div className="lane-row lane-row--boss" style={{ height: contentHeight }}>
       <div className="lane-label lane-label--boss">Boss</div>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: lane track is a mouse-only placement surface; keyboard placement deferred */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above */}
-      <div
-        className={`lane-track boss-lane-track${inert ? " is-inert" : ""}`}
-        style={{ width: laneWidthPx }}
-        onPointerMove={inert ? undefined : handleMove}
-        onPointerLeave={inert ? undefined : handleLeave}
-        onClick={inert ? undefined : handleClick}
-      >
-        <div className="lane-gridlines" aria-hidden />
-        {hoverSec !== null && pickerAtSec === null && (
-          <div
-            className="hover-ghost"
-            style={{ left: hoverSec * pxPerSec, width: Math.max(pxPerSec, 2) }}
-            aria-hidden
-          />
-        )}
+      <div className="boss-lane-content" style={{ width: laneWidthPx, height: contentHeight }}>
+        <div
+          className="boss-label-strip"
+          style={{ height: stripHeight }}
+          aria-hidden={packed.rowCount === 0}
+        />
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: lane track is a mouse-only placement surface; keyboard placement deferred */}
+        {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above */}
+        <div
+          className={`lane-track boss-lane-track${inert ? " is-inert" : ""}`}
+          style={{ top: stripHeight, height: BOSS_TRACK_HEIGHT }}
+          onPointerMove={inert ? undefined : handleMove}
+          onPointerLeave={inert ? undefined : handleLeave}
+          onClick={inert ? undefined : handleTrackClick}
+        >
+          <div className="lane-gridlines" aria-hidden />
+          {hoverSec !== null && pickerAtSec === null && (
+            <div
+              className="hover-ghost"
+              style={{ left: hoverSec * pxPerSec, width: Math.max(pxPerSec, 2) }}
+              aria-hidden
+            />
+          )}
+          {pickerAtSec !== null && (
+            <div className="boss-placement-anchor" style={{ left: pickerAtSec * pxPerSec }}>
+              <BossPlacementPicker
+                types={types}
+                onPick={(typeId) => {
+                  addInstance({ type_id: typeId, effect_time: pickerAtSec, target_slot_ids: [] });
+                  setPickerAtSec(null);
+                  setHoverSec(null);
+                }}
+                onClose={() => setPickerAtSec(null)}
+              />
+            </div>
+          )}
+        </div>
         {instances.map((inst) => {
           const type = typeMap.get(inst.type_id);
           if (!type) return null; // orphan instance — store cascade should prevent this
           const damages = damageByInstance.get(inst.id);
           const lethal = damages?.some((d) => d >= PLAYER_MAX_HP) ?? false;
+          const rowIndex = packed.rowByInstanceId.get(inst.id) ?? 0;
           return (
             <BossMarker
               key={inst.id}
@@ -84,25 +127,14 @@ export function BossLane() {
               selected={selectedInstanceId === inst.id}
               roster={roster}
               pxPerSec={pxPerSec}
-              onRemove={() => removeInstance(inst.id)}
+              rowIndex={rowIndex}
+              rowCount={packed.rowCount}
+              stripHeight={stripHeight}
               onSelect={() => selectInstance(inst.id)}
               onPickTargets={(ids) => updateInstance(inst.id, { target_slot_ids: ids })}
             />
           );
         })}
-        {pickerAtSec !== null && (
-          <div className="boss-placement-anchor" style={{ left: pickerAtSec * pxPerSec }}>
-            <BossPlacementPicker
-              types={types}
-              onPick={(typeId) => {
-                addInstance({ type_id: typeId, effect_time: pickerAtSec, target_slot_ids: [] });
-                setPickerAtSec(null);
-                setHoverSec(null);
-              }}
-              onClose={() => setPickerAtSec(null)}
-            />
-          </div>
-        )}
       </div>
     </div>
   );
@@ -115,7 +147,9 @@ function BossMarker({
   selected,
   roster,
   pxPerSec,
-  onRemove,
+  rowIndex,
+  rowCount,
+  stripHeight,
   onSelect,
   onPickTargets,
 }: {
@@ -125,7 +159,9 @@ function BossMarker({
   selected: boolean;
   roster: Roster;
   pxPerSec: number;
-  onRemove: () => void;
+  rowIndex: number;
+  rowCount: number;
+  stripHeight: number;
   onSelect: () => void;
   onPickTargets: (ids: string[]) => void;
 }) {
@@ -138,6 +174,13 @@ function BossMarker({
   useEffect(() => {
     if (targetsUnset) setTargetPickerOpen(true);
   }, [targetsUnset]);
+
+  // Label top offset from strip top — row 0 is the bottom row.
+  const labelTop = (rowCount - 1 - rowIndex) * (LABEL_HEIGHT + LABEL_ROW_GAP);
+  const labelBottom = labelTop + LABEL_HEIGHT;
+  // Leader line spans from label bottom down to pin top (= stripHeight).
+  const leaderTop = labelBottom;
+  const leaderHeight = stripHeight - labelBottom;
 
   const title =
     `${type.name} @ ${secondsToTimecode(instance.effect_time)}\n` +
@@ -157,23 +200,10 @@ function BossMarker({
       title={title}
       data-boss-instance-id={instance.id}
     >
-      <div className="boss-marker-actions">
-        <button
-          type="button"
-          className="boss-marker-remove"
-          title="Remove this placement"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-        >
-          ×
-        </button>
-      </div>
-      <div className="boss-marker-pin" aria-hidden />
       <button
         type="button"
         className="boss-marker-label"
+        style={{ top: labelTop }}
         onClick={(e) => {
           e.stopPropagation();
           onSelect();
@@ -181,8 +211,20 @@ function BossMarker({
       >
         {type.name}
       </button>
+      {leaderHeight > 0 && (
+        <div
+          className="boss-marker-leader"
+          style={{ top: leaderTop, height: leaderHeight }}
+          aria-hidden
+        />
+      )}
+      <div
+        className="boss-marker-pin"
+        style={{ top: stripHeight, height: BOSS_PIN_HEIGHT }}
+        aria-hidden
+      />
       {targetPickerOpen && needsTarget && (
-        <div className="boss-marker-popover">
+        <div className="boss-marker-popover" style={{ top: stripHeight + BOSS_PIN_HEIGHT + 4 }}>
           <TargetPicker
             roster={roster}
             selectedIds={targeting.selection}

@@ -667,7 +667,7 @@ button {
   z-index: 3;
 }
 .lane-row--boss {
-  height: 96px;
+  /* Height is set inline — grows with the label strip's row count. */
 }
 
 /* ─── Player parent lane (header row + N MitSubLanes) ─────────────────── */
@@ -850,23 +850,53 @@ button {
   box-shadow: 0 0 3px rgba(255, 90, 90, 0.4);
 }
 
+/* Boss lane is a stack: a label strip (variable height) above the pin track. */
+.boss-lane-content {
+  position: relative;
+  flex-shrink: 0;
+}
+.boss-label-strip {
+  position: relative;
+  width: 100%;
+  background: #141414;
+  border-bottom: 1px solid #222;
+}
+/* The track sits underneath the strip; its top/height are set inline. */
+.boss-lane-content > .boss-lane-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+/* Each marker spans the full lane-content vertically. Its `left` is the
+   instance's effect_time × pxPerSec; children (label, leader, pin) center
+   themselves on that column with translateX(-50%). */
 .boss-marker {
   position: absolute;
-  top: 8px;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
+  top: 0;
+  bottom: 0;
+  width: 0;
   z-index: 1;
 }
 .boss-marker-pin {
+  position: absolute;
+  left: 0;
   width: 2px;
-  height: 56px;
   background: #f80;
   box-shadow: 0 0 4px rgba(255, 136, 0, 0.5);
+  transform: translateX(-50%);
+}
+.boss-marker-leader {
+  position: absolute;
+  left: 0;
+  width: 1px;
+  background: rgba(255, 136, 0, 0.45);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 .boss-marker-label {
+  position: absolute;
+  left: 0;
   background: #f80;
   color: #111;
   font-size: 0.7rem;
@@ -876,11 +906,13 @@ button {
   border-radius: 3px;
   white-space: nowrap;
   max-width: 140px;
+  height: 18px;
+  line-height: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
   font-family: inherit;
-  line-height: inherit;
+  transform: translateX(-50%);
 }
 .boss-marker--selected .boss-marker-label {
   border-color: #6cf;
@@ -889,32 +921,6 @@ button {
 .lane-scroll.theme-light .boss-marker--selected .boss-marker-label {
   border-color: #1565c0;
   box-shadow: 0 0 0 1px rgba(21, 101, 192, 0.4);
-}
-.boss-marker-actions {
-  display: flex;
-  gap: 4px;
-}
-.boss-marker-remove {
-  background: #222;
-  border: 1px solid #555;
-  color: #aaa;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  font-size: 0.75rem;
-  line-height: 1;
-  padding: 0;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.1s;
-}
-.boss-marker:hover .boss-marker-remove {
-  opacity: 1;
-}
-.boss-marker-remove:hover {
-  background: #3a1f1f;
-  border-color: #c66;
-  color: #f88;
 }
 
 /* ─── Mit bar (duration + faded cooldown) ─────────────────────────────── */
@@ -993,6 +999,9 @@ button {
 .boss-marker--lethal .boss-marker-pin {
   background: #e44;
   box-shadow: 0 0 6px rgba(238, 68, 68, 0.6);
+}
+.boss-marker--lethal .boss-marker-leader {
+  background: rgba(238, 68, 68, 0.45);
 }
 .boss-marker--lethal .boss-marker-label {
   background: #e44;
