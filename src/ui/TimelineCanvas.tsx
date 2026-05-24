@@ -11,6 +11,7 @@ import {
   pickTickIntervalSec,
   ZOOM_WHEEL_FACTOR,
 } from "./timeline-constants";
+import { type AppearanceTheme, useAppearanceStore } from "./use-appearance";
 import { type RowSize, useRowSizeStore } from "./use-row-size";
 import { useViewStore } from "./use-view";
 import { useZoom, useZoomStore } from "./use-zoom";
@@ -28,6 +29,7 @@ export function TimelineCanvas() {
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
   const { pxPerSec } = useZoom();
+  const theme = useAppearanceStore((s) => s.theme);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const setZoom = useZoomStore((s) => s.setZoom);
 
@@ -62,7 +64,7 @@ export function TimelineCanvas() {
   return (
     <div className="timeline-canvas">
       <ZoomToolbar />
-      <div ref={scrollRef} className="lane-scroll" onWheel={handleWheel}>
+      <div ref={scrollRef} className={`lane-scroll theme-${theme}`} onWheel={handleWheel}>
         <div
           className="lane-content"
           style={
@@ -89,6 +91,8 @@ function ZoomToolbar() {
   const reset = useZoomStore((s) => s.reset);
   const rowSize = useRowSizeStore((s) => s.size);
   const setRowSize = useRowSizeStore((s) => s.setSize);
+  const theme = useAppearanceStore((s) => s.theme);
+  const setTheme = useAppearanceStore((s) => s.setTheme);
   const tickIntervalSec = pickTickIntervalSec(pxPerSec);
   const percent = Math.round((pxPerSec / DEFAULT_PX_PER_SEC) * 100);
   const tickLabel = tickIntervalSec >= 60 ? "1m" : `${tickIntervalSec}s`;
@@ -97,6 +101,10 @@ function ZoomToolbar() {
     { value: "sm", label: "Small" },
     { value: "md", label: "Medium" },
     { value: "lg", label: "Large" },
+  ];
+  const themeOptions: readonly { value: AppearanceTheme; label: string }[] = [
+    { value: "light", label: "Light" },
+    { value: "dark", label: "Dark" },
   ];
 
   return (
@@ -140,6 +148,20 @@ function ZoomToolbar() {
             className={`toolbar-toggle${rowSize === opt.value ? " is-selected" : ""}`}
             onClick={() => setRowSize(opt.value)}
             aria-pressed={rowSize === opt.value}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      <span className="timeline-toolbar-title">Timeline Appearance:</span>
+      <div className="timeline-toolbar-zoom">
+        {themeOptions.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            className={`toolbar-toggle${theme === opt.value ? " is-selected" : ""}`}
+            onClick={() => setTheme(opt.value)}
+            aria-pressed={theme === opt.value}
           >
             {opt.label}
           </button>

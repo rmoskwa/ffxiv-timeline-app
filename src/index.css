@@ -1039,6 +1039,88 @@ button {
   animation: mit-bar-flash 1.2s ease-out;
 }
 
+/* ─── Light appearance overrides (scoped to lane-scroll subtree) ──────── */
+
+.lane-scroll.theme-light {
+  background: #ffffff;
+}
+.lane-scroll.theme-light .lane-row,
+.lane-scroll.theme-light .player-parent-lane {
+  border-bottom-color: #d4d4d4;
+}
+.lane-scroll.theme-light .player-header-row {
+  border-bottom-color: #e6e6e6;
+}
+.lane-scroll.theme-light .sub-lane {
+  border-bottom-color: #ececec;
+}
+.lane-scroll.theme-light .lane-label,
+.lane-scroll.theme-light .lane-label--player,
+.lane-scroll.theme-light .sub-lane-label,
+.lane-scroll.theme-light .lane-label--player-header {
+  background: #f3f3f3;
+  color: #333;
+  border-right-color: #d4d4d4;
+}
+.lane-scroll.theme-light .lane-label--ruler {
+  background: #ececec;
+}
+.lane-scroll.theme-light .lane-label--boss {
+  background: #fff1e0;
+  color: #b86200;
+}
+.lane-scroll.theme-light .lane-slot-num {
+  color: #888;
+}
+.lane-scroll.theme-light .player-header-track,
+.lane-scroll.theme-light .boss-lane-track,
+.lane-scroll.theme-light .sub-lane-track {
+  background: #ffffff;
+}
+.lane-scroll.theme-light .ruler-track {
+  background: #ececec;
+  border-bottom-color: #d4d4d4;
+}
+.lane-scroll.theme-light .tick {
+  background: #c8c8c8;
+}
+.lane-scroll.theme-light .tick.tick--labeled {
+  background: #888;
+}
+.lane-scroll.theme-light .tick-label {
+  color: #555;
+}
+.lane-scroll.theme-light .lane-gridlines {
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(var(--tick-px, 360px) - 1px),
+    rgba(0, 0, 0, 0.06) calc(var(--tick-px, 360px) - 1px),
+    rgba(0, 0, 0, 0.06) var(--tick-px, 360px)
+  );
+}
+.lane-scroll.theme-light .mit-bar-duration {
+  border-color: rgba(0, 0, 0, 0.25);
+}
+.lane-scroll.theme-light .mit-bar-cooldown {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(80, 80, 80, 0.3) 0 6px,
+    rgba(80, 80, 80, 0.1) 6px 12px
+  );
+  border-color: rgba(80, 80, 80, 0.45);
+}
+.lane-scroll.theme-light .damage-chip {
+  background: rgba(248, 248, 248, 0.95);
+  color: #1a7a3a;
+  border-color: #b8d4be;
+}
+.lane-scroll.theme-light .damage-chip--lethal {
+  background: #ffe6e6;
+  color: #a02020;
+  border-color: #c33;
+}
+
 /* ─── Conflicts panel (right sidebar) ─────────────────────────────────── */
 
 .conflicts-panel {
