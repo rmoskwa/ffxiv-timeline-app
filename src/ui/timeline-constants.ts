@@ -78,6 +78,24 @@ export function secondsToTimecode(sec: number): string {
   return `${m}:${r.toString().padStart(2, "0")}`;
 }
 
+// Inverse of secondsToTimecode. Accepts mm:ss[.s] or a bare seconds number.
+// Snaps to whole seconds (canvas placement precision). Returns null on invalid.
+export function parseTimecode(input: string): number | null {
+  const trimmed = input.trim();
+  if (trimmed === "") return null;
+  const colonMatch = /^(\d+):(\d+(?:\.\d+)?)$/.exec(trimmed);
+  if (colonMatch) {
+    const minutes = Number.parseInt(colonMatch[1] ?? "0", 10);
+    const seconds = Number.parseFloat(colonMatch[2] ?? "0");
+    if (!Number.isFinite(minutes) || !Number.isFinite(seconds)) return null;
+    if (seconds >= 60) return null;
+    return Math.round(minutes * 60 + seconds);
+  }
+  const n = Number(trimmed);
+  if (Number.isFinite(n) && n >= 0) return Math.round(n);
+  return null;
+}
+
 // Snap a viewport-relative cursor X to the nearest whole second within the lane,
 // clamped to the lane bounds. Shared by every click-to-place / hover-ghost
 // renderer so click commits and ghost previews always agree.

@@ -418,61 +418,313 @@ button {
   font-size: 0.75rem;
 }
 .boss-type-list {
-  list-style: none;
   margin: 0 0 0.75rem;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
 .boss-type-list .empty {
   color: #666;
   font-size: 0.8rem;
   font-style: italic;
   padding: 0.5rem 0;
+  margin: 0;
 }
-.boss-type-row {
-  background: #2a2a2a;
-  border: 1px solid #3a3a3a;
+
+/* ─── Type entry (control room) ───────────────────────────────────────── */
+
+.boss-type-entry {
+  background: #232323;
+  border: 1px solid #353535;
   border-radius: 4px;
-  padding: 0.4rem 0.5rem;
-  position: relative;
+  padding: 0.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.45rem;
 }
-.boss-type-row:hover {
-  border-color: #555;
-  background: #303030;
+.boss-type-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3rem;
 }
-.boss-type-name {
+.boss-type-name-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.boss-type-name-input {
+  background: transparent;
+  color: #f0f0f0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 0.2rem 0.3rem;
+  font: inherit;
+  font-size: 0.9rem;
   font-weight: 600;
-  font-size: 0.85rem;
-  padding-right: 1.25rem;
+  width: 100%;
 }
-.boss-type-meta {
-  color: #888;
-  font-size: 0.7rem;
+.boss-type-name-input:hover,
+.boss-type-name-input:focus {
+  border-color: #555;
+  background: #1a1a1a;
+  outline: none;
 }
 .boss-type-remove {
-  position: absolute;
-  top: 0.25rem;
-  right: 0.3rem;
   background: transparent;
   color: #666;
   border: none;
   cursor: pointer;
   font-size: 1rem;
   line-height: 1;
-  padding: 0.1rem 0.25rem;
+  padding: 0.2rem 0.35rem;
   border-radius: 2px;
-}
-.boss-type-row:hover .boss-type-remove {
-  color: #c66;
 }
 .boss-type-remove:hover {
   background: #3a1f1f;
   color: #f88;
+}
+
+.boss-type-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.boss-type-fields .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+}
+.boss-type-fields .field span {
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.62rem;
+}
+.boss-type-fields input,
+.boss-type-fields select,
+.boss-type-fields textarea {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a3a;
+  border-radius: 3px;
+  padding: 0.25rem 0.35rem;
+  font: inherit;
+  font-size: 0.8rem;
+}
+.boss-type-fields textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+.field-row--three {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.4rem;
+}
+
+/* ─── Instance sub-rows ───────────────────────────────────────────────── */
+
+.boss-instance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border-top: 1px solid #333;
+  padding-top: 0.4rem;
+}
+.boss-instance-row {
+  position: relative;
+  background: #1c1c1c;
+  border: 1px solid transparent;
+  border-radius: 3px;
+}
+.boss-instance-row:hover {
+  border-color: #444;
+}
+.boss-instance-row--selected {
+  border-color: #6cf;
+  box-shadow: 0 0 0 1px rgba(102, 204, 255, 0.4);
+}
+.boss-instance-row-body {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.4rem;
+  cursor: pointer;
+}
+.boss-instance-timecode {
+  background: #141414;
+  color: #e0e0e0;
+  border: 1px solid #3a3a3a;
+  border-radius: 3px;
+  padding: 0.2rem 0.3rem;
+  font: inherit;
+  font-size: 0.8rem;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+.boss-instance-timecode.is-invalid {
+  border-color: #e44;
+}
+.boss-instance-targets {
+  font-size: 0.75rem;
+  color: #ccc;
+  overflow: hidden;
+}
+.boss-instance-targets-none {
+  color: #555;
+}
+.boss-instance-targets-unset {
+  color: #fa3;
+  font-style: italic;
+}
+.target-chip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+.target-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: #252525;
+  border: 1px solid #383838;
+  border-radius: 3px;
+  padding: 0.05rem 0.25rem;
+  font-size: 0.7rem;
+  color: #ddd;
+}
+.target-chip-num {
+  color: #888;
+  font-size: 0.65rem;
+}
+.boss-instance-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.boss-instance-delete {
+  background: transparent;
+  color: #666;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  border-radius: 2px;
+}
+.boss-instance-delete:hover {
+  background: #3a1f1f;
+  color: #f88;
+}
+
+/* Re-target popover anchored under the Re-target button / Add Placement form. */
+.re-target-popover {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ─── Add placement mini-form ─────────────────────────────────────────── */
+
+.add-placement-toggle {
+  background: transparent;
+  color: #9cf;
+  border: 1px dashed #3a5a7a;
+  border-radius: 3px;
+  padding: 0.25rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  width: 100%;
+}
+.add-placement-toggle:hover {
+  background: #1f2a35;
+}
+.add-placement-form {
+  position: relative;
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  border-radius: 3px;
+  padding: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.add-placement-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.add-placement-row .boss-instance-timecode {
+  flex: 1;
+}
+.add-placement-form .form-actions button[type="button"]:not(.link-button) {
+  background: #4a8;
+  color: #111;
+  border: none;
+  border-radius: 3px;
+  padding: 0.25rem 0.6rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* ─── Light-theme overrides for the panel ─────────────────────────────── */
+
+.lane-scroll.theme-light .boss-type-entry,
+.theme-light .boss-type-entry {
+  background: #fafafa;
+  border-color: #d4d4d4;
+}
+.theme-light .boss-type-name-input {
+  color: #1a1a1a;
+}
+.theme-light .boss-type-name-input:hover,
+.theme-light .boss-type-name-input:focus {
+  background: #fff;
+  border-color: #c0c0c0;
+}
+.theme-light .boss-type-fields input,
+.theme-light .boss-type-fields select,
+.theme-light .boss-type-fields textarea {
+  background: #fff;
+  color: #1a1a1a;
+  border-color: #d4d4d4;
+}
+.theme-light .boss-instance-list {
+  border-top-color: #e0e0e0;
+}
+.theme-light .boss-instance-row {
+  background: #f3f3f3;
+}
+.theme-light .boss-instance-row:hover {
+  border-color: #c0c0c0;
+}
+.theme-light .boss-instance-timecode {
+  background: #fff;
+  color: #1a1a1a;
+  border-color: #c0c0c0;
+}
+.theme-light .target-chip {
+  background: #ececec;
+  border-color: #d4d4d4;
+  color: #1a1a1a;
+}
+.theme-light .target-chip-num {
+  color: #666;
 }
 
 /* ─── New ability form ───────────────────────────────────────────────── */
