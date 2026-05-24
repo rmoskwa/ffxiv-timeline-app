@@ -894,6 +894,18 @@ button {
   transform: translateX(-50%);
   pointer-events: none;
 }
+.boss-marker-echo {
+  position: absolute;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  color: #f80;
+  pointer-events: none;
+}
 .boss-marker-label {
   position: absolute;
   left: 0;
@@ -1006,6 +1018,9 @@ button {
 .boss-marker--lethal .boss-marker-label {
   background: #e44;
   color: #1a1a1a;
+}
+.boss-marker--lethal .boss-marker-echo {
+  color: #e44;
 }
 
 /* ─── Per-player damage chip (rendered in the player parent-lane header) ─ */
@@ -1373,6 +1388,9 @@ button {
   color: #111;
   outline: 1px dashed #fc6;
   outline-offset: 1px;
+}
+.boss-marker--needs-target .boss-marker-echo {
+  color: #fa3;
 }
 .mit-bar--needs-target .mit-bar-duration {
   border: 1px dashed #fa3;
