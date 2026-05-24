@@ -94,12 +94,8 @@ _Avoid_: deadly, fatal, kill
 A flagged problem in the current timeline detected by pure-function inspection. Kinds: `cooldown_overlap`, `orphan_mit`, `unset_target`. Distinct from a validation *error* — a timeline with conflicts is still loadable and editable.
 _Avoid_: error, warning, problem
 
-**Override**:
-An instance-level value that supersedes its type's default (e.g. a `damage_override` on a boss instance whose damage differs from other instances of the same type).
-_Avoid_: customization, per-instance value
-
 **Schema version**:
-The integer at the root of a saved timeline file. The deserializer migrates older versions forward inline. Currently `2` (post the Targeting refactor that unified `target_slot_id?` and `target_slot_ids`).
+The integer at the root of a saved timeline file. The deserializer migrates older versions forward inline. Currently `3` (post the boss-instance override removal — `damage_override` and `target_pattern_override` are no longer modeled; type-level values are read directly).
 _Avoid_: file version, format version
 
 ### Canvas
@@ -119,8 +115,24 @@ The time-axis strip inside a Lane or Sub-lane — a single continuous surface, n
 _Avoid_: timeline, strip, lane track (use just "track")
 
 **Marker**:
-How a boss instance renders on the boss lane's Track — a point-in-time pin plus the ability's name. Boss hits are instantaneous, so markers have no width. Boss-only — mits never render as markers.
-_Avoid_: pin (the pin is a *part* of a marker), node, point
+How a boss instance renders on the boss lane. A composite of three visually separated parts: a **Pin** on the lane's Track, a **Label** in the **Label strip** above the track, and a **Leader line** connecting them. Boss hits are instantaneous, so markers have no horizontal width. Boss-only — mits never render as markers.
+_Avoid_: node, point
+
+**Pin**:
+The point-in-time visual on the boss-lane Track that anchors a **Marker** to its `effect_time`. Carries a small target-pattern glyph at its tip (the "pin echo"), encoding the instance's `target_pattern` visually. Not interactive — the **Label** is the sole click target for the marker.
+_Avoid_: dot, node, anchor
+
+**Label**:
+The name-only text chip displayed in the **Label strip** above the boss lane, connected to its **Pin** by a **Leader line**. The primary (and only) click target for selecting a boss instance on the canvas. Carries visual state for *lethal* (red text), *unset target* (yellow tint), and *selected* (blue border).
+_Avoid_: name tag, chip (in user-facing prose), title
+
+**Label strip**:
+The horizontal band immediately above the boss-lane Track that holds all **Labels** for boss instances on the lane. Labels are placed by greedy row-packing in time order; rows stack upward when labels would horizontally collide. The strip's vertical height grows without bound to fit the deepest stack.
+_Avoid_: header, label row, label band
+
+**Leader line**:
+The thin vertical line connecting a **Label** in the **Label strip** to its **Pin** on the boss-lane Track. Lengthens as the label is shifted up to a higher row.
+_Avoid_: connector, guide, lead
 
 **Bar**:
 How a mit instance renders on a sub-lane's Track — a horizontal range spanning `[effect_time, effect_time + cooldown_seconds]`. Mit-only — boss instances never render as bars. Composed of two visually distinct parts:
@@ -133,3 +145,7 @@ _Avoid_: block, segment (use "active segment" or "cooldown tail" explicitly), sp
 **Damage chip**:
 The per-player numeric damage readout that appears on a player lane's header track at each hit time. Tagged as *lethal* when post-mit damage ≥ `PLAYER_MAX_HP`.
 _Avoid_: damage label, hit chip, number tag
+
+**Selection**:
+The transient state marking one boss instance as the focus of editing. Bidirectional — clicking a **Label** on the canvas highlights the corresponding instance sub-row in the BOSS ABILITIES panel (and scrolls it into view); clicking a sub-row in the panel highlights and scrolls to its label on the canvas. Pressing `Delete` removes the selected instance; `Esc` deselects. Visually: a blue border on the label and an accent on the panel sub-row.
+_Avoid_: focus, highlight, active
