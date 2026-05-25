@@ -49,16 +49,3 @@ export function useConflicts(): Conflict[] {
     );
   }, [timeline]);
 }
-
-// Convenience: the set of mit instance IDs flagged with a cooldown_overlap
-// conflict. Used by MitBar to apply the red-border class.
-export function useCooldownOverlapMitIds(): ReadonlySet<string> {
-  const conflicts = useConflicts();
-  return useMemo(() => {
-    const s = new Set<string>();
-    for (const c of conflicts) {
-      if (c.kind === "cooldown_overlap") s.add(c.mit_instance_id);
-    }
-    return s;
-  }, [conflicts]);
-}

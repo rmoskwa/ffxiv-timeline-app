@@ -19,7 +19,9 @@ export function BossAbilityPanel() {
   const types = useTimelineStore((s) => s.timeline?.boss_ability_types ?? []);
   const instances = useTimelineStore((s) => s.timeline?.boss_ability_instances ?? []);
   const roster = useTimelineStore((s) => s.timeline?.roster);
-  const selectedInstanceId = useTimelineStore((s) => s.selectedInstanceId);
+  const selectedBossInstanceId = useTimelineStore((s) =>
+    s.selectedInstance?.kind === "boss" ? s.selectedInstance.id : null,
+  );
   const deselectInstance = useTimelineStore((s) => s.deselectInstance);
   const [newTypeFormOpen, setNewTypeFormOpen] = useState(false);
   const [expandedTypeId, setExpandedTypeId] = useState<string | null>(null);
@@ -35,14 +37,14 @@ export function BossAbilityPanel() {
     return m;
   }, [instances]);
 
-  // When an instance is selected anywhere (canvas marker, panel sub-row,
+  // When a boss instance is selected anywhere (canvas marker, panel sub-row,
   // conflicts panel), make sure its parent type is the one expanded so the
   // sub-row is actually rendered to scroll to.
   useEffect(() => {
-    if (!selectedInstanceId) return;
-    const inst = instances.find((i) => i.id === selectedInstanceId);
+    if (!selectedBossInstanceId) return;
+    const inst = instances.find((i) => i.id === selectedBossInstanceId);
     if (inst) setExpandedTypeId(inst.type_id);
-  }, [selectedInstanceId, instances]);
+  }, [selectedBossInstanceId, instances]);
 
   // Canvas → panel sync: scroll the selected sub-row into view whenever
   // selection changes (no-op if the row is already visible). Instance ids
@@ -51,12 +53,12 @@ export function BossAbilityPanel() {
   // once its parent type is the expanded one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: expandedTypeId gates DOM presence of the queried row
   useEffect(() => {
-    if (!selectedInstanceId) return;
+    if (!selectedBossInstanceId) return;
     const el = document.querySelector<HTMLElement>(
-      `.boss-instance-row[data-boss-instance-id="${selectedInstanceId}"]`,
+      `.boss-instance-row[data-boss-instance-id="${selectedBossInstanceId}"]`,
     );
     el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [selectedInstanceId, expandedTypeId]);
+  }, [selectedBossInstanceId, expandedTypeId]);
 
   if (!roster) return null;
 
@@ -342,14 +344,16 @@ function InstanceSubRow({
   type: BossAbilityType;
   roster: Roster;
 }) {
-  const selectedInstanceId = useTimelineStore((s) => s.selectedInstanceId);
-  const selectInstance = useTimelineStore((s) => s.selectInstance);
+  const selectedBossInstanceId = useTimelineStore((s) =>
+    s.selectedInstance?.kind === "boss" ? s.selectedInstance.id : null,
+  );
+  const selectBossInstance = useTimelineStore((s) => s.selectBossInstance);
   const removeInstance = useTimelineStore((s) => s.removeBossAbilityInstance);
   const updateInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
   const fightDurationSec = useTimelineStore((s) => s.timeline?.metadata.fight_duration_sec ?? 0);
 
   const targeting = targetingForBoss(instance, type);
-  const selected = selectedInstanceId === instance.id;
+  const selected = selectedBossInstanceId === instance.id;
   const [retargetOpen, setRetargetOpen] = useState(false);
 
   return (
@@ -359,7 +363,7 @@ function InstanceSubRow({
     >
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard nav lives on the canvas; the row's nested controls are individually focusable */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: the row is a click-to-select wrapper; nested inputs handle their own activation */}
-      <div className="boss-instance-row-body" onClick={() => selectInstance(instance.id)}>
+      <div className="boss-instance-row-body" onClick={() => selectBossInstance(instance.id)}>
         <TimecodeField
           value={instance.effect_time}
           maxSec={fightDurationSec}
@@ -375,7 +379,7 @@ function InstanceSubRow({
               className="link-button"
               onClick={(e) => {
                 e.stopPropagation();
-                selectInstance(instance.id);
+                selectBossInstance(instance.id);
                 setRetargetOpen((o) => !o);
               }}
             >

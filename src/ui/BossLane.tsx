@@ -33,8 +33,10 @@ export function BossLane() {
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const addInstance = useTimelineStore((s) => s.addBossAbilityInstance);
   const updateInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
-  const selectedInstanceId = useTimelineStore((s) => s.selectedInstanceId);
-  const selectInstance = useTimelineStore((s) => s.selectInstance);
+  const selectedBossInstanceId = useTimelineStore((s) =>
+    s.selectedInstance?.kind === "boss" ? s.selectedInstance.id : null,
+  );
+  const selectBossInstance = useTimelineStore((s) => s.selectBossInstance);
   const deselectInstance = useTimelineStore((s) => s.deselectInstance);
   const damageByInstance = useDamageByInstance();
   const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
@@ -45,12 +47,12 @@ export function BossLane() {
   // Panel → canvas sync: when selection changes (from any source), center the
   // corresponding marker horizontally. No-op if already in view.
   useEffect(() => {
-    if (!selectedInstanceId) return;
+    if (!selectedBossInstanceId) return;
     const el = document.querySelector<HTMLElement>(
-      `.boss-marker[data-boss-instance-id="${selectedInstanceId}"]`,
+      `.boss-marker[data-boss-instance-id="${selectedBossInstanceId}"]`,
     );
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-  }, [selectedInstanceId]);
+  }, [selectedBossInstanceId]);
 
   const typeMap = useMemo(() => new Map(types.map((t) => [t.id, t])), [types]);
   const inert = types.length === 0;
@@ -145,13 +147,13 @@ export function BossLane() {
               instance={inst}
               type={type}
               lethal={lethal}
-              selected={selectedInstanceId === inst.id}
+              selected={selectedBossInstanceId === inst.id}
               roster={roster}
               pxPerSec={pxPerSec}
               laneWidthPx={laneWidthPx}
               rowIndex={rowIndex}
               stripHeight={stripHeight}
-              onSelect={() => selectInstance(inst.id)}
+              onSelect={() => selectBossInstance(inst.id)}
               onPickTargets={(ids) => updateInstance(inst.id, { target_slot_ids: ids })}
             />
           );

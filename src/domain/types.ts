@@ -170,7 +170,7 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 5 as const;
+export const TIMELINE_SCHEMA_VERSION = 6 as const;
 
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 

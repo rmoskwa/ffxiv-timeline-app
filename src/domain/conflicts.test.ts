@@ -44,54 +44,6 @@ function mit(
   return { id, type_id, player_slot_id, effect_time, target_slot_ids: [], coverage_overrides: [] };
 }
 
-describe("detectConflicts — cooldown overlap", () => {
-  it("flags a second placement before cooldown ends", () => {
-    const a = mit("a", "s0", 0);
-    const b = mit("b", "s0", 60); // 60 < 0 + 90 → conflict
-    const conflicts = detectConflicts([a, b], lookup, ROSTER);
-
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]).toMatchObject<Partial<Conflict>>({
-      kind: "cooldown_overlap",
-      mit_instance_id: "b",
-      conflicts_with_id: "a",
-    });
-  });
-
-  it("does not flag placement at the exact cooldown boundary", () => {
-    const a = mit("a", "s0", 0);
-    const b = mit("b", "s0", 90); // exactly cooldown end — available
-    const conflicts = detectConflicts([a, b], lookup, ROSTER);
-    expect(conflicts).toHaveLength(0);
-  });
-
-  it("does not conflict across different player slots", () => {
-    // Use a roster where both s0 and s1 are DRK so neither mit orphans.
-    const twoDrk = [...ROSTER] as unknown as Roster;
-    (twoDrk as { [k: number]: { id: string; job: string } })[1] = {
-      id: "s1",
-      job: "DRK",
-    };
-    const a = mit("a", "s0", 0);
-    const b = mit("b", "s1", 10); // different slot, same mit type — OK
-    expect(detectConflicts([a, b], lookup, twoDrk)).toHaveLength(0);
-  });
-
-  it("flags every overlapping placement in a chain", () => {
-    // 3 Ramparts at 0/30/60 on the same slot — both subsequent ones conflict.
-    const a = mit("a", "s0", 0);
-    const b = mit("b", "s0", 30);
-    const c = mit("c", "s0", 60);
-    const conflicts = detectConflicts([a, b, c], lookup, ROSTER);
-    expect(conflicts).toHaveLength(2);
-    const ids = conflicts
-      .filter((x) => x.kind === "cooldown_overlap")
-      .map((x) => x.mit_instance_id)
-      .sort();
-    expect(ids).toEqual(["b", "c"]);
-  });
-});
-
 describe("detectConflicts — orphan mits", () => {
   it("flags a DRK mit on a WAR slot", () => {
     const warRoster = [...ROSTER] as unknown as Roster;

@@ -5,7 +5,6 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { MitBar } from "./MitBar";
 import { MitIcon } from "./MitIcon";
 import { snapClientXToSecond } from "./timeline-constants";
-import { useCooldownOverlapMitIds } from "./use-derived";
 import { useRowSize } from "./use-row-size";
 import { useZoom } from "./use-zoom";
 
@@ -23,34 +22,63 @@ interface MitSubLaneProps {
 }
 
 // One row per (player slot, mit type). The whole row's track is the click
-// surface for placing a new instance of this mit. MitBars rendered inside
-// stopPropagation, so clicking on an existing bar or its cooldown tail does
-// nothing (same-mit overlap is blocked — see grilling Q11).
+// surface for placing a new instance of this mit. The hover ghost only
+// renders when the cursor sits in a legal slot — clicking elsewhere is a
+// no-op, so two bars on the same sub-lane can never overlap by construction.
+// A bar's footprint may extend past the timeline end (the buff outlasts the
+// encounter); the portion past `laneDurationSec` is clipped visually.
 export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLaneProps) {
   const addMit = useTimelineStore((s) => s.addMitigationInstance);
-  const conflictIds = useCooldownOverlapMitIds();
   const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
   const { subLaneHeight } = useRowSize();
   const [hoverSec, setHoverSec] = useState<number | null>(null);
 
+  const neighborTimes = instances.map((m) => m.effect_time);
+
+  const legalHoverSec = (raw: number): number | null => {
+    if (raw < 0 || raw > laneDurationSec) return null;
+    for (const n of neighborTimes) {
+      const nEnd = n + mitType.cooldown_seconds;
+      if (raw < nEnd && raw + mitType.cooldown_seconds > n) return null;
+    }
+    return raw;
+  };
+
   const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setHoverSec(snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec));
+    const raw = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec);
+    setHoverSec(legalHoverSec(raw));
   };
 
   const handleLeave = () => setHoverSec(null);
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only fire on clicks landing on the lane-track itself. Clicks on an
-    // existing MitBar (covered region) fall through here — same-mit overlap
-    // is blocked per the design (Q11). pointer-events:none overlays (ghost,
-    // damage-guide, gridlines) pass clicks through to currentTarget.
-    if (e.target !== e.currentTarget) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const sec = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec);
-    addMit({ type_id: mitType.id, player_slot_id: slot.id, effect_time: sec, target_slot_ids: [] });
+    const raw = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec);
+    if (legalHoverSec(raw) === null) return;
+    addMit({
+      type_id: mitType.id,
+      player_slot_id: slot.id,
+      effect_time: raw,
+      target_slot_ids: [],
+    });
     setHoverSec(null);
   };
+
+  const ghostActivePx =
+    hoverSec === null
+      ? 0
+      : Math.max(0, Math.min(mitType.duration_seconds, laneDurationSec - hoverSec)) * pxPerSec;
+  const ghostCooldownTailPx =
+    hoverSec === null
+      ? 0
+      : Math.max(
+          0,
+          Math.min(
+            mitType.cooldown_seconds - mitType.duration_seconds,
+            laneDurationSec - hoverSec - mitType.duration_seconds,
+          ),
+        ) * pxPerSec;
 
   return (
     <div className="sub-lane" style={{ minHeight: subLaneHeight }}>
@@ -77,14 +105,15 @@ export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLane
           />
         ))}
         {hoverSec !== null && (
-          <div
-            className="hover-ghost"
-            style={{ left: hoverSec * pxPerSec, width: Math.max(pxPerSec, 2) }}
-            aria-hidden
-          />
+          <div className="hover-ghost" style={{ left: hoverSec * pxPerSec }} aria-hidden>
+            <div className="hover-ghost-active" style={{ width: ghostActivePx }} />
+            {ghostCooldownTailPx > 0 && (
+              <div className="hover-ghost-cooldown" style={{ width: ghostCooldownTailPx }} />
+            )}
+          </div>
         )}
         {instances.map((m) => (
-          <MitBar key={m.id} instance={m} type={mitType} hasConflict={conflictIds.has(m.id)} />
+          <MitBar key={m.id} instance={m} type={mitType} />
         ))}
       </div>
     </div>

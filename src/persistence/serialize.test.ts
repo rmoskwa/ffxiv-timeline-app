@@ -8,8 +8,8 @@ describe("deserialize — version gate", () => {
     expect(() => deserialize(json)).toThrow(SchemaVersionError);
   });
 
-  it("rejects a pre-v4 file (no migrators)", () => {
-    const json = JSON.stringify({ schema_version: 3 });
+  it("rejects a previous-version file (no migrators)", () => {
+    const json = JSON.stringify({ schema_version: 5 });
     expect(() => deserialize(json)).toThrow(SchemaVersionError);
   });
 

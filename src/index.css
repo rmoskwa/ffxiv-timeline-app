@@ -1333,19 +1333,34 @@ button {
   pointer-events: none;
 }
 
-/* ─── Hover ghost (snapped 1-second block under the cursor) ───────────── */
+/* ─── Hover ghost (footprint preview: active segment + cooldown tail) ───── */
 
+/* The ghost mirrors the bar's two-part structure: an active green block sized
+   to duration_seconds, then a muted-grey tail for the remaining cooldown. */
 .hover-ghost {
   position: absolute;
   top: 2px;
   bottom: 2px;
-  background: rgba(120, 220, 120, 0.18);
-  border-left: 1px dashed rgba(120, 220, 120, 0.55);
-  border-right: 1px dashed rgba(120, 220, 120, 0.55);
   pointer-events: none;
+  display: flex;
+  flex-direction: row;
   /* Above mit-bars (no z-index) but below sticky labels (z-index: 2) so the
      placement preview stays hidden when the timeline scrolls past it. */
   z-index: 1;
+}
+.hover-ghost-active {
+  height: 100%;
+  background: rgba(120, 220, 120, 0.22);
+  border: 1px solid rgba(120, 220, 120, 0.5);
+  border-radius: 3px 0 0 3px;
+}
+.hover-ghost-cooldown {
+  height: 50%;
+  align-self: center;
+  background: rgba(160, 160, 160, 0.16);
+  border: 1px solid rgba(160, 160, 160, 0.35);
+  border-left: none;
+  border-radius: 0 3px 3px 0;
 }
 
 /* ─── Per-player damage guide (vertical line across one sub-lane) ─────── */
@@ -1494,29 +1509,27 @@ button {
   border-left: none;
   border-radius: 0 3px 3px 0;
 }
-.mit-bar-remove {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  background: rgba(20, 20, 20, 0.6);
-  border: none;
-  color: #f5f5f5;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  font-size: 0.75rem;
-  line-height: 1;
-  padding: 0;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.1s;
+/* The bar is the click-and-drag target for selecting/moving a mit. Cursor
+   feedback differentiates the resting (move) state from an active drag. */
+.mit-bar {
+  cursor: grab;
 }
-.mit-bar:hover .mit-bar-remove {
-  opacity: 1;
+.mit-bar.mit-bar--dragging {
+  cursor: grabbing;
+  opacity: 0.85;
 }
-.mit-bar-remove:hover {
-  background: #3a1f1f;
-  color: #f88;
+
+/* Mit selection (blue border) mirrors the boss-label selected look so the
+   two selection kinds read the same. */
+.mit-bar--selected .mit-bar-duration,
+.mit-bar--selected .mit-bar-cooldown {
+  border-color: #6cf;
+  box-shadow: 0 0 0 1px rgba(102, 204, 255, 0.4) inset;
+}
+.lane-scroll.theme-light .mit-bar--selected .mit-bar-duration,
+.lane-scroll.theme-light .mit-bar--selected .mit-bar-cooldown {
+  border-color: #1565c0;
+  box-shadow: 0 0 0 1px rgba(21, 101, 192, 0.4) inset;
 }
 
 /* ─── Lethal heatmap on boss markers (green/red lethal-only) ─────────────── */
@@ -1568,13 +1581,7 @@ button {
   border-color: #ddd;
 }
 
-/* ─── Mit-bar conflict styling + flash-on-jump ────────────────────────── */
-
-.mit-bar--conflict .mit-bar-duration,
-.mit-bar--conflict .mit-bar-cooldown {
-  border-color: #e44;
-  box-shadow: 0 0 0 1px #e44 inset;
-}
+/* ─── Mit-bar flash-on-jump ───────────────────────────────────────────── */
 
 @keyframes mit-bar-flash {
   0%,

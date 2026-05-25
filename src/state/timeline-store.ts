@@ -28,12 +28,13 @@ function normalizeName(n: string): string {
   return n.trim().toLowerCase();
 }
 
+// At most one instance is selected at a time, across boss and mit kinds.
+// Selecting one clears the other; deselecting clears the field entirely.
+export type SelectedInstance = { kind: "boss" | "mit"; id: string } | null;
+
 export interface TimelineStore {
   timeline: TimelineFile | null;
-  // The boss instance currently selected for editing in the BOSS ABILITIES
-  // panel. Cleared automatically on load/close, on instance removal (direct or
-  // via type cascade), and on explicit deselect.
-  selectedInstanceId: string | null;
+  selectedInstance: SelectedInstance;
 
   newTimeline: (name: string) => void;
   loadTimeline: (file: TimelineFile) => void;
@@ -53,7 +54,8 @@ export interface TimelineStore {
   updateBossAbilityInstance: (id: string, patch: Partial<BossInstanceInput>) => void;
   removeBossAbilityInstance: (id: string) => void;
 
-  selectInstance: (id: string) => void;
+  selectBossInstance: (id: string) => void;
+  selectMitInstance: (id: string) => void;
   deselectInstance: () => void;
 
   addMitigationInstance: (input: MitInstanceInput) => string;
@@ -68,11 +70,11 @@ function touch(tl: TimelineFile): TimelineFile {
 
 export const useTimelineStore = create<TimelineStore>((set) => ({
   timeline: null,
-  selectedInstanceId: null,
+  selectedInstance: null,
 
-  newTimeline: (name) => set({ timeline: makeNewTimeline(name), selectedInstanceId: null }),
-  loadTimeline: (file) => set({ timeline: file, selectedInstanceId: null }),
-  closeTimeline: () => set({ timeline: null, selectedInstanceId: null }),
+  newTimeline: (name) => set({ timeline: makeNewTimeline(name), selectedInstance: null }),
+  loadTimeline: (file) => set({ timeline: file, selectedInstance: null }),
+  closeTimeline: () => set({ timeline: null, selectedInstance: null }),
 
   setBossName: (name) =>
     set((s) => {
@@ -89,10 +91,16 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       const survivingBoss = s.timeline.boss_ability_instances.filter(
         (i) => i.effect_time <= clamped,
       );
+      // A mit's footprint may legally extend past the timeline end (the buff
+      // outlasts the encounter); only drop mits whose effect_time itself is
+      // now past the new end.
       const survivingMits = s.timeline.mitigation_instances.filter((m) => m.effect_time <= clamped);
       const survivingBossIds = new Set(survivingBoss.map((i) => i.id));
+      const survivingMitIds = new Set(survivingMits.map((m) => m.id));
+      const sel = s.selectedInstance;
       const selectionStillValid =
-        s.selectedInstanceId === null || survivingBossIds.has(s.selectedInstanceId);
+        sel === null ||
+        (sel.kind === "boss" ? survivingBossIds.has(sel.id) : survivingMitIds.has(sel.id));
       return {
         timeline: touch({
           ...s.timeline,
@@ -100,7 +108,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           boss_ability_instances: survivingBoss,
           mitigation_instances: survivingMits,
         }),
-        ...(selectionStillValid ? {} : { selectedInstanceId: null }),
+        ...(selectionStillValid ? {} : { selectedInstance: null }),
       };
     }),
 
@@ -186,6 +194,8 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       const cascadedIds = new Set(
         s.timeline.boss_ability_instances.filter((i) => i.type_id === id).map((i) => i.id),
       );
+      const sel = s.selectedInstance;
+      const clearSelection = sel?.kind === "boss" && cascadedIds.has(sel.id);
       return {
         timeline: touch({
           ...s.timeline,
@@ -194,9 +204,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           // "dangling type_id" conflict category that's deferred to v0.2.
           boss_ability_instances: s.timeline.boss_ability_instances.filter((i) => i.type_id !== id),
         }),
-        ...(s.selectedInstanceId !== null && cascadedIds.has(s.selectedInstanceId)
-          ? { selectedInstanceId: null }
-          : {}),
+        ...(clearSelection ? { selectedInstance: null } : {}),
       };
     }),
 
@@ -231,18 +239,23 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   removeBossAbilityInstance: (id) =>
     set((s) => {
       if (!s.timeline) return s;
+      const sel = s.selectedInstance;
       return {
         timeline: touch({
           ...s.timeline,
           boss_ability_instances: s.timeline.boss_ability_instances.filter((i) => i.id !== id),
         }),
-        ...(s.selectedInstanceId === id ? { selectedInstanceId: null } : {}),
+        ...(sel?.kind === "boss" && sel.id === id ? { selectedInstance: null } : {}),
       };
     }),
 
-  selectInstance: (id) => set({ selectedInstanceId: id }),
-  deselectInstance: () => set({ selectedInstanceId: null }),
+  selectBossInstance: (id) => set({ selectedInstance: { kind: "boss", id } }),
+  selectMitInstance: (id) => set({ selectedInstance: { kind: "mit", id } }),
+  deselectInstance: () => set({ selectedInstance: null }),
 
+  // The UI gates placement (hover ghost hides over occupied space) and
+  // clamps drag against neighbors, so the store trusts callers to supply a
+  // legal effect_time.
   addMitigationInstance: (input) => {
     const id = crypto.randomUUID();
     set((s) => {
@@ -274,11 +287,13 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   removeMitigationInstance: (id) =>
     set((s) => {
       if (!s.timeline) return s;
+      const sel = s.selectedInstance;
       return {
         timeline: touch({
           ...s.timeline,
           mitigation_instances: s.timeline.mitigation_instances.filter((m) => m.id !== id),
         }),
+        ...(sel?.kind === "mit" && sel.id === id ? { selectedInstance: null } : {}),
       };
     }),
 }));

@@ -1,5 +1,5 @@
 // Right-sidebar conflict list.
-// v0.1 categories: cooldown_overlap, orphan_mit, unset_target.
+// v0.1 categories: orphan_mit, unset_target.
 // Each row gives enough context to act:
 //   - slot index + job icon + mit name  (or boss ability name)
 //   - times (placement, prior-cooldown end)
@@ -23,7 +23,7 @@ export function ConflictsPanel() {
   const bossTypes = useTimelineStore((s) => s.timeline?.boss_ability_types);
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const removeMit = useTimelineStore((s) => s.removeMitigationInstance);
-  const selectInstance = useTimelineStore((s) => s.selectInstance);
+  const selectBossInstance = useTimelineStore((s) => s.selectBossInstance);
 
   if (!roster) return null;
 
@@ -33,7 +33,6 @@ export function ConflictsPanel() {
   const bossInstanceById = new Map((bossInstances ?? []).map((b) => [b.id, b]));
   const bossTypeById = new Map((bossTypes ?? []).map((t) => [t.id, t]));
 
-  const cooldownOverlaps = conflicts.filter((c) => c.kind === "cooldown_overlap");
   const orphans = conflicts.filter((c) => c.kind === "orphan_mit");
   const unsetTargets = conflicts.filter((c) => c.kind === "unset_target");
 
@@ -52,46 +51,6 @@ export function ConflictsPanel() {
 
       {conflicts.length === 0 && (
         <p className="conflicts-empty">No conflicts. Timeline is clean.</p>
-      )}
-
-      {cooldownOverlaps.length > 0 && (
-        <section className="conflicts-section">
-          <h4>Cooldown overlap</h4>
-          <ul>
-            {cooldownOverlaps.map((c) => {
-              if (c.kind !== "cooldown_overlap") return null;
-              const m = mitById.get(c.mit_instance_id);
-              const prev = mitById.get(c.conflicts_with_id);
-              if (!m || !prev) return null;
-              const mt = getMitById(m.type_id);
-              const slot = slotById.get(m.player_slot_id);
-              if (!mt || !slot) return null;
-              const idx = slotIndex.get(slot.id) ?? -1;
-              const cdEnd = prev.effect_time + mt.cooldown_seconds;
-              return (
-                <li key={c.mit_instance_id} className="conflict-row">
-                  <CautionIcon className="conflict-caution" />
-                  <SlotChip slot={slot} index={idx} />
-                  <div className="conflict-body">
-                    <div className="conflict-title">{mt.name}</div>
-                    <div className="conflict-detail">
-                      placed {secondsToTimecode(m.effect_time)}, prior still on cd until{" "}
-                      {secondsToTimecode(cdEnd)}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="conflict-action"
-                    title="Scroll to this mit"
-                    onClick={() => flashElement(`[data-mit-id="${c.mit_instance_id}"]`)}
-                  >
-                    →
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
       )}
 
       {unsetTargets.length > 0 && (
@@ -122,7 +81,7 @@ export function ConflictsPanel() {
                       type="button"
                       className="conflict-action"
                       title="Select this boss ability"
-                      onClick={() => selectInstance(c.boss_instance_id)}
+                      onClick={() => selectBossInstance(c.boss_instance_id)}
                     >
                       →
                     </button>
