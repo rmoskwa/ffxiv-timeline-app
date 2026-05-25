@@ -77,24 +77,25 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
           <span className="lane-slot-name">{label}</span>
         </div>
         <div className="lane-track player-header-track" style={{ width: laneWidthPx }}>
-          {damageMarks.map((m) => {
-            const variant =
-              m.damage === 0 ? " damage-chip--zero" : m.lethal ? " damage-chip--lethal" : "";
-            return (
-              <div
-                key={m.id}
-                className={`damage-chip${variant}`}
-                style={{ left: m.effectTime * pxPerSec }}
-                title={
-                  m.damage === 0
-                    ? "Fully mitigated (invuln)"
-                    : `${Math.round(m.damage).toLocaleString()} damage`
-                }
-              >
-                {formatDamage(m.damage)}
-              </div>
-            );
-          })}
+          {!isUnset &&
+            damageMarks.map((m) => {
+              const variant =
+                m.damage === 0 ? " damage-chip--zero" : m.lethal ? " damage-chip--lethal" : "";
+              return (
+                <div
+                  key={m.id}
+                  className={`damage-chip${variant}`}
+                  style={{ left: m.effectTime * pxPerSec }}
+                  title={
+                    m.damage === 0
+                      ? "Fully mitigated (invuln)"
+                      : `${Math.round(m.damage).toLocaleString()} damage`
+                  }
+                >
+                  {formatDamage(m.damage)}
+                </div>
+              );
+            })}
         </div>
       </div>
       {!isUnset &&
