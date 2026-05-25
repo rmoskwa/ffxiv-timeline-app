@@ -1758,14 +1758,35 @@ button {
   gap: 0.35rem;
 }
 .conflict-row {
+  background: #232323;
+  border: 1px solid #333;
+  border-radius: 4px;
+}
+.conflict-row-main {
   display: grid;
   grid-template-columns: auto auto 1fr auto;
   gap: 0.4rem;
   align-items: center;
-  background: #232323;
-  border: 1px solid #333;
-  border-radius: 4px;
   padding: 0.35rem 0.45rem;
+}
+/* `display: contents` makes the toggle button's children participate in the
+   parent grid so caution + slot + body keep their own grid cells. */
+.conflict-row-toggle {
+  display: contents;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+}
+.conflict-row--picker-open {
+  border-color: #6cf;
+}
+.conflict-picker {
+  border-top: 1px solid #333;
+  padding: 0.4rem 0.45rem 0.45rem;
 }
 .conflict-caution {
   color: #fa3;
@@ -1903,6 +1924,26 @@ button {
   text-overflow: ellipsis;
 }
 
+/* Toggle-on-hover and inline picker overrides for the conflicts panel.
+   Defined after the base .conflict-title / .target-picker rules so the
+   stylesheet stays in ascending-specificity order. */
+.conflict-row-toggle:hover .conflict-title {
+  color: #fff;
+}
+/* Strip the popover chrome — inside the panel the picker sits flush in a
+   bordered row, not as a floating popover. Also collapse to a single column
+   so it fits the 260px sidebar without horizontal overflow. */
+.conflict-picker .target-picker {
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.conflict-picker .target-picker-grid {
+  grid-template-columns: 1fr;
+}
+
 .boss-marker-popover,
 .mit-bar-popover {
   position: absolute;
@@ -1969,6 +2010,9 @@ button {
   padding: 0;
   cursor: pointer;
   flex-shrink: 0;
+  /* Right-justify inside .mit-bar-duration so the badge clears the mit icon
+     overlay (which is anchored near the left edge of the active bar). */
+  margin-left: auto;
 }
 .mit-bar-target-badge:hover {
   background: rgba(20, 20, 20, 0.85);

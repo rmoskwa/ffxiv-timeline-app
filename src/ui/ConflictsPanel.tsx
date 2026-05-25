@@ -5,12 +5,18 @@
 //   - times (placement, prior-cooldown end)
 //   - [→] flashes the offending bar or marker in the timeline
 //   - orphans get [×] for one-click delete
+//   - "Needs target" rows are also clickable: expanding the row inline opens
+//     a TargetPicker so the conflict can be resolved without hunting for the
+//     ? badge on the canvas (which can be hard to see when zoomed out).
 
+import { type ReactNode, useState } from "react";
 import { getMitById } from "@/data/mit-library";
-import type { MitigationInstance, PlayerSlot } from "@/domain/types";
+import { type TargetingState, targetingForBoss, targetingForMit } from "@/domain/targeting";
+import type { MitigationInstance, PlayerSlot, Roster } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { CautionIcon } from "./CautionIcon";
 import { JobIcon } from "./JobIcon";
+import { TargetPicker } from "./TargetPicker";
 import { secondsToTimecode } from "./timeline-constants";
 import { useConflicts } from "./use-derived";
 
@@ -24,6 +30,13 @@ export function ConflictsPanel() {
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const removeMit = useTimelineStore((s) => s.removeMitigationInstance);
   const selectBossInstance = useTimelineStore((s) => s.selectBossInstance);
+  const updateMit = useTimelineStore((s) => s.updateMitigationInstance);
+  const updateBoss = useTimelineStore((s) => s.updateBossAbilityInstance);
+
+  // One inline picker open at a time. Row id format: "b-<bossId>" | "m-<mitId>"
+  // — matches the React key. Resolving the conflict unmounts the row (and the
+  // picker with it); the stale id is harmless until the next user action.
+  const [openPickerId, setOpenPickerId] = useState<string | null>(null);
 
   if (!roster) return null;
 
@@ -64,28 +77,28 @@ export function ConflictsPanel() {
                 if (!inst) return null;
                 const type = bossTypeById.get(inst.type_id);
                 if (!type) return null;
-                const tp = type.target_pattern;
+                const rowKey = `b-${c.boss_instance_id}`;
+                const isOpen = openPickerId === rowKey;
+                const targeting = targetingForBoss(inst, type);
                 return (
-                  <li key={`b-${c.boss_instance_id}`} className="conflict-row">
-                    <CautionIcon className="conflict-caution" />
-                    <div className="conflict-slot" title="Boss ability">
-                      <span className="conflict-slot-num">⌬</span>
-                    </div>
-                    <div className="conflict-body">
-                      <div className="conflict-title">{type.name}</div>
-                      <div className="conflict-detail">
-                        {tp} at {secondsToTimecode(inst.effect_time)} — pick a target
+                  <UnsetTargetRow
+                    key={rowKey}
+                    isOpen={isOpen}
+                    onToggle={() => setOpenPickerId(isOpen ? null : rowKey)}
+                    onClose={() => setOpenPickerId(null)}
+                    slotChip={
+                      <div className="conflict-slot" title="Boss ability">
+                        <span className="conflict-slot-num">⌬</span>
                       </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="conflict-action"
-                      title="Select this boss ability"
-                      onClick={() => selectBossInstance(c.boss_instance_id)}
-                    >
-                      →
-                    </button>
-                  </li>
+                    }
+                    title={type.name}
+                    detail={`${type.target_pattern} at ${secondsToTimecode(inst.effect_time)} — pick a target`}
+                    actionTitle="Select this boss ability"
+                    onAction={() => selectBossInstance(c.boss_instance_id)}
+                    roster={roster}
+                    targeting={targeting}
+                    onChange={(ids) => updateBoss(c.boss_instance_id, { target_slot_ids: ids })}
+                  />
                 );
               }
               // target_kind === "mitigation"
@@ -95,25 +108,24 @@ export function ConflictsPanel() {
               const slot = slotById.get(m.player_slot_id);
               if (!mt || !slot) return null;
               const idx = slotIndex.get(slot.id) ?? -1;
+              const rowKey = `m-${c.mit_instance_id}`;
+              const isOpen = openPickerId === rowKey;
+              const targeting = targetingForMit(m, mt);
               return (
-                <li key={`m-${c.mit_instance_id}`} className="conflict-row">
-                  <CautionIcon className="conflict-caution" />
-                  <SlotChip slot={slot} index={idx} />
-                  <div className="conflict-body">
-                    <div className="conflict-title">{mt.name}</div>
-                    <div className="conflict-detail">
-                      placed {secondsToTimecode(m.effect_time)} — pick a target
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="conflict-action"
-                    title="Scroll to this mit"
-                    onClick={() => flashElement(`[data-mit-id="${c.mit_instance_id}"]`)}
-                  >
-                    →
-                  </button>
-                </li>
+                <UnsetTargetRow
+                  key={rowKey}
+                  isOpen={isOpen}
+                  onToggle={() => setOpenPickerId(isOpen ? null : rowKey)}
+                  onClose={() => setOpenPickerId(null)}
+                  slotChip={<SlotChip slot={slot} index={idx} />}
+                  title={mt.name}
+                  detail={`placed ${secondsToTimecode(m.effect_time)} — pick a target`}
+                  actionTitle="Scroll to this mit"
+                  onAction={() => flashElement(`[data-mit-id="${c.mit_instance_id}"]`)}
+                  roster={roster}
+                  targeting={targeting}
+                  onChange={(ids) => updateMit(c.mit_instance_id, { target_slot_ids: ids })}
+                />
               );
             })}
           </ul>
@@ -134,20 +146,22 @@ export function ConflictsPanel() {
               const idx = slotIndex.get(slot.id) ?? -1;
               return (
                 <li key={c.mit_instance_id} className="conflict-row">
-                  <CautionIcon className="conflict-caution" />
-                  <SlotChip slot={slot} index={idx} />
-                  <div className="conflict-body">
-                    <div className="conflict-title">{mt.name}</div>
-                    <div className="conflict-detail">{c.message}</div>
+                  <div className="conflict-row-main">
+                    <CautionIcon className="conflict-caution" />
+                    <SlotChip slot={slot} index={idx} />
+                    <div className="conflict-body">
+                      <div className="conflict-title">{mt.name}</div>
+                      <div className="conflict-detail">{c.message}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="conflict-action conflict-action--danger"
+                      title="Delete this orphan mit"
+                      onClick={() => removeMit(c.mit_instance_id)}
+                    >
+                      ×
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="conflict-action conflict-action--danger"
-                    title="Delete this orphan mit"
-                    onClick={() => removeMit(c.mit_instance_id)}
-                  >
-                    ×
-                  </button>
                 </li>
               );
             })}
@@ -155,6 +169,73 @@ export function ConflictsPanel() {
         </section>
       )}
     </aside>
+  );
+}
+
+interface UnsetTargetRowProps {
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  slotChip: ReactNode;
+  title: string;
+  detail: string;
+  actionTitle: string;
+  onAction: () => void;
+  roster: Roster;
+  targeting: TargetingState;
+  onChange: (ids: string[]) => void;
+}
+
+function UnsetTargetRow({
+  isOpen,
+  onToggle,
+  onClose,
+  slotChip,
+  title,
+  detail,
+  actionTitle,
+  onAction,
+  roster,
+  targeting,
+  onChange,
+}: UnsetTargetRowProps) {
+  return (
+    <li className={`conflict-row${isOpen ? " conflict-row--picker-open" : ""}`}>
+      <div className="conflict-row-main">
+        {/* `display: contents` lets the toggle button's three children
+            (caution, slot, body) participate directly in the parent grid
+            without a wrapper box — keeps the click target row-wide. */}
+        <button
+          type="button"
+          className="conflict-row-toggle"
+          onClick={onToggle}
+          aria-expanded={isOpen}
+          title="Click to pick a target"
+        >
+          <CautionIcon className="conflict-caution" />
+          {slotChip}
+          <div className="conflict-body">
+            <div className="conflict-title">{title}</div>
+            <div className="conflict-detail">{detail}</div>
+          </div>
+        </button>
+        <button type="button" className="conflict-action" title={actionTitle} onClick={onAction}>
+          →
+        </button>
+      </div>
+      {isOpen && (
+        <div className="conflict-picker">
+          <TargetPicker
+            roster={roster}
+            selectedIds={targeting.selection}
+            minSelections={targeting.minCount}
+            maxSelections={targeting.maxCount}
+            onChange={onChange}
+            onClose={onClose}
+          />
+        </div>
+      )}
+    </li>
   );
 }
 
