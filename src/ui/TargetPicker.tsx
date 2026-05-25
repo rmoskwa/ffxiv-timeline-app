@@ -15,6 +15,10 @@ interface TargetPickerProps {
   minSelections?: number;
   onChange: (ids: string[]) => void;
   onClose: () => void;
+  // Popovers (BossMarker, MitBar, conflicts-panel rows) want click-outside to
+  // dismiss; the inspector picker lives inside a persistent panel and lets the
+  // parent own the dismiss model. Defaults to true to preserve popover behavior.
+  dismissOnOutsideClick?: boolean;
 }
 
 // Anchored popover used by both BossMarker and MitBar. Position is the parent's
@@ -27,25 +31,29 @@ export function TargetPicker({
   minSelections,
   onChange,
   onClose,
+  dismissOnOutsideClick = true,
 }: TargetPickerProps) {
   const min = minSelections ?? maxSelections;
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    if (!dismissOnOutsideClick) {
+      return () => document.removeEventListener("keydown", onKey);
+    }
     const onDocMouseDown = (e: MouseEvent) => {
       if (ref.current?.contains(e.target as Node)) return;
       onClose();
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
     document.addEventListener("mousedown", onDocMouseDown);
-    document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("mousedown", onDocMouseDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [onClose]);
+  }, [onClose, dismissOnOutsideClick]);
 
   const toggle = (slotId: string) => {
     if (selectedIds.includes(slotId)) {
@@ -63,7 +71,16 @@ export function TargetPicker({
   };
 
   return (
-    <div ref={ref} className="target-picker" role="dialog" aria-label="Pick target">
+    <div
+      ref={ref}
+      className="target-picker"
+      role="dialog"
+      aria-label="Pick target"
+      // Lets TimelineEditor's Esc/Delete handler differentiate popovers
+      // (which own their own dismissal) from embedded pickers (which let
+      // the editor's selection model run).
+      data-picker-mode={dismissOnOutsideClick ? "popover" : "embedded"}
+    >
       <div className="target-picker-header">
         <span>
           {maxSelections === 1

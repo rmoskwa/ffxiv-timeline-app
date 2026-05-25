@@ -1699,15 +1699,84 @@ button {
 
 /* ─── Conflicts panel (right sidebar) ─────────────────────────────────── */
 
-.conflicts-panel {
+/* Right-sidebar wrapper. The inspector pins to the top (natural height); the
+   conflicts panel takes the remaining space and scrolls internally. */
+.editor-right {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
   border-left: 1px solid #333;
   background: #1c1c1c;
+}
+.mit-inspector-panel {
+  border-bottom: 1px solid #333;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+.mit-inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.mit-inspector-header h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #ccc;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mit-inspector-close {
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+.mit-inspector-close:hover {
+  color: #fff;
+}
+.mit-inspector-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.mit-inspector-title {
+  color: #eee;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mit-inspector-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #999;
+  font-size: 0.72rem;
+}
+.mit-inspector-target {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.conflicts-panel {
   overflow-y: auto;
   padding: 0.75rem 0.9rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   min-width: 0;
+  flex: 1 1 0;
 }
 .conflicts-header {
   display: flex;
@@ -1924,22 +1993,24 @@ button {
   text-overflow: ellipsis;
 }
 
-/* Toggle-on-hover and inline picker overrides for the conflicts panel.
-   Defined after the base .conflict-title / .target-picker rules so the
-   stylesheet stays in ascending-specificity order. */
+/* Toggle-on-hover and inline picker overrides for the conflicts panel and
+   the mit inspector. Defined after the base .conflict-title / .target-picker
+   rules so the stylesheet stays in ascending-specificity order. */
 .conflict-row-toggle:hover .conflict-title {
   color: #fff;
 }
-/* Strip the popover chrome — inside the panel the picker sits flush in a
-   bordered row, not as a floating popover. Also collapse to a single column
-   so it fits the 260px sidebar without horizontal overflow. */
-.conflict-picker .target-picker {
+/* Strip the popover chrome — embedded pickers sit flush inside their host
+   container, not as a floating popover. */
+.conflict-picker .target-picker,
+.mit-inspector-target .target-picker {
   min-width: 0;
   padding: 0;
   background: transparent;
   border: none;
   box-shadow: none;
 }
+/* Conflict rows are narrow; collapse the picker to one column to avoid
+   horizontal overflow inside the 260px sidebar. */
 .conflict-picker .target-picker-grid {
   grid-template-columns: 1fr;
 }

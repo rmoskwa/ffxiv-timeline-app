@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossAbilityPanel } from "./BossAbilityPanel";
 import { ConflictsPanel } from "./ConflictsPanel";
+import { MitInspectorPanel } from "./MitInspectorPanel";
 import { TimelineCanvas } from "./TimelineCanvas";
 
 export function TimelineEditor() {
@@ -14,21 +15,29 @@ export function TimelineEditor() {
       <main className="editor-main">
         <TimelineCanvas />
       </main>
-      <ConflictsPanel />
+      <aside className="editor-right">
+        <MitInspectorPanel />
+        <ConflictsPanel />
+      </aside>
     </div>
   );
 }
 
 // Document-level Delete/Esc handlers for the selection model. Delete removes
 // the selected instance (boss or mit); Esc deselects. Skipped while the user
-// is editing a form field or while a TargetPicker is open (the picker owns
-// Esc and the user shouldn't be able to delete the instance whose picker is up).
+// is editing a form field or while a popover-mode TargetPicker is open (the
+// picker owns Esc and the user shouldn't be able to delete the instance whose
+// picker is up). The embedded inspector picker does not block these shortcuts.
 function useSelectionKeyboardHandlers() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Delete" && e.key !== "Escape") return;
       if (isEditableTarget(e.target)) return;
-      if (document.querySelector(".target-picker")) return;
+      // Popover-mode pickers (boss marker, mit bar, conflicts panel, etc.)
+      // own their own Esc/Delete semantics — defer to them. The mit-inspector
+      // picker is embedded in the right sidebar and lets the editor's
+      // selection model run, so it's intentionally excluded here.
+      if (document.querySelector('.target-picker[data-picker-mode="popover"]')) return;
       const {
         selectedInstance,
         removeBossAbilityInstance,
