@@ -349,6 +349,7 @@ button {
   flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   min-width: 0;
   background: none;
@@ -412,11 +413,6 @@ button {
   flex-direction: column;
   font-size: 0.75rem;
   min-width: 0;
-  flex: 1;
-}
-.slot-num {
-  color: #ffffff;
-  font-size: 0.65rem;
 }
 .slot-job {
   color: #e0e0e0;
@@ -1134,8 +1130,9 @@ button {
 .lane-label--player-header {
   background: #1f1f1f;
   color: #ddd;
-  font-weight: 600;
-  font-size: 0.75rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  justify-content: center;
 }
 .player-header-track {
   position: relative;
@@ -1166,14 +1163,16 @@ button {
   border-right: 1px solid #333;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
   padding: 0 0.5rem;
-  font-size: 0.72rem;
+  font-size: 0.9rem;
   color: #ccc;
 }
 .sub-lane-name {
   overflow-wrap: anywhere;
   line-height: 1.15;
+  text-align: center;
 }
 .sub-lane-track {
   background: #181818;
@@ -1274,11 +1273,6 @@ button {
 }
 .lane-label--player {
   background: #1c1c1c;
-}
-.lane-slot-num {
-  color: #666;
-  font-size: 0.7rem;
-  min-width: 12px;
 }
 .lane-slot-name {
   white-space: nowrap;
@@ -1635,9 +1629,6 @@ button {
 }
 .lane-scroll.theme-light .lane-row--boss {
   border-bottom-color: #fff1e0;
-}
-.lane-scroll.theme-light .lane-slot-num {
-  color: #888;
 }
 .lane-scroll.theme-light .player-header-track,
 .lane-scroll.theme-light .boss-lane-track,

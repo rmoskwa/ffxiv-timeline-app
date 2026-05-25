@@ -55,7 +55,6 @@ export function RosterPanel() {
               >
                 <JobIcon job={slot.job} size={28} title={slot.name_label ?? slot.job} />
                 <span className="slot-label">
-                  <span className="slot-num">{i + 1}</span>
                   <span className="slot-job">{slot.name_label ?? slot.job}</span>
                 </span>
                 <span className="roster-slot-hover-glyph" aria-hidden="true">

@@ -161,7 +161,7 @@ function ZoomToolbar() {
           +
         </button>
       </div>
-      <span className="timeline-toolbar-title">Timeline Row Size:</span>
+      <span className="timeline-toolbar-title">Timeline Icon Size:</span>
       <div className="timeline-toolbar-zoom">
         <input
           type="range"

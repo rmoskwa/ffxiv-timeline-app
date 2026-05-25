@@ -73,7 +73,6 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
           className="lane-label lane-label--player-header"
           style={isUnset ? undefined : { background: jobColor(slot.job) }}
         >
-          <span className="lane-slot-num">{index + 1}</span>
           <JobIcon job={slot.job} size={22} title={label} />
           <span className="lane-slot-name">{label}</span>
         </div>
