@@ -1542,12 +1542,12 @@ button {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(34, 34, 34, 0.92);
-  color: #cfd;
-  border: 1px solid #335;
+  background: #103a1a;
+  color: #ffffff;
+  border: 1px solid #3a8e4f;
   border-radius: 3px;
-  padding: 0 4px;
-  font-size: 0.65rem;
+  padding: 2px 4px;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.4;
   pointer-events: none;
@@ -1559,8 +1559,13 @@ button {
 }
 .damage-chip--lethal {
   background: #3a1010;
-  color: #fbb;
+  color: #ffffff;
   border-color: #c33;
+}
+.damage-chip--zero {
+  background: #ffffff;
+  color: #222;
+  border-color: #ddd;
 }
 
 /* ─── Mit-bar conflict styling + flash-on-jump ────────────────────────── */
@@ -1670,14 +1675,19 @@ button {
   border-color: rgba(80, 80, 80, 0.45);
 }
 .lane-scroll.theme-light .damage-chip {
-  background: rgba(248, 248, 248, 0.95);
+  background: #e6ffe6;
   color: #1a7a3a;
-  border-color: #b8d4be;
+  border-color: #3a8e4f;
 }
 .lane-scroll.theme-light .damage-chip--lethal {
   background: #ffe6e6;
   color: #a02020;
   border-color: #c33;
+}
+.lane-scroll.theme-light .damage-chip--zero {
+  background: #2a2a2a;
+  color: #ffffff;
+  border-color: #555;
 }
 
 /* ─── Conflicts panel (right sidebar) ─────────────────────────────────── */

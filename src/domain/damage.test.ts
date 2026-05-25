@@ -156,8 +156,8 @@ describe("computeDamagePerPlayer", () => {
     expect(result).toEqual(new Array(8).fill(100_000));
   });
 
-  it("returns 0 damage for non-target players on a targeted hit", () => {
-    // Targeted at s0. Only s0 takes damage; others get 0.
+  it("returns null for non-target players on a targeted hit", () => {
+    // Targeted at s0. Only s0 takes damage; others were not targeted at all.
     const result = computeDamagePerPlayer(
       bossInstance({ target_slot_ids: ["s0"] }),
       bossType({ target_pattern: "targeted" }),
@@ -167,7 +167,7 @@ describe("computeDamagePerPlayer", () => {
     );
     expect(result[0]).toBe(100_000);
     for (let i = 1; i < 8; i++) {
-      expect(result[i]).toBe(0);
+      expect(result[i]).toBeNull();
     }
   });
 

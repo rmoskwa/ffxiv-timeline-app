@@ -10,11 +10,12 @@ import { computeDamagePerPlayer } from "@/domain/damage";
 import { useTimelineStore } from "@/state/timeline-store";
 
 // Map<bossInstanceId, post-mit damage array of length 8>. Players not targeted
-// by a hit get 0 (see computeDamagePerPlayer).
-export function useDamageByInstance(): Map<string, number[]> {
+// by a hit get `null`; targeted players get a number (0 when fully mitigated
+// by an invuln). See computeDamagePerPlayer.
+export function useDamageByInstance(): Map<string, (number | null)[]> {
   const timeline = useTimelineStore((s) => s.timeline);
   return useMemo(() => {
-    const out = new Map<string, number[]>();
+    const out = new Map<string, (number | null)[]>();
     if (!timeline) return out;
     const typeById = new Map(timeline.boss_ability_types.map((t) => [t.id, t]));
     for (const inst of timeline.boss_ability_instances) {

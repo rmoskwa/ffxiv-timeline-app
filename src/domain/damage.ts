@@ -16,19 +16,20 @@ import {
 export type MitTypeLookup = (id: string) => MitigationType | undefined;
 
 // Returns an 8-length array of post-mit damage. Players not targeted by the
-// hit get 0 (they don't take the hit at all). Raidwide hits give every player
-// base × Π(1 - mit_i%).
+// hit get `null` (they don't take the hit at all); targeted players get the
+// post-mit number, including `0` when fully mitigated (e.g. invuln). Raidwide
+// hits give every player base × Π(1 - mit_i%).
 export function computeDamagePerPlayer(
   hit: BossAbilityInstance,
   hitType: BossAbilityType,
   allMits: readonly MitigationInstance[],
   lookupMitType: MitTypeLookup,
   roster: Roster,
-): number[] {
+): (number | null)[] {
   const resolvedHit = resolveHit(hit, hitType);
   const baseDamage = resolveBossAbility(hit, hitType).damage;
 
-  const result: number[] = new Array(8).fill(0);
+  const result: (number | null)[] = new Array(8).fill(null);
 
   for (let i = 0; i < 8; i++) {
     if (!hitLandsOn(resolvedHit, i, roster)) continue;

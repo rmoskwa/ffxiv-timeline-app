@@ -47,7 +47,7 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
     for (const inst of bossInstances) {
       const damages = damageByInstance.get(inst.id);
       const dmg = damages?.[index];
-      if (dmg === undefined || dmg <= 0) continue;
+      if (dmg == null) continue;
       marks.push({
         id: inst.id,
         effectTime: inst.effect_time,
@@ -77,16 +77,24 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
           <span className="lane-slot-name">{label}</span>
         </div>
         <div className="lane-track player-header-track" style={{ width: laneWidthPx }}>
-          {damageMarks.map((m) => (
-            <div
-              key={m.id}
-              className={`damage-chip${m.lethal ? " damage-chip--lethal" : ""}`}
-              style={{ left: m.effectTime * pxPerSec }}
-              title={`${Math.round(m.damage).toLocaleString()} damage`}
-            >
-              {formatDamage(m.damage)}
-            </div>
-          ))}
+          {damageMarks.map((m) => {
+            const variant =
+              m.damage === 0 ? " damage-chip--zero" : m.lethal ? " damage-chip--lethal" : "";
+            return (
+              <div
+                key={m.id}
+                className={`damage-chip${variant}`}
+                style={{ left: m.effectTime * pxPerSec }}
+                title={
+                  m.damage === 0
+                    ? "Fully mitigated (invuln)"
+                    : `${Math.round(m.damage).toLocaleString()} damage`
+                }
+              >
+                {formatDamage(m.damage)}
+              </div>
+            );
+          })}
         </div>
       </div>
       {!isUnset &&
