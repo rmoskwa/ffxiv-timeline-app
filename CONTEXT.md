@@ -91,7 +91,10 @@ _Avoid_: deadly, fatal, kill
 ### State & validation
 
 **Conflict**:
-A flagged problem in the current timeline detected by pure-function inspection. Kinds: `cooldown_overlap`, `orphan_mit`, `unset_target`. Distinct from a validation *error* — a timeline with conflicts is still loadable and editable.
+A flagged problem in the current timeline detected by pure-function inspection. Kinds: `orphan_mit`, `unset_target`. Distinct from a validation *error* — a timeline with conflicts is still loadable and editable.
+
+Cooldown overlap is *not* a conflict kind: two Bars on the same sub-lane (same slot + mit type) can never have overlapping `[effect_time, effect_time + cooldown_seconds]` ranges by construction — see the **Bar** entry. Placement and drag both snap `effect_time` to the earliest legal value.
+
 _Avoid_: error, warning, problem
 
 **Schema version**:
@@ -140,6 +143,8 @@ How a mit instance renders on a sub-lane's Track — a horizontal range spanning
 - **Active segment**: the solid leading portion (`effect_time` → `effect_time + duration_seconds`). Represents the **active window**; this is the only part of the bar that drives **Coverage**.
 - **Cooldown tail**: the faded trailing portion (`effect_time + duration_seconds` → `effect_time + cooldown_seconds`). Visual-only — shows when the mit becomes available for re-placement. Does *not* contribute to coverage.
 
+A Bar is *authoritative* over its `[effect_time, effect_time + cooldown_seconds]` range on its sub-lane: two Bars in the same sub-lane (i.e., same slot + mit type) can never have overlapping ranges. **Placement** and drag both auto-snap `effect_time` to the earliest legal value when the requested position would overlap a neighbor or fall outside the timeline. A Bar is a selectable, horizontally-draggable entity; click selects, drag along the sub-lane's time axis moves.
+
 _Avoid_: block, segment (use "active segment" or "cooldown tail" explicitly), span
 
 **Damage chip**:
@@ -147,7 +152,11 @@ The per-player numeric damage readout that appears on a player lane's header tra
 _Avoid_: damage label, hit chip, number tag
 
 **Selection**:
-The transient state marking one boss instance as the focus of editing. Bidirectional — clicking a **Label** on the canvas highlights the corresponding instance sub-row in the BOSS ABILITIES panel (and scrolls it into view); clicking a sub-row in the panel highlights and scrolls to its label on the canvas. Pressing `Delete` removes the selected instance; `Esc` deselects. Visually: a blue border on the label and an accent on the panel sub-row.
+The transient state marking one **instance** as the focus of editing. **Mutually exclusive** across kinds — at most one boss instance *or* one mit instance is selected at any moment; selecting one clears the other. Pressing `Delete` removes the selected instance; `Esc` deselects.
+
+- **Boss-instance selection** is bidirectional with the BOSS ABILITIES panel: clicking a **Label** on the canvas highlights the corresponding sub-row in the panel (and scrolls it into view); clicking a panel sub-row highlights and scrolls to its label on the canvas. Visually: blue border on the label and an accent on the panel sub-row.
+- **Mit-instance selection** is canvas-only (no panel counterpart). Clicking a **Bar** selects its mit instance; visually a blue border on the bar.
+
 _Avoid_: focus, highlight, active
 
 ### Imports
