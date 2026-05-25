@@ -9,6 +9,7 @@ import type {
 } from "@/domain/types";
 import { DuplicateNameError, useTimelineStore } from "@/state/timeline-store";
 import { CautionIcon } from "./CautionIcon";
+import { parseNumericInput } from "./parse-number";
 import { TargetPicker } from "./TargetPicker";
 import { parseTimecode, secondsToTimecode } from "./timeline-constants";
 
@@ -484,18 +485,20 @@ function NumberInput({
   }, [value]);
   return (
     <input
-      type="number"
-      min="0"
+      type="text"
+      inputMode="numeric"
       value={draft}
       aria-label={ariaLabel}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => {
-        const n = Number(draft);
-        if (!Number.isFinite(n) || n < 0) {
+        const n = parseNumericInput(draft);
+        if (n === null || n < 0) {
           setDraft(String(value));
           return;
         }
-        if (n !== value) onCommit(n);
+        const rounded = Math.round(n);
+        setDraft(String(rounded));
+        if (rounded !== value) onCommit(rounded);
       }}
     />
   );
@@ -638,15 +641,15 @@ function NewTypeForm({ onClose }: { onClose: () => void }) {
       setError("Name is required.");
       return;
     }
-    const dmg = Number(baseDamage);
-    if (!Number.isFinite(dmg) || dmg < 0) {
+    const dmg = parseNumericInput(baseDamage);
+    if (dmg === null || dmg < 0) {
       setError("Base damage must be a non-negative number.");
       return;
     }
     try {
       addType({
         name: trimmed,
-        base_damage: dmg,
+        base_damage: Math.round(dmg),
         damage_type: damageType,
         target_pattern: targetPattern,
         ...(description.trim() ? { description: description.trim() } : {}),
@@ -677,27 +680,26 @@ function NewTypeForm({ onClose }: { onClose: () => void }) {
         />
       </label>
 
-      <div className="field-row">
-        <label className="field">
-          <span>Base damage</span>
-          <input
-            type="number"
-            min="0"
-            value={baseDamage}
-            onChange={(e) => setBaseDamage(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>Damage type</span>
-          <select value={damageType} onChange={(e) => setDamageType(e.target.value as DamageType)}>
-            {DAMAGE_TYPES.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <label className="field">
+        <span>Base damage</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={baseDamage}
+          onChange={(e) => setBaseDamage(e.target.value)}
+        />
+      </label>
+
+      <label className="field">
+        <span>Damage type</span>
+        <select value={damageType} onChange={(e) => setDamageType(e.target.value as DamageType)}>
+          {DAMAGE_TYPES.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <label className="field">
         <span>Target pattern</span>

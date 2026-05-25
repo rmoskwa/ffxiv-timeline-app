@@ -423,8 +423,25 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.slot-hp-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: text;
+}
+.slot-hp-field.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.slot-hp-prefix {
+  color: #aaa;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
 .slot-hp-input {
-  flex-shrink: 0;
   width: 3.5rem;
   background: rgba(0, 0, 0, 0.35);
   color: #f0f0f0;
@@ -441,7 +458,6 @@ button {
   outline-offset: 1px;
 }
 .slot-hp-input:disabled {
-  opacity: 0.4;
   cursor: not-allowed;
 }
 .slot-hp-input.is-invalid {
@@ -970,11 +986,6 @@ button {
 .new-ability-form textarea {
   resize: vertical;
   font-family: inherit;
-}
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
 }
 .form-error {
   margin: 0;

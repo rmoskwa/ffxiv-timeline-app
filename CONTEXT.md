@@ -92,6 +92,10 @@ _Avoid_: deadly, fatal, kill
 A player slot's maximum hit points, edited per-slot in the **ROSTER** panel. Drives the per-player **Lethal** threshold. Stored on the slot (`PlayerSlot.hp`); when omitted, falls back to the party-wide `PLAYER_MAX_HP` constant. Clamped at the store boundary to `[SLOT_HP_MIN, SLOT_HP_MAX]` (1k–999k).
 _Avoid_: hitpoints, max-hp, health, hp_max
 
+**Numeric input convention**:
+Every user-typed number field (HP, boss base damage, future damage fields) routes its raw string through `parseNumericInput` (`src/ui/parse-number.ts`). The parser accepts plain integers, comma thousands-separators, and a `k` suffix that multiplies by 1000 (`"300k"` → 300000, `"1.5k"` → 1500). New numeric inputs MUST use this parser — `<input type="number">` blocks commas and the `k` suffix and is therefore disallowed for user-facing numeric fields.
+_Avoid_: number-input, numeric-input (as a component name — there is no shared component, only a shared parser)
+
 ### State & validation
 
 **Conflict**:
