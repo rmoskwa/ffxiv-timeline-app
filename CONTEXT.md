@@ -98,7 +98,7 @@ Cooldown overlap is *not* a conflict kind: two Bars on the same sub-lane (same s
 _Avoid_: error, warning, problem
 
 **Schema version**:
-The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `4` (post the `TargetPattern` collapse to `raidwide` | `targeted`).
+The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `6` (bumped from `5` when **Bar** became authoritative on its sub-lane and the `cooldown_overlap` conflict kind was removed — see the **Bar** and **Conflict** entries).
 _Avoid_: file version, format version
 
 ### Canvas
