@@ -3,6 +3,19 @@
 ### Local examples
 DT Raid Timelines - M12Sp2.csv
 Events - Lindwurm Savage Wipe 10 (8.4 at 553 PM) - Report AAC Heavyweight (Unlisted) FF Logs.csv
+docs/*
+!.gitkeep
+
+### Sample data fetched by scripts/fetch-fflogs-sample.mjs
+scratch/
+scripts/
+
+### Local env (API keys etc.) — never commit
+.env.local
+.env.*.local
+
+### Cached fflogs v2 bearer token (refreshed by scripts/fetch-fflogs-sample.mjs)
+.fflogs-token-cache.json
 
 ### Node / Vite
 node_modules
