@@ -332,6 +332,12 @@ function BossLaneLabel() {
         placeholder="Boss name"
         value={bossName}
         onChange={(e) => setBossName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
         aria-label="Boss name"
       />
       <div className="boss-length-row">
