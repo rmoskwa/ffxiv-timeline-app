@@ -1065,6 +1065,19 @@ button {
   color: #fff;
   box-shadow: 0 0 0 1px #fff inset;
 }
+.row-size-slider {
+  width: 120px;
+  height: 24px;
+  cursor: pointer;
+  accent-color: #888;
+}
+.row-size-readout {
+  color: #aaa;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 3rem;
+  text-align: center;
+}
 
 .lane-scroll {
   flex: 1;

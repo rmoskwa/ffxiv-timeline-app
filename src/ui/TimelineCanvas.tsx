@@ -13,7 +13,7 @@ import {
   ZOOM_WHEEL_FACTOR,
 } from "./timeline-constants";
 import { type AppearanceTheme, useAppearanceStore } from "./use-appearance";
-import { type RowSize, useRowSizeStore } from "./use-row-size";
+import { ICON_SIZE_MAX, ICON_SIZE_MIN, useRowSizeStore } from "./use-row-size";
 import { useViewStore } from "./use-view";
 import { useZoom, useZoomStore } from "./use-zoom";
 
@@ -116,19 +116,14 @@ function ZoomToolbar() {
   const zoomIn = useZoomStore((s) => s.zoomIn);
   const zoomOut = useZoomStore((s) => s.zoomOut);
   const reset = useZoomStore((s) => s.reset);
-  const rowSize = useRowSizeStore((s) => s.size);
-  const setRowSize = useRowSizeStore((s) => s.setSize);
+  const iconSize = useRowSizeStore((s) => s.iconSize);
+  const setIconSize = useRowSizeStore((s) => s.setIconSize);
   const theme = useAppearanceStore((s) => s.theme);
   const setTheme = useAppearanceStore((s) => s.setTheme);
   const tickIntervalSec = pickTickIntervalSec(pxPerSec);
   const percent = Math.round((pxPerSec / DEFAULT_PX_PER_SEC) * 100);
   const tickLabel = tickIntervalSec >= 60 ? "1m" : `${tickIntervalSec}s`;
 
-  const rowOptions: readonly { value: RowSize; label: string }[] = [
-    { value: "sm", label: "Small" },
-    { value: "md", label: "Medium" },
-    { value: "lg", label: "Large" },
-  ];
   const themeOptions: readonly { value: AppearanceTheme; label: string }[] = [
     { value: "light", label: "Light" },
     { value: "dark", label: "Dark" },
@@ -168,17 +163,17 @@ function ZoomToolbar() {
       </div>
       <span className="timeline-toolbar-title">Timeline Row Size:</span>
       <div className="timeline-toolbar-zoom">
-        {rowOptions.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            className={`toolbar-toggle${rowSize === opt.value ? " is-selected" : ""}`}
-            onClick={() => setRowSize(opt.value)}
-            aria-pressed={rowSize === opt.value}
-          >
-            {opt.label}
-          </button>
-        ))}
+        <input
+          type="range"
+          className="row-size-slider"
+          min={ICON_SIZE_MIN}
+          max={ICON_SIZE_MAX}
+          value={iconSize}
+          onChange={(e) => setIconSize(Number(e.currentTarget.value))}
+          aria-label={`Mit icon size, ${iconSize} pixels`}
+          title={`Icon size: ${iconSize}px (${ICON_SIZE_MIN}–${ICON_SIZE_MAX})`}
+        />
+        <span className="row-size-readout">{iconSize}px</span>
       </div>
       <span className="timeline-toolbar-title">Timeline Appearance:</span>
       <div className="timeline-toolbar-zoom">
