@@ -1,7 +1,6 @@
 import type { MitigationType } from "@/domain/types";
 
 // MNK mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Only the melee role action Feint applies.
 export const MNK_MITS: MitigationType[] = [
   {
     id: "mnk.feint",
@@ -14,5 +13,17 @@ export const MNK_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Feint",
+  },
+  {
+    id: "mnk.riddle_of_earth",
+    name: "Riddle of Earth",
+    job: "MNK",
+    cooldown_seconds: 120,
+    duration_seconds: 10,
+    mitigation_per_type: { all: 20 },
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Riddle_of_Earth",
   },
 ];

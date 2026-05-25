@@ -3,7 +3,6 @@ import type { MitigationType } from "@/domain/types";
 // PLD mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Sentinel is omitted — it upgrades to Guardian via trait at L92.
 // Holy Sheltron and Intervention are excluded as Oath-gated/conditional.
-// Divine Caress is excluded — it's a barrier, not flat %.
 export const PLD_MITS: MitigationType[] = [
   {
     id: "pld.rampart",

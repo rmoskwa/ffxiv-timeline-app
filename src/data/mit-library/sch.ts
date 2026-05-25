@@ -1,9 +1,8 @@
 import type { MitigationType } from "@/domain/types";
 
 // SCH mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Shields and heals are out of scope — Adloquium, Seraphic Veil,
-// Recitation and Protraction are not modeled. Fey Illumination also grants
-// +10% healing magic potency; only the mit component is modeled.
+// Adloquium, Succor, Concitation, Recitation, Seraphic Veil excluded — rotational cure-potency.
+// Fey Illumination also grants +10% healing magic potency; only the mit component is modeled.
 export const SCH_MITS: MitigationType[] = [
   {
     id: "sch.sacred_soil",

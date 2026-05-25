@@ -1,7 +1,8 @@
 import type { MitigationType } from "@/domain/types";
 
 // WHM mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Divine Benison and Aspected Helios are excluded — shield/heal only.
+// Divine Benison, Divine Grace, Plenary Indulgence excluded — rotational cure-potency / heal-buff.
+// Aspected Helios excluded — rotational cure-potency.
 export const WHM_MITS: MitigationType[] = [
   {
     id: "whm.temperance",
@@ -13,7 +14,7 @@ export const WHM_MITS: MitigationType[] = [
     affects: "party",
     max_charges: 1,
     mechanic: "mit",
-    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Temperance",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Temperance_(Ability)",
   },
   {
     id: "whm.aquaveil",

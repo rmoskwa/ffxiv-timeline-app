@@ -1,9 +1,7 @@
 import type { MitigationType } from "@/domain/types";
 
 // SGE mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Panhaima is excluded — wiki confirms it is barrier-only, not flat %.
-// Krasis (healing received up) and Philosophia (healing magnitude up) are
-// excluded — they amplify heals, not mitigate damage.
+// Krasis, Eukrasian Diagnosis, Eukrasian Prognosis excluded — rotational cure-potency / heal-buff.
 export const SGE_MITS: MitigationType[] = [
   {
     id: "sge.kerachole",
@@ -28,5 +26,17 @@ export const SGE_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Holos",
+  },
+  {
+    id: "sge.taurochole",
+    name: "Taurochole",
+    job: "SGE",
+    cooldown_seconds: 45,
+    duration_seconds: 15,
+    mitigation_per_type: { all: 10 },
+    affects: "target",
+    max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Taurochole",
   },
 ];

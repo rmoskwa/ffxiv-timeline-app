@@ -2,8 +2,7 @@ import type { MitigationType } from "@/domain/types";
 
 // AST mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Post-Dawntrail card rework: cards no longer carry damage mit.
-// Macrocosmos is excluded — it's a damage-storage/heal mechanic, not flat %.
-// Sun Sign is excluded — Suntouched-gated, conditional.
+// Aspected Helios excluded — rotational cure-potency.
 export const AST_MITS: MitigationType[] = [
   {
     id: "ast.collective_unconscious",
@@ -28,5 +27,17 @@ export const AST_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Exaltation",
+  },
+  {
+    id: "ast.sun_sign",
+    name: "Sun Sign",
+    job: "AST",
+    cooldown_seconds: 120, // stopgap: inherits Neutral Sect's CD (combo-chain gated)
+    duration_seconds: 15,
+    mitigation_per_type: { all: 10 },
+    affects: "party",
+    max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Sun_Sign",
   },
 ];

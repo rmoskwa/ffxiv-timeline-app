@@ -69,7 +69,7 @@ export const GNB_MITS: MitigationType[] = [
     name: "Superbolide",
     job: "GNB",
     cooldown_seconds: 360,
-    duration_seconds: 8,
+    duration_seconds: 10,
     mitigation_per_type: { all: 100 },
     affects: "self",
     max_charges: 1,
