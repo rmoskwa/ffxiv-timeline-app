@@ -85,8 +85,12 @@ Whether a given mitigation instance reduces damage for a given **hit**. Composed
 _Avoid_: protection, applies
 
 **Lethal**:
-A computed property of a **hit**, true when post-mit damage for the targeted player ≥ `PLAYER_MAX_HP`. Drives the red **damage chip** styling and the lethal flag on a **marker**. Currently uses a single party-wide HP constant until per-job HP lands.
+A computed property of a **hit**, true when post-mit damage for the targeted player ≥ the slot's **HP**. Drives the red **damage chip** styling and the lethal flag on a **marker**.
 _Avoid_: deadly, fatal, kill
+
+**HP**:
+A player slot's maximum hit points, edited per-slot in the **ROSTER** panel. Drives the per-player **Lethal** threshold. Stored on the slot (`PlayerSlot.hp`); when omitted, falls back to the party-wide `PLAYER_MAX_HP` constant. Clamped at the store boundary to `[SLOT_HP_MIN, SLOT_HP_MAX]` (1k–999k).
+_Avoid_: hitpoints, max-hp, health, hp_max
 
 ### State & validation
 
@@ -98,7 +102,7 @@ Cooldown overlap is *not* a conflict kind: two Bars on the same sub-lane (same s
 _Avoid_: error, warning, problem
 
 **Schema version**:
-The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `6` (bumped from `5` when **Bar** became authoritative on its sub-lane and the `cooldown_overlap` conflict kind was removed — see the **Bar** and **Conflict** entries).
+The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `7` (bumped from `6` when per-slot **HP** was added to `PlayerSlot` — see the **HP** entry).
 _Avoid_: file version, format version
 
 ### Canvas
