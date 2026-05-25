@@ -500,6 +500,16 @@ function NumberInput({
         setDraft(String(rounded));
         if (rounded !== value) onCommit(rounded);
       }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.currentTarget.blur();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          setDraft(String(value));
+          e.currentTarget.blur();
+        }
+      }}
     />
   );
 }
