@@ -52,11 +52,11 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
         id: inst.id,
         effectTime: inst.effect_time,
         damage: dmg,
-        lethal: dmg >= PLAYER_MAX_HP,
+        lethal: dmg >= (slot.hp ?? PLAYER_MAX_HP),
       });
     }
     return marks;
-  }, [bossInstances, damageByInstance, index]);
+  }, [bossInstances, damageByInstance, index, slot.hp]);
 
   // Same instance/slot filter as today — sub-lanes get only their own.
   const mitsBySlot = useMemo(

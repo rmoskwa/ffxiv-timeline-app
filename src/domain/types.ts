@@ -135,6 +135,10 @@ export interface PlayerSlot {
   id: string;
   job: JobOrUnset;
   name_label?: string;
+  // Per-slot max HP, drives the per-player **Lethal** threshold. Omitted ⇒ the
+  // party-wide PLAYER_MAX_HP fallback applies. Bounded to a plausible FFXIV
+  // range at the store boundary (see timeline-store.setSlotHp).
+  hp?: number;
   // role is DERIVED from job — not stored. See deriveRole() below.
 }
 
@@ -170,7 +174,7 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 6 as const;
+export const TIMELINE_SCHEMA_VERSION = 7 as const;
 
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 

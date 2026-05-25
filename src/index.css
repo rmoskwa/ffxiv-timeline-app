@@ -336,9 +336,13 @@ button {
   gap: 0.5rem;
 }
 .roster-list li {
-  display: flex;
+  /* 3-zone layout: job-trigger (left) | HP input (center) | visibility (right).
+     Symmetric 1fr side-columns keep the HP input visually centered regardless
+     of how long the job label is. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 0.5rem;
+  column-gap: 0.5rem;
   background: #222;
   padding: 0.35rem 0.5rem;
   border-radius: 4px;
@@ -346,10 +350,9 @@ button {
   position: relative; /* anchor for the JobPicker popover */
 }
 .roster-slot-trigger {
-  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.5rem;
   min-width: 0;
   background: none;
@@ -420,8 +423,33 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.slot-visibility-toggle {
+.slot-hp-input {
   flex-shrink: 0;
+  width: 3.5rem;
+  background: rgba(0, 0, 0, 0.35);
+  color: #f0f0f0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.slot-hp-input:focus-visible {
+  outline: 2px solid #6cf;
+  outline-offset: 1px;
+}
+.slot-hp-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.slot-hp-input.is-invalid {
+  border-color: #d33;
+  color: #ffb4b4;
+}
+.slot-visibility-toggle {
+  justify-self: end;
   background: rgba(0, 0, 0, 0.35);
   color: #f0f0f0;
   border: 1px solid rgba(255, 255, 255, 0.15);

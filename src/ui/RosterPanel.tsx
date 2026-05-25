@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
-import { useTimelineStore } from "@/state/timeline-store";
+import { SLOT_HP_MAX, SLOT_HP_MIN, useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { JobPicker } from "./JobPicker";
 import { jobColor } from "./role-color";
+import { PLAYER_MAX_HP } from "./timeline-constants";
 import { useViewStore } from "./use-view";
 
 export function RosterPanel() {
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const mits = useTimelineStore((s) => s.timeline?.mitigation_instances ?? []);
   const setSlotJob = useTimelineStore((s) => s.setSlotJob);
+  const setSlotHp = useTimelineStore((s) => s.setSlotHp);
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
   const toggleSlot = useViewStore((s) => s.toggleSlot);
   const [openPickerIdx, setOpenPickerIdx] = useState<number | null>(null);
@@ -61,6 +63,12 @@ export function RosterPanel() {
                   {isUnset ? "+" : "↻"}
                 </span>
               </button>
+              <SlotHpInput
+                slotIdx={i}
+                hp={slot.hp}
+                disabled={isUnset}
+                onCommit={(next) => setSlotHp(i, next)}
+              />
               <button
                 type="button"
                 className="slot-visibility-toggle"
@@ -89,5 +97,72 @@ export function RosterPanel() {
         })}
       </ol>
     </section>
+  );
+}
+
+// 150000 → "150k". HP is always ≥ 1000 (store clamps to SLOT_HP_MIN), so the
+// "k" suffix never collapses to a bare number.
+function formatHp(hp: number): string {
+  return `${Math.round(hp / 1000)}k`;
+}
+
+// Display swaps on focus: formatted "150k" when blurred, raw integer "150000"
+// while editing. Out-of-range drafts paint the input red but don't block
+// blur — commit re-parses, clamps inside [SLOT_HP_MIN, SLOT_HP_MAX], and the
+// formatted display snaps back to whatever the store accepted.
+function SlotHpInput({
+  slotIdx,
+  hp,
+  disabled,
+  onCommit,
+}: {
+  slotIdx: number;
+  hp: number | undefined;
+  disabled: boolean;
+  onCommit: (hp: number) => void;
+}) {
+  const committed = hp ?? PLAYER_MAX_HP;
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const parsedDraft = (() => {
+    const n = Number(draft);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) return null;
+    return n;
+  })();
+  const draftInvalid =
+    focused && (parsedDraft === null || parsedDraft < SLOT_HP_MIN || parsedDraft > SLOT_HP_MAX);
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      className={`slot-hp-input${draftInvalid ? " is-invalid" : ""}`}
+      value={focused ? draft : formatHp(committed)}
+      disabled={disabled}
+      aria-label={`HP for slot ${slotIdx + 1}`}
+      title={`Max HP for this slot (1k–999k). Drives the per-player Lethal threshold.`}
+      onFocus={(e) => {
+        setFocused(true);
+        setDraft(String(committed));
+        // Selecting the existing value lets the user just type to replace.
+        e.currentTarget.select();
+      }}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        setFocused(false);
+        if (parsedDraft !== null && parsedDraft !== committed) onCommit(parsedDraft);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.currentTarget.blur();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          setDraft(String(committed));
+          e.currentTarget.blur();
+        }
+      }}
+    />
   );
 }

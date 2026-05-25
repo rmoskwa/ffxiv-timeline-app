@@ -139,7 +139,8 @@ export function BossLane() {
           const type = typeMap.get(inst.type_id);
           if (!type) return null; // orphan instance — store cascade should prevent this
           const damages = damageByInstance.get(inst.id);
-          const lethal = damages?.some((d) => d != null && d >= PLAYER_MAX_HP) ?? false;
+          const lethal =
+            damages?.some((d, i) => d != null && d >= (roster[i]?.hp ?? PLAYER_MAX_HP)) ?? false;
           const rowIndex = packed.rowByInstanceId.get(inst.id) ?? 0;
           return (
             <BossMarker

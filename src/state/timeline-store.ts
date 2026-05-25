@@ -28,6 +28,11 @@ function normalizeName(n: string): string {
   return n.trim().toLowerCase();
 }
 
+// Plausible FFXIV per-slot HP range. Endgame falls comfortably inside this
+// bracket today; widen if a future expansion pushes ceilings past 999k.
+export const SLOT_HP_MIN = 1_000;
+export const SLOT_HP_MAX = 999_000;
+
 // At most one instance is selected at a time, across boss and mit kinds.
 // Selecting one clears the other; deselecting clears the field entirely.
 export type SelectedInstance = { kind: "boss" | "mit"; id: string } | null;
@@ -45,6 +50,7 @@ export interface TimelineStore {
 
   setSlotJob: (slotIdx: number, job: JobOrUnset) => void;
   setSlotLabel: (slotIdx: number, label: string | undefined) => void;
+  setSlotHp: (slotIdx: number, hp: number | undefined) => void;
 
   addBossAbilityType: (input: BossTypeInput) => string;
   updateBossAbilityType: (id: string, patch: Partial<BossTypeInput>) => void;
@@ -142,6 +148,25 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           return rest;
         }
         return { ...slot, name_label: label };
+      }) as unknown as TimelineFile["roster"];
+      return { timeline: touch({ ...s.timeline, roster }) };
+    }),
+
+  setSlotHp: (slotIdx, hp) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      // Clamp inside the plausible FFXIV range. Anything below the floor or
+      // above the ceiling is rejected; the UI surfaces the live-validation
+      // signal but the store is the last line of defense.
+      const clamped =
+        hp === undefined ? undefined : Math.min(SLOT_HP_MAX, Math.max(SLOT_HP_MIN, Math.round(hp)));
+      const roster = s.timeline.roster.map((slot, i) => {
+        if (i !== slotIdx) return slot;
+        if (clamped === undefined) {
+          const { hp: _drop, ...rest } = slot;
+          return rest;
+        }
+        return { ...slot, hp: clamped };
       }) as unknown as TimelineFile["roster"];
       return { timeline: touch({ ...s.timeline, roster }) };
     }),
