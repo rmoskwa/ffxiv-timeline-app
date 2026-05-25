@@ -107,10 +107,20 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   setSlotJob: (slotIdx, job) =>
     set((s) => {
       if (!s.timeline) return s;
+      const existing = s.timeline.roster[slotIdx];
+      if (!existing || existing.job === job) return s;
       const roster = s.timeline.roster.map((slot, i) =>
         i === slotIdx ? { ...slot, job } : slot,
       ) as unknown as TimelineFile["roster"];
-      return { timeline: touch({ ...s.timeline, roster }) };
+      // A job change orphans the slot's mits — the mit library is keyed by
+      // job, so existing entries would no longer surface in any sub-lane.
+      // Cascade them out (mirrors setFightDuration's instance cascade).
+      // The picker UI confirms with the user before invoking this when the
+      // drop count is nonzero.
+      const mitigation_instances = s.timeline.mitigation_instances.filter(
+        (m) => m.player_slot_id !== existing.id,
+      );
+      return { timeline: touch({ ...s.timeline, roster, mitigation_instances }) };
     }),
 
   setSlotLabel: (slotIdx, label) =>

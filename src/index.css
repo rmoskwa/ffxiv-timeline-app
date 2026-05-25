@@ -314,6 +314,10 @@ button {
   padding: 0.5rem 1rem;
   border-bottom: 1px solid #333;
   background: #181818;
+  /* Stacking context so the JobPicker popover paints above the timeline
+     editor below (which is a later sibling in .app-body). */
+  position: relative;
+  z-index: 10;
 }
 .roster-panel h3 {
   margin: 0 0 0.4rem;
@@ -339,9 +343,64 @@ button {
   padding: 0.35rem 0.5rem;
   border-radius: 4px;
   min-width: 0;
+  position: relative; /* anchor for the JobPicker popover */
+}
+.roster-slot-trigger {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  border-radius: 3px;
+}
+.roster-slot-trigger:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+.roster-slot-trigger:focus-visible {
+  outline: 2px solid #6cf;
+  outline-offset: 2px;
+}
+.roster-slot-hover-glyph {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 80ms ease-in-out;
+}
+.roster-slot-trigger:hover .roster-slot-hover-glyph,
+.roster-slot-trigger:focus-visible .roster-slot-hover-glyph {
+  opacity: 1;
 }
 .roster-list li.unset {
   opacity: 0.6;
+}
+/* CSS opacity composites the whole subtree, which would bleed through the
+   JobPicker popover. Restore full opacity while the picker is open so the
+   popover reads as opaque. */
+.roster-list li.unset.has-picker-open {
+  opacity: 1;
 }
 .roster-list li.hidden {
   background: #2a2a2a;
@@ -380,6 +439,101 @@ button {
 }
 .slot-visibility-toggle:hover {
   background: rgba(0, 0, 0, 0.55);
+}
+
+/* ─── Job picker popover (anchored to a roster slot) ──────────────────── */
+.job-picker-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 320px;
+  max-width: 360px;
+  background: #1c1c1c;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 0.6rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  z-index: 20;
+}
+.job-picker-popover--right {
+  left: auto;
+  right: 0;
+}
+.job-picker-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+  font-size: 0.75rem;
+  color: #ccc;
+  font-weight: 600;
+}
+.job-picker-popover-close {
+  background: none;
+  border: 0;
+  color: #888;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+.job-picker-popover-close:hover {
+  color: #fff;
+}
+.job-picker--compact .job-picker-tile {
+  min-width: 44px;
+  padding: 0.25rem 0.3rem;
+  font-size: 0.65rem;
+}
+.job-picker-clear {
+  margin-top: 0.55rem;
+  width: 100%;
+  background: #3a1f1f;
+  color: #f8c;
+  border: 1px solid #844;
+  border-radius: 4px;
+  padding: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.job-picker-clear:hover {
+  background: #4a2424;
+}
+.job-picker-confirm p {
+  margin: 0 0 0.6rem;
+  font-size: 0.8rem;
+  color: #ddd;
+  line-height: 1.35;
+}
+.job-picker-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.job-picker-confirm-cancel,
+.job-picker-confirm-ok {
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.job-picker-confirm-cancel {
+  background: #2a2a2a;
+  color: #ccc;
+}
+.job-picker-confirm-cancel:hover {
+  background: #333;
+}
+.job-picker-confirm-ok {
+  background: #5a2424;
+  color: #fcc;
+  border-color: #844;
+}
+.job-picker-confirm-ok:hover {
+  background: #6a2828;
 }
 
 /* ─── Editor layout ───────────────────────────────────────────────────── */

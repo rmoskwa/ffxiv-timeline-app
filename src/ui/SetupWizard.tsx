@@ -7,15 +7,8 @@ import type { Job, JobOrUnset } from "@/domain/types";
 import { saveWorkingTimeline } from "@/persistence/storage";
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
+import { JOBS_BY_ROLE } from "./jobs-by-role";
 import { jobColor } from "./role-color";
-
-const JOBS_BY_ROLE: { role: string; jobs: Job[] }[] = [
-  { role: "Tanks", jobs: ["PLD", "WAR", "DRK", "GNB"] },
-  { role: "Healers", jobs: ["WHM", "SCH", "AST", "SGE"] },
-  { role: "Melee DPS", jobs: ["MNK", "DRG", "NIN", "SAM", "RPR", "VPR"] },
-  { role: "Phys Ranged", jobs: ["BRD", "MCH", "DNC"] },
-  { role: "Casters", jobs: ["BLM", "SMN", "RDM", "PCT"] },
-];
 
 const ROSTER_SIZE = 8;
 
