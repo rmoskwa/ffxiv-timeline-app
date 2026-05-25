@@ -149,3 +149,29 @@ _Avoid_: damage label, hit chip, number tag
 **Selection**:
 The transient state marking one boss instance as the focus of editing. Bidirectional — clicking a **Label** on the canvas highlights the corresponding instance sub-row in the BOSS ABILITIES panel (and scrolls it into view); clicking a sub-row in the panel highlights and scrolls to its label on the canvas. Pressing `Delete` removes the selected instance; `Esc` deselects. Visually: a blue border on the label and an accent on the panel sub-row.
 _Avoid_: focus, highlight, active
+
+### Imports
+
+**Bank**:
+A standalone document holding one or more **Import Sessions**, all for the **same encounter**. The encounter is fixed when the bank is first created — set from the user's pick in the encounter-selection screen — and is immutable for the bank's lifetime; a bank never mixes data from multiple bosses. Banks are independent of the Timeline: a user can open a Bank with no Timeline, a Timeline with no Bank, or both. Banks exist to make Type creation easier through cross-pull pattern detection; once a row is **promoted** the resulting Type is self-contained and no longer depends on the Bank.
+_Avoid_: catalog, library, import list
+
+**Import**:
+The act of fetching an fflogs report and aggregating its damaging-ability observations into a **Bank** as a new **Import Session**. Reserved word — does not refer to opening a Timeline or Bank file from disk (that gesture is **Open**, surfaced as "Open Timeline" / "Open Bank" toolbar actions).
+_Avoid_: fetch, ingest, sync; never use "import" for opening a file from disk
+
+**Import Session**:
+One act of fetching a single fflogs report's pulls of the bank's encounter. Records source provenance (`report_code`, `imported_at`) and the rolled-up Bank Rows. A bank holds at most one Session per `report_code`: re-importing the same report **refreshes** (overwrites) the existing session for that report — it does not append. The encounter is implicit from the parent Bank and not stored on the session.
+_Avoid_: import (already taken), fetch
+
+**Bank Row**:
+One `(enemyNPC.gameID, ability.gameID)` summary within an Import Session. Identity is structural, not user-given. Read-only — the user never edits a Bank Row.
+_Avoid_: ability, entry, item
+
+**Promotion**:
+The user action of converting a Bank Row into a `BossAbilityType` on the currently-open Timeline. Distinct from **Placement** — promotion creates the Type; placement creates Instances of the Type on the boss lane.
+_Avoid_: import (already taken), accept, materialize
+
+**Presence rate**:
+`pulls_seen / pulls_reaching` — the fraction of pulls that lived long enough to have seen an ability where it actually fired. 1.000 = scripted/unavoidable; below 1.000 = avoidable, RNG-targeted, or conditional. The primary "is this real" signal in the bank UI.
+_Avoid_: frequency, prevalence
