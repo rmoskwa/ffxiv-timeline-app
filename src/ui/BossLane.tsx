@@ -116,7 +116,7 @@ export function BossLane() {
           <div className="lane-gridlines" aria-hidden />
           {hoverSec !== null && pickerAtSec === null && (
             <div
-              className="hover-ghost"
+              className="hover-ghost hover-ghost--track"
               style={{ left: hoverSec * pxPerSec, width: Math.max(pxPerSec, 2) }}
               aria-hidden
             />

@@ -1401,6 +1401,14 @@ button {
   border-left: none;
   border-radius: 0 3px 3px 0;
 }
+/* Track-select variant: a self-styled translucent green block at the cursor.
+   Used where the ghost marks a track position rather than a mit footprint
+   (no active/cooldown children). */
+.hover-ghost--track {
+  background: rgba(120, 220, 120, 0.22);
+  border: 1px solid rgba(120, 220, 120, 0.5);
+  border-radius: 3px;
+}
 
 /* ─── Per-player damage guide (vertical line across one sub-lane) ─────── */
 
