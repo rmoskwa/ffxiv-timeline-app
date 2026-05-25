@@ -1105,6 +1105,11 @@ button {
   display: flex;
   flex-direction: column;
   border-bottom: 1px solid #333;
+  /* Auto-fit: grow to share leftover vertical space in .lane-content so a
+     short roster doesn't leave a wall of empty pixels below the last row.
+     `0` basis (not `auto`) makes siblings share the free space equally
+     instead of weighted by their natural content height. */
+  flex: 1 0 0;
 }
 .player-parent-lane.is-unset {
   opacity: 0.55;
@@ -1129,6 +1134,11 @@ button {
   flex-direction: row;
   min-height: 34px;
   border-bottom: 1px solid #242424;
+  /* Auto-fit: distribute the parent's free vertical space across sub-lanes.
+     `min-height` (the Small/Medium/Large setting) is the floor; when total
+     natural height exceeds the viewport, lanes stay at min-height and
+     .lane-content scrolls. */
+  flex: 1 0 auto;
 }
 .sub-lane:last-child {
   border-bottom: none;
@@ -1326,7 +1336,9 @@ button {
   border-left: 1px dashed rgba(120, 220, 120, 0.55);
   border-right: 1px dashed rgba(120, 220, 120, 0.55);
   pointer-events: none;
-  z-index: 3;
+  /* Above mit-bars (no z-index) but below sticky labels (z-index: 2) so the
+     placement preview stays hidden when the timeline scrolls past it. */
+  z-index: 1;
 }
 
 /* ─── Per-player damage guide (vertical line across one sub-lane) ─────── */
@@ -1428,11 +1440,16 @@ button {
 
 .mit-bar {
   position: absolute;
-  top: 4px;
+  /* Centered vertically so auto-fit (.sub-lane flex-grow) doesn't strand the
+     bar at the top of a tall row with dead space below it. The transform also
+     establishes a stacking context (no explicit z-index needed) so the bar's
+     inner icon-overlay/popover z-indices don't leak into the outer context
+     and compete with the sticky label column. */
+  top: 50%;
+  transform: translateY(-50%);
   height: 26px;
   display: flex;
   flex-direction: row;
-  z-index: 1;
 }
 .mit-bar-duration {
   height: 100%;
@@ -1527,7 +1544,10 @@ button {
   font-weight: 600;
   line-height: 1.4;
   pointer-events: none;
-  z-index: 2;
+  /* Below sticky labels (z-index: 2) so chips for early boss instances stay
+     hidden behind the player-header label when the timeline is scrolled past
+     them, instead of bleeding over the label text. */
+  z-index: 1;
   white-space: nowrap;
 }
 .damage-chip--lethal {
