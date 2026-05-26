@@ -646,6 +646,11 @@ button {
   flex-direction: column;
   gap: 0.45rem;
 }
+/* Expanded (focused) entry gets a cyan left-edge stripe so the user's
+   attention is anchored to the metadata they're editing. */
+.boss-type-entry:not(.boss-type-entry--collapsed) {
+  box-shadow: inset 3px 0 0 #6cf;
+}
 .boss-type-header {
   display: flex;
   align-items: flex-start;
