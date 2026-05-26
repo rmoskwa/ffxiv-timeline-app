@@ -10,6 +10,10 @@ A drag-and-drop planner for FFXIV raid fights: users place boss abilities on a t
 A damaging action the boss performs during a fight (e.g. *Death Sentence*, *Replication I*). Modeled as a **type** authored by the user plus one or more **instances** placed on the timeline.
 _Avoid_: skill, attack, mechanic
 
+**Boss timeline**:
+The subset of a Timeline comprising `boss_ability_types` and `boss_ability_instances`, plus the timeline-level fields required to interpret them (`fight_duration_sec`, `boss_name`). The unit of **Import** / **Export** scoped to the **boss panel**. Distinct from *the* Timeline, which is the whole document (roster, mits, phase markers, notes, plus the boss timeline). A boss timeline is *part of* a Timeline, never its own standalone document.
+_Avoid_: boss plan, boss timeline file (the JSON file is called a *boss-timeline export*), boss schedule
+
 **Mitigation**:
 A protective player action that reduces incoming damage (e.g. *Rampart*, *Reprisal*, *Oblation*). The library of mitigation types is bundled and not user-editable; users only place **instances**.
 _Avoid_: mit (acceptable colloquially in code, but prefer "mitigation" in prose), buff, defensive
@@ -228,9 +232,9 @@ _Avoid_: focus, highlight, active
 A standalone document holding one or more **Import Sessions**, all for the **same encounter**. The encounter is fixed when the bank is first created — set from the user's pick in the encounter-selection screen — and is immutable for the bank's lifetime; a bank never mixes data from multiple bosses. Banks are independent of the Timeline: a user can open a Bank with no Timeline, a Timeline with no Bank, or both. Banks exist to make Type creation easier through cross-pull pattern detection; once a row is **promoted** the resulting Type is self-contained and no longer depends on the Bank.
 _Avoid_: catalog, library, import list
 
-**Import**:
-The act of fetching an fflogs report and aggregating its damaging-ability observations into a **Bank** as a new **Import Session**. Reserved word — does not refer to opening a Timeline or Bank file from disk (that gesture is **Open**, surfaced as "Open Timeline" / "Open Bank" toolbar actions).
-_Avoid_: fetch, ingest, sync; never use "import" for opening a file from disk
+**Import** / **Export**:
+Scoped data movement *into* or *out of* an already-open document — a subset of the document's contents, not the document itself. Examples: fetching an fflogs report into a **Bank** as a new **Import Session**; loading a **boss timeline** into the current Timeline. Distinct from **Open** / **Save**, which apply to whole-document file operations on standalone artifacts (Timelines, Banks).
+_Avoid_: fetch, ingest, sync; never use "import" for opening a full Timeline or Bank from disk (use "Open" there)
 
 **Import Session**:
 One act of fetching a single fflogs report's pulls of the bank's encounter. Records source provenance (`report_code`, `imported_at`) and the rolled-up Bank Rows. A bank holds at most one Session per `report_code`: re-importing the same report **refreshes** (overwrites) the existing session for that report — it does not append. The encounter is implicit from the parent Bank and not stored on the session.
