@@ -93,8 +93,20 @@ Interchangeable. An HP-equivalent absorption pool seeded by a mitigation type th
 _Avoid_: absorb, ward (when used as a noun)
 
 **Barrier pool** / **Shield pool**:
-A single instance of a barrier on a recipient — one `MitigationInstance` seeds at most one pool per recipient slot. Multiple pools on one player stack additively. **Consumption order** is soonest-to-expire-first; ties broken oldest-applied-first.
+A single instance of a barrier on a recipient — one `MitigationInstance` seeds at most one pool per recipient slot. Multiple pools on one player stack additively. **Consumption order** is soonest-to-expire-first; ties broken oldest-applied-first. This order also determines absorption attribution for **Cooldown reduction on absorb** — when several pools on the same player could absorb the same hit, the one drained to zero is the one whose CD-reduce-on-absorb fires.
 _Avoid_: shield instance, ward pool
+
+**Absorbed**:
+A **barrier pool** is *absorbed* when a single boss **hit** drains it to zero HP. Distinct from **expired** (timed out unconsumed) and from **dispelled** (cross-type consume by a mit like PCT Tempera Grassa ending Tempera Coat). Only absorption — not expiry or dispel — sets `MitInstanceState.absorbed_at` and triggers **Cooldown reduction on absorb**.
+_Avoid_: drained, eaten, consumed (overloaded — see _Consume_)
+
+**Consume** (cross-type):
+A `MitigationType` with `consumes: <other-id>` ends that other entry's pool on the caster slot when the consumer fires. Used for the Tempera Grassa → Tempera Coat pair. Dispel-only — the consumed pool is not counted as **Absorbed**, and the consumer cannot fire if the consumed pool is missing or already absorbed (surfaces as a `missing_consumed_mit` conflict in the **Conflicts** panel).
+_Avoid_: dispel (use only as a verb in passing prose), eat
+
+**Cooldown reduction on absorb**:
+When a mit's `cooldown_reduce_on_absorb` is set and its barrier is **Absorbed**, the named number of seconds is shaved off a cooldown. Convention: when the mit also has `consumes`, the reduction targets the consumed instance's cooldown (PCT Tempera Grassa absorbed → -30s on Tempera Coat). Otherwise it targets self (Tempera Coat absorbed → -60s on self). A consumer mit's bar (Grassa) renders at the consumed parent's effective cooldown — the visual length always matches the Coat it came from.
+_Avoid_: cd refund, cooldown rebate
 
 **Tank Mastery**:
 A tank-only always-on 20% all-source damage reduction. Applied multiplicatively at the % mit step (not as a barrier). Derived from **Role** at math time — not stored on the slot.
