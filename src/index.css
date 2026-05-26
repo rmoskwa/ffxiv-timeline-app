@@ -1756,7 +1756,7 @@ button {
 .damage-chip-hp {
   position: absolute;
   inset: 0 auto 0 0;
-  background: #2f8a47;
+  background: #7ed094;
 }
 .damage-chip-missing {
   position: absolute;
@@ -1781,7 +1781,7 @@ button {
   border-color: #c33;
 }
 .damage-chip--lethal .damage-chip-missing {
-  background: #ff7878;
+  background: #ffaaaa;
 }
 .damage-chip--zero {
   border-color: #ddd;
@@ -1892,7 +1892,7 @@ button {
   border-color: #3a8e4f;
 }
 .lane-scroll.theme-light .damage-chip-hp {
-  background: #5ab070;
+  background: #a4dab3;
 }
 .lane-scroll.theme-light .damage-chip-missing {
   background: #f4f4f4;
