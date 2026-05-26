@@ -83,6 +83,18 @@ export interface BossAbilityInstance {
 // pool absorbs post-% damage until it expires or is fully consumed.
 export type Barrier = { kind: "max_hp_pct"; value: number };
 
+// A time-bounded sub-window inside a mitigation's active duration with its
+// own % reduction. Applied multiplicatively on top of the outer
+// `mitigation_per_type` at any hit time where (hit.t - instance.t) is within
+// [offset_seconds, offset_seconds + duration_seconds]. Models abilities like
+// PLD Holy Sheltron whose first 4s carry an extra mit boost (15% × 15%)
+// before stepping down to the outer mit for the remaining duration.
+export type Tier = {
+  offset_seconds: number; // from instance.effect_time; >= 0
+  duration_seconds: number; // length of the inner window
+  mitigation_per_type: Partial<Record<DamageType | "all", number>>;
+};
+
 export interface MitigationType {
   id: string; // "{job_short}.{ability_short}" — stable forever
   name: string;
@@ -132,6 +144,13 @@ export interface MitigationType {
   // Neutral Sect's 20s active by 10s — the Suntouched buff outlives its parent)
   // and WHM Divine Caress (10s, shorter than Temperance's 20s active).
   execution_zone_seconds?: number;
+  // Inner sub-windows that boost `mitigation_per_type` while active. Each tier
+  // applies multiplicatively on top of the outer mit for any hit whose
+  // (hit.t - instance.t) falls in [offset, offset + duration]. Used today for
+  // tiered tank mits (PLD Holy Sheltron, PLD Intervention, WAR Bloodwhetting,
+  // WAR Nascent Flash, GNB Heart of Corundum), where the first 4s of an 8s
+  // window carry an extra reduction layer.
+  tiers?: Tier[];
 }
 
 // Resolve the % mit an ability applies to a given damage type.

@@ -199,6 +199,22 @@ export function computeDamageTimeline(
         const trunc = effectiveEnds.get(`${m.id}|${playerId}`);
         if (mitCovers(m, mt, resolvedHit, i, roster, trunc)) {
           postMit *= 1 - mitPercentFor(mt, resolvedHit.damage_type) / 100;
+          // Tier boosts: each tier whose [offset, offset+duration] window
+          // contains the hit's instance-relative time applies multiplicatively
+          // on top of the outer reduction. Models tank tiered mits like
+          // PLD Holy Sheltron (15% × 15% for 0–4s, 15% for 4–8s).
+          if (mt.tiers) {
+            const rel = resolvedHit.effect_time - m.effect_time;
+            for (const tier of mt.tiers) {
+              if (rel < tier.offset_seconds) continue;
+              if (rel > tier.offset_seconds + tier.duration_seconds) continue;
+              const tierPct =
+                tier.mitigation_per_type[resolvedHit.damage_type] ??
+                tier.mitigation_per_type.all ??
+                0;
+              if (tierPct > 0) postMit *= 1 - tierPct / 100;
+            }
+          }
         }
       }
       if (deriveRole(roster[i]?.job ?? "unset") === "tank") {
@@ -413,6 +429,25 @@ function computeEffectiveEnds(
 //      caster slot — its yellow-dashed bar still mirrors a Coat endpoint.
 //      Falls back to the consumer's own data CD only when no candidate is
 //      found at all.
+// Blocking footprint (in seconds) for a single mit instance — the period from
+// `inst.effect_time` during which no other instance of the same (type, recipient)
+// may be placed or dragged into. Equals `max(effectiveCooldownSeconds, type.duration_seconds)`:
+// the buff's active window is itself blocking even when the cooldown is
+// shorter than the duration (Holy Sheltron: 5s CD, 8s active). For every other
+// mit today CD > duration, so this is a no-op.
+export function effectiveBarFootprintSeconds(
+  inst: MitigationInstance,
+  type: MitigationType,
+  allMits: readonly MitigationInstance[],
+  lookupMitType: MitTypeLookup,
+  perInstanceState: ReadonlyMap<string, MitInstanceState>,
+): number {
+  return Math.max(
+    effectiveCooldownSeconds(inst, type, allMits, lookupMitType, perInstanceState),
+    type.duration_seconds,
+  );
+}
+
 export function effectiveCooldownSeconds(
   inst: MitigationInstance,
   type: MitigationType,

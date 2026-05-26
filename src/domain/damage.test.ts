@@ -247,6 +247,37 @@ const TYPES: Record<string, MitigationType> = {
     cooldown_reduce_on_absorb: 30,
     wiki_url: "https://example.com/tempera-grassa",
   },
+  // Holy Sheltron-shaped tier: 15% outer / 8s, with an inner 15% over the
+  // first 4s. Placed on a non-tank job (PCT) so Tank Mastery doesn't muddy
+  // the math.
+  tieredSelf15: {
+    id: "synth.tiered_self_15",
+    name: "Synth Tiered Self 15",
+    job: "PCT",
+    cooldown_seconds: 5,
+    duration_seconds: 8,
+    mitigation_per_type: { all: 15 },
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    tiers: [{ offset_seconds: 0, duration_seconds: 4, mitigation_per_type: { all: 15 } }],
+    wiki_url: "https://example.com/tiered-self-15",
+  },
+  // Second tiered shape — party-wide so it can stack with tieredSelf15 on the
+  // caster without overwriting it (different type_id).
+  tieredParty10: {
+    id: "synth.tiered_party_10",
+    name: "Synth Tiered Party 10",
+    job: "PCT",
+    cooldown_seconds: 5,
+    duration_seconds: 8,
+    mitigation_per_type: { all: 10 },
+    affects: "party",
+    max_charges: 1,
+    mechanic: "mit",
+    tiers: [{ offset_seconds: 0, duration_seconds: 4, mitigation_per_type: { all: 10 } }],
+    wiki_url: "https://example.com/tiered-party-10",
+  },
 };
 const lookup = (id: string): MitigationType | undefined =>
   Object.values(TYPES).find((t) => t.id === id);
@@ -958,6 +989,89 @@ describe("Tank Mastery", () => {
     expect(result[1]?.damage_taken_to_hp).toBe(80_000); // WAR
     expect(result[2]?.damage_taken_to_hp).toBe(100_000); // SCH
     expect(result[6]?.damage_taken_to_hp).toBe(100_000); // BLM
+  });
+});
+
+// ─── Tiered mitigations ─────────────────────────────────────────────────────
+
+describe("computeDamagePerPlayer — tiered mits", () => {
+  it("hit inside inner-tier window applies outer × inner reduction", () => {
+    // tieredSelf15 on s6 (non-tank) at t=50. Hit at t=52 → rel=2, inside the
+    // 0–4s inner tier. 100k × 0.85 (outer) × 0.85 (inner) = 72,250.
+    const m = mit({
+      player_slot_id: "s6",
+      type_id: "synth.tiered_self_15",
+      effect_time: 50,
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 52 }),
+      bossType({ base_damage: 100_000 }),
+      [m],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(72_250);
+  });
+
+  it("hit outside inner-tier window but inside outer applies outer only", () => {
+    // Hit at t=56 → rel=6, outside the 0–4s inner tier but inside outer 8s.
+    // 100k × 0.85 = 85k.
+    const m = mit({
+      player_slot_id: "s6",
+      type_id: "synth.tiered_self_15",
+      effect_time: 50,
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 56 }),
+      bossType({ base_damage: 100_000 }),
+      [m],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(85_000);
+  });
+
+  it("hit outside the outer window applies no reduction (tier irrelevant)", () => {
+    // Hit at t=60 → rel=10, outside outer 8s. Full damage to non-tank.
+    const m = mit({
+      player_slot_id: "s6",
+      type_id: "synth.tiered_self_15",
+      effect_time: 50,
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 60 }),
+      bossType({ base_damage: 100_000 }),
+      [m],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(100_000);
+  });
+
+  it("two tiered mits overlapping: all four reductions stack multiplicatively", () => {
+    // tieredSelf15 on s6 + tieredParty10 placed by s0 (covers party including
+    // s6). Hit at t=52 → both inner tiers active. s6 (non-tank):
+    // 100k × 0.85 × 0.85 × 0.90 × 0.90 = 58,522.5.
+    const sheltron = mit({
+      id: "self15",
+      player_slot_id: "s6",
+      type_id: "synth.tiered_self_15",
+      effect_time: 50,
+    });
+    const party = mit({
+      id: "party10",
+      player_slot_id: "s0",
+      type_id: "synth.tiered_party_10",
+      effect_time: 50,
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 52 }),
+      bossType({ base_damage: 100_000 }),
+      [sheltron, party],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBeCloseTo(58_522.5, 4);
   });
 });
 

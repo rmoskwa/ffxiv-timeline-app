@@ -1598,6 +1598,17 @@ button {
   border-top-color: rgba(0, 0, 0, 0.35);
   border-bottom-color: rgba(0, 0, 0, 0.35);
 }
+/* Tiered % mit: a darker overlay segment marks the boosted sub-window
+   (e.g. PLD Holy Sheltron's 15% × 15% during the first 4s of its 8s active).
+   Pointer-transparent — clicks fall through to the parent active band. */
+.mit-bar-tier {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+  box-sizing: border-box;
+  z-index: 1;
+}
 
 /* Gated-child duration band on the parent's bar. The inner segment (inside
    the parent's active window) is pointer-transparent so clicks select the

@@ -2,7 +2,7 @@ import type React from "react";
 import { useMemo, useState } from "react";
 import { getMitById } from "@/data/mit-library";
 import { assignChargeRows } from "@/domain/charges";
-import { effectiveCooldownSeconds } from "@/domain/damage";
+import { effectiveBarFootprintSeconds } from "@/domain/damage";
 import type { MitigationInstance, MitigationType, PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { MitBar } from "./MitBar";
@@ -99,15 +99,19 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
   const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
   const [hoverSec, setHoverSec] = useState<number | null>(null);
 
-  // Neighbor end-time uses each placement's EFFECTIVE cooldown — when a
-  // Tempera shield is absorbed, the freed-up space behind the shrunken bar
-  // becomes available for the next placement. The hover ghost's own footprint
-  // still uses the data cooldown (worst case — the new placement's eventual
-  // absorption state is unknown until a boss hit interacts with it).
+  // Neighbor end-time uses each placement's EFFECTIVE footprint — `max(CD,
+  // duration)`. When a Tempera shield is absorbed, the freed-up space behind
+  // the shrunken bar becomes available for the next placement; the duration
+  // floor matters when CD < duration (Holy Sheltron) so the buff's active
+  // window remains blocking. The hover ghost's own footprint still uses the
+  // data values (worst case — the new placement's eventual absorption state is
+  // unknown until a boss hit interacts with it).
   const neighborEnds = instances.map(
     (m) =>
-      m.effect_time + effectiveCooldownSeconds(m, mitType, allMits ?? [], getMitById, mitStates),
+      m.effect_time +
+      effectiveBarFootprintSeconds(m, mitType, allMits ?? [], getMitById, mitStates),
   );
+  const ghostFootprintSec = Math.max(mitType.cooldown_seconds, mitType.duration_seconds);
 
   const legalHoverSec = (raw: number): number | null => {
     if (raw < 0 || raw > laneDurationSec) return null;
@@ -115,7 +119,7 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
       const n = instances[i];
       const nEnd = neighborEnds[i];
       if (!n || nEnd == null) continue;
-      if (raw < nEnd && raw + mitType.cooldown_seconds > n.effect_time) return null;
+      if (raw < nEnd && raw + ghostFootprintSec > n.effect_time) return null;
     }
     return raw;
   };

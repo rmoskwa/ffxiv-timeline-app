@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
-import { effectiveCooldownSeconds } from "@/domain/damage";
+import { effectiveBarFootprintSeconds, effectiveCooldownSeconds } from "@/domain/damage";
 import { targetingForMit } from "@/domain/targeting";
 import { formatMitMagnitude, type MitigationInstance, type MitigationType } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
@@ -153,11 +153,13 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
         if (!next || n.effect_time < next.effect_time) next = n;
       }
     }
-    // Use the previous neighbor's EFFECTIVE cooldown so a shrunken bar (e.g.
-    // a Tempera Coat whose shield was absorbed) frees up the post-shrinkage
-    // gap for this bar's left edge. The dragged bar's own right edge uses its
-    // own effective cooldown for the same reason.
-    const thisEffectiveCd = effectiveCooldownSeconds(
+    // Use the previous neighbor's EFFECTIVE footprint (max of CD and duration)
+    // so a shrunken bar (e.g. a Tempera Coat whose shield was absorbed) frees
+    // up the post-shrinkage gap for this bar's left edge — and a buff whose
+    // active window exceeds its CD (Holy Sheltron) still blocks the entire
+    // active period. The dragged bar's own right edge uses its own effective
+    // footprint for the same reason.
+    const thisFootprint = effectiveBarFootprintSeconds(
       instance,
       type,
       allMits ?? [],
@@ -165,12 +167,12 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
       mitStates,
     );
     const prevType = prev ? getMitById(prev.type_id) : undefined;
-    const prevEffectiveCd =
+    const prevFootprint =
       prev && prevType
-        ? effectiveCooldownSeconds(prev, prevType, allMits ?? [], getMitById, mitStates)
+        ? effectiveBarFootprintSeconds(prev, prevType, allMits ?? [], getMitById, mitStates)
         : 0;
-    const minT = prev ? prev.effect_time + prevEffectiveCd : 0;
-    let maxT = next ? next.effect_time - thisEffectiveCd : tl.metadata.fight_duration_sec;
+    const minT = prev ? prev.effect_time + prevFootprint : 0;
+    let maxT = next ? next.effect_time - thisFootprint : tl.metadata.fight_duration_sec;
     // Offset-glued children must stay within the timeline. Snapshot each
     // child's current offset and tighten the parent's right-edge clamp so
     // dragging never pushes a child past fight_duration_sec.
@@ -297,6 +299,29 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
           aria-hidden
         />
       )}
+      {type.tiers?.map((tier) => {
+        // Darker overlay marking the boosted sub-window. Clipped to the
+        // visible portion of the active bar so a tier never bleeds into the
+        // cooldown tail.
+        const tierLeftPx = tier.offset_seconds * pxPerSec;
+        const tierWidthSec = Math.max(
+          0,
+          Math.min(tier.duration_seconds, visibleDurationSec - tier.offset_seconds),
+        );
+        if (tierWidthSec <= 0) return null;
+        return (
+          <div
+            key={`tier-${tier.offset_seconds}-${tier.duration_seconds}`}
+            className="mit-bar-tier"
+            style={{
+              left: tierLeftPx,
+              width: tierWidthSec * pxPerSec,
+              background: `color-mix(in srgb, ${jobColor(type.job)} 60%, transparent)`,
+            }}
+            aria-hidden
+          />
+        );
+      })}
       {cooldownTailPx > 0 && (
         <div className="mit-bar-cooldown" style={{ width: cooldownTailPx }} aria-hidden />
       )}

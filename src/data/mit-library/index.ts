@@ -56,6 +56,29 @@ for (const mit of MIT_LIBRARY) {
       `mit-library: ${mit.id} is gated_by "${mit.gated_by}" but no such entry exists`,
     );
   }
+  if (mit.tiers) {
+    for (let i = 0; i < mit.tiers.length; i++) {
+      const t = mit.tiers[i];
+      if (!t) continue;
+      if (t.offset_seconds < 0) {
+        throw new Error(`mit-library: ${mit.id} tiers[${i}].offset_seconds must be >= 0`);
+      }
+      if (t.duration_seconds <= 0) {
+        throw new Error(`mit-library: ${mit.id} tiers[${i}].duration_seconds must be > 0`);
+      }
+      if (t.offset_seconds + t.duration_seconds > mit.duration_seconds) {
+        throw new Error(
+          `mit-library: ${mit.id} tiers[${i}] extends past parent duration_seconds (${mit.duration_seconds})`,
+        );
+      }
+      const hasMagnitude = Object.values(t.mitigation_per_type).some((v) => v != null && v !== 0);
+      if (!hasMagnitude) {
+        throw new Error(
+          `mit-library: ${mit.id} tiers[${i}].mitigation_per_type must declare a non-zero reduction`,
+        );
+      }
+    }
+  }
 }
 
 export function getMitById(id: string): MitigationType | undefined {

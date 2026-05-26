@@ -2,7 +2,11 @@ import type { MitigationType } from "@/domain/types";
 
 // PLD mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Sentinel is omitted — it upgrades to Guardian via trait at L92.
-// Holy Sheltron and Intervention are excluded as Oath-gated/conditional.
+// Sheltron is omitted — it upgrades to Holy Sheltron via trait at L82.
+// Holy Sheltron and Intervention carry tiered % mit (15% / 15% and 10% / 10%
+// respectively, with the inner tier covering the first 4s); their cure-potency
+// Knight's Benediction regen is deferred per shielded-mits policy. Intervention's
+// conditional +10% bonus while Rampart/Guardian is active is also deferred.
 export const PLD_MITS: MitigationType[] = [
   {
     id: "pld.rampart",
@@ -54,6 +58,35 @@ export const PLD_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Passage_of_Arms",
+  },
+  {
+    id: "pld.holy_sheltron",
+    name: "Holy Sheltron",
+    job: "PLD",
+    cooldown_seconds: 5,
+    duration_seconds: 8,
+    mitigation_per_type: { all: 15 },
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    // Knight's Benediction (250-potency regen, 12s) deferred per shielded-mits policy.
+    tiers: [{ offset_seconds: 0, duration_seconds: 4, mitigation_per_type: { all: 15 } }],
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Holy_Sheltron",
+  },
+  {
+    id: "pld.intervention",
+    name: "Intervention",
+    job: "PLD",
+    cooldown_seconds: 10,
+    duration_seconds: 8,
+    mitigation_per_type: { all: 10 },
+    affects: "target",
+    max_charges: 1,
+    mechanic: "mit",
+    // Knight's Benediction regen + conditional +10% during Rampart/Guardian deferred
+    // per shielded-mits policy / Trust the timeline.
+    tiers: [{ offset_seconds: 0, duration_seconds: 4, mitigation_per_type: { all: 10 } }],
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Intervention",
   },
   {
     id: "pld.hallowed_ground",

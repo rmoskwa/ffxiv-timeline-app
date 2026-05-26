@@ -2,7 +2,10 @@ import type { MitigationType } from "@/domain/types";
 
 // GNB mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Nebula is omitted — it upgrades to Great Nebula via trait at L92.
-// Heart of Corundum is excluded as conditional.
+// Heart of Stone is omitted — it upgrades to Heart of Corundum via trait at L82.
+// Heart of Corundum carries tiered % mit (15% / 8s outer + 15% / 0–4s inner via
+// Clarity of Corundum); its Catharsis of Corundum cure-potency heal and the
+// Brutal Shell transfer are deferred per shielded-mits policy.
 export const GNB_MITS: MitigationType[] = [
   {
     id: "gnb.rampart",
@@ -63,6 +66,21 @@ export const GNB_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Heart_of_Light",
+  },
+  {
+    id: "gnb.heart_of_corundum",
+    name: "Heart of Corundum",
+    job: "GNB",
+    cooldown_seconds: 25,
+    duration_seconds: 8,
+    mitigation_per_type: { all: 15 },
+    affects: "target_or_self",
+    max_charges: 1,
+    mechanic: "mit",
+    // Catharsis of Corundum (900-potency heal at <50% HP / expiry) deferred per
+    // shielded-mits policy. Brutal Shell transfer not modeled.
+    tiers: [{ offset_seconds: 0, duration_seconds: 4, mitigation_per_type: { all: 15 } }],
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Heart_of_Corundum",
   },
   {
     id: "gnb.superbolide",
