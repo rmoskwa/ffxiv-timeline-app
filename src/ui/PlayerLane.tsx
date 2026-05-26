@@ -6,7 +6,7 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitSubLane } from "./MitSubLane";
 import { jobColor } from "./role-color";
-import { CHIP_BAR_PX } from "./timeline-constants";
+import { CHIP_BAR_PX, JOB_GUTTER_PX } from "./timeline-constants";
 import { useDamageByInstance } from "./use-derived";
 import { useZoom } from "./use-zoom";
 
@@ -28,30 +28,21 @@ interface DamageMark {
 const EMPTY_MITS: readonly MitigationInstance[] = [];
 const EMPTY_INSTANCES: readonly BossAbilityInstance[] = [];
 
-export function PlayerLane({ slot, index }: PlayerLaneProps) {
-  const allMits = useTimelineStore((s) => s.timeline?.mitigation_instances ?? EMPTY_MITS);
+// Per-player damage marks: one entry per boss instance that targets this
+// player. Drives both the chip bar and the vertical guide lines. `maxHp` is
+// the engine-provided buffed cap at this hit's instant — not `slot.hp` —
+// so max-HP buffs (Thrill, Protraction, Great Nebula) widen lethality and
+// resize the HP fill correctly.
+function usePlayerDamageMarks(slotIndex: number): DamageMark[] {
   const bossInstances = useTimelineStore(
     (s) => s.timeline?.boss_ability_instances ?? EMPTY_INSTANCES,
   );
   const damageByInstance = useDamageByInstance();
-  const { pxPerSec, laneWidthPx } = useZoom();
-
-  const label = slot.name_label ?? (slot.job === "unset" ? "Unset" : slot.job);
-  // Gated children render on their parent's bar (see MitBar) and do not get
-  // their own sub-lane. PRD §6.1.
-  const mits =
-    slot.job === "unset" ? [] : getMitsForJob(slot.job).filter((mt) => mt.gated_by == null);
-
-  // Per-player damage marks: one entry per boss instance that targets this
-  // player. Drives both the chip bar and the vertical guide lines. `maxHp` is
-  // the engine-provided buffed cap at this hit's instant — not `slot.hp` —
-  // so max-HP buffs (Thrill, Protraction, Great Nebula) widen lethality and
-  // resize the HP fill correctly.
-  const damageMarks = useMemo<DamageMark[]>(() => {
+  return useMemo<DamageMark[]>(() => {
     const marks: DamageMark[] = [];
     for (const inst of bossInstances) {
       const results = damageByInstance.get(inst.id);
-      const r = results?.[index] as PerPlayerHitResult | null | undefined;
+      const r = results?.[slotIndex] as PerPlayerHitResult | null | undefined;
       if (r == null) continue;
       marks.push({
         id: inst.id,
@@ -64,13 +55,26 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
       });
     }
     return marks;
-  }, [bossInstances, damageByInstance, index]);
+  }, [bossInstances, damageByInstance, slotIndex]);
+}
 
-  const mitsBySlot = useMemo(
-    () => allMits.filter((m) => m.player_slot_id === slot.id),
-    [allMits, slot.id],
-  );
+function useSlotMits(slot: PlayerSlot): readonly MitigationInstance[] {
+  const allMits = useTimelineStore((s) => s.timeline?.mitigation_instances ?? EMPTY_MITS);
+  return useMemo(() => allMits.filter((m) => m.player_slot_id === slot.id), [allMits, slot.id]);
+}
 
+// Interleaved-mode lane: header row with job-tinted label + chips, followed by
+// the slot's mit sub-lanes. Unchanged from pre-chip-layout behavior.
+export function PlayerLane({ slot, index }: PlayerLaneProps) {
+  const damageMarks = usePlayerDamageMarks(index);
+  const mitsBySlot = useSlotMits(slot);
+  const { pxPerSec, laneWidthPx } = useZoom();
+
+  const label = slot.name_label ?? (slot.job === "unset" ? "Unset" : slot.job);
+  // Gated children render on their parent's bar (see MitBar) and do not get
+  // their own sub-lane. PRD §6.1.
+  const mits =
+    slot.job === "unset" ? [] : getMitsForJob(slot.job).filter((mt) => mt.gated_by == null);
   const isUnset = slot.job === "unset";
 
   return (
@@ -99,6 +103,90 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
           />
         ))}
     </div>
+  );
+}
+
+// Separated-mode chip row: [gutter][empty 140px label][chip track]. Unset slots
+// still render a (grayed, chip-less) row so the chip section keeps a stable
+// height as slots get assigned.
+export function PlayerChipRow({ slot, index }: PlayerLaneProps) {
+  const damageMarks = usePlayerDamageMarks(index);
+  const { pxPerSec, laneWidthPx } = useZoom();
+  const isUnset = slot.job === "unset";
+  const label = slot.name_label ?? (isUnset ? "Unset" : slot.job);
+
+  return (
+    <div className={`lane-row chip-section-row${isUnset ? " is-unset" : ""}`}>
+      <JobGutter slot={slot} title={label} />
+      <div className="lane-label chip-row-label" aria-hidden />
+      <div className="lane-track player-header-track chip-row-track" style={{ width: laneWidthPx }}>
+        {!isUnset && damageMarks.map((m) => <DamageChip key={m.id} mark={m} pxPerSec={pxPerSec} />)}
+      </div>
+    </div>
+  );
+}
+
+// Separated-mode mit group: [gutter spanning the slot's sub-lanes][stack of
+// MitSubLanes]. Returns null for slots with no sub-lanes (unset, or every mit
+// gated out) — those slots have nothing to span and are absent from the mit
+// canvas entirely. The chip row still renders for them via PlayerChipRow.
+export function SlotMitGroup({ slot, index }: PlayerLaneProps) {
+  const damageMarks = usePlayerDamageMarks(index);
+  const mitsBySlot = useSlotMits(slot);
+
+  const mits =
+    slot.job === "unset" ? [] : getMitsForJob(slot.job).filter((mt) => mt.gated_by == null);
+  if (mits.length === 0) return null;
+
+  const label = slot.name_label ?? slot.job;
+
+  return (
+    <div
+      className="slot-mit-group"
+      style={{ flexGrow: mits.length }}
+      data-sub-lane-count={mits.length}
+    >
+      <JobGutter slot={slot} title={label} />
+      <div className="slot-mit-group-rows">
+        {mits.map((mt) => (
+          <MitSubLane
+            key={mt.id}
+            slot={slot}
+            mitType={mt}
+            instances={mitsBySlot.filter((m) => m.type_id === mt.id)}
+            damageMarks={damageMarks}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Job-tinted column carrying the JobIcon. Icon-only per design — the readable
+// slot name lives in the existing 140px lane-label region (interleaved mode)
+// or in tooltips (separated modes; the 140px cell is intentionally empty so
+// the gutter's tint alone speaks for slot identity).
+function JobGutter({ slot, title }: { slot: PlayerSlot; title: string }) {
+  const isUnset = slot.job === "unset";
+  return (
+    <div
+      className={`job-gutter${isUnset ? " job-gutter--unset" : ""}`}
+      style={{
+        width: JOB_GUTTER_PX,
+        background: isUnset ? undefined : jobColor(slot.job),
+      }}
+      title={title}
+    >
+      <JobIcon job={slot.job} size={18} title={title} />
+    </div>
+  );
+}
+
+// Phantom column reserved on Ruler / Boss rows in separated modes so the time
+// axis stays column-aligned with the chip / mit-canvas tracks below.
+export function PhantomGutter() {
+  return (
+    <div className="job-gutter job-gutter--phantom" style={{ width: JOB_GUTTER_PX }} aria-hidden />
   );
 }
 

@@ -10,6 +10,7 @@ import {
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossPlacementPicker } from "./BossPlacementPicker";
 import { clampLabelCenter, packLabelRows } from "./boss-label-packing";
+import { PhantomGutter } from "./PlayerLane";
 import { TargetPicker } from "./TargetPicker";
 import {
   BOSS_PIN_HEIGHT,
@@ -23,6 +24,7 @@ import {
   secondsToTimecode,
   snapClientXToSecond,
 } from "./timeline-constants";
+import { useChipLayoutStore } from "./use-chip-layout";
 import { useDamageByInstance } from "./use-derived";
 import { useZoom } from "./use-zoom";
 
@@ -39,6 +41,7 @@ export function BossLane() {
   const deselectInstance = useTimelineStore((s) => s.deselectInstance);
   const damageByInstance = useDamageByInstance();
   const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
+  const chipPosition = useChipLayoutStore((s) => s.position);
 
   const [hoverSec, setHoverSec] = useState<number | null>(null);
   const [pickerAtSec, setPickerAtSec] = useState<number | null>(null);
@@ -96,6 +99,7 @@ export function BossLane() {
 
   return (
     <div className="lane-row lane-row--boss" style={{ height: contentHeight }}>
+      {chipPosition !== "interleaved" && <PhantomGutter />}
       <BossLaneLabel />
       <div className="boss-lane-content" style={{ width: laneWidthPx, height: contentHeight }}>
         <div

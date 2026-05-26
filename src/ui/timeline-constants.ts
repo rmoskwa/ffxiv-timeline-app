@@ -49,6 +49,17 @@ export const PLAYER_MAX_HP = 100_000;
 // (HP, missing, shield) are percentage fills of each player's own max HP.
 export const CHIP_BAR_PX = 64;
 
+// Width of the sticky lane-label column. Subtracted from the scroll container's
+// width to derive the visible track region — must stay in sync with the
+// `.lane-label` / `.sub-lane-label` width in index.css.
+export const LANE_LABEL_WIDTH_PX = 140;
+
+// Width of the job gutter rendered in non-interleaved chip layouts to the LEFT
+// of `.lane-label`. Carries the per-slot JobIcon and tints the row by role.
+// Phantom (empty) gutters render at the same width on Ruler/Boss rows to keep
+// the time axis aligned.
+export const JOB_GUTTER_PX = 28;
+
 // ─── Boss-lane geometry ───────────────────────────────────────────────────
 // The boss lane is a stack: a label strip above a pin track. Strip height
 // grows with the deepest row in greedy row-packing. Pin track is fixed.

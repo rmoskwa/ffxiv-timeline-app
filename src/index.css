@@ -2051,6 +2051,117 @@ button {
   border-color: #888;
 }
 
+/* ─── Chip-layout: separated modes (Top / Bottom) ─────────────────────── */
+/* The job gutter is a sticky 28px column to the LEFT of the existing 140px
+   lane-label. In Top/Bottom modes chips are grouped into a single chip
+   section and the rest of the canvas becomes a continuous mit canvas; the
+   gutter carries per-slot identity (role tint + JobIcon) so the empty
+   chip-row label cell can stay blank and still read correctly. */
+
+.job-gutter {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2a2a2a;
+  border-right: 1px solid #333;
+}
+.job-gutter--unset {
+  background: #2a2a2a;
+  opacity: 0.55;
+}
+.job-gutter--phantom {
+  background: transparent;
+  border-right-color: transparent;
+}
+
+/* Shift the sticky lane-label / sub-lane-label one gutter-width right so it
+   sits flush against the gutter when horizontally scrolled (instead of
+   overlapping it). */
+.lane-scroll.chip-position-top .lane-label,
+.lane-scroll.chip-position-top .sub-lane-label,
+.lane-scroll.chip-position-bottom .lane-label,
+.lane-scroll.chip-position-bottom .sub-lane-label {
+  left: 28px;
+}
+
+.chip-section {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.lane-scroll.chip-position-top .chip-section {
+  border-bottom: 4px solid #2a1f15;
+}
+.lane-scroll.chip-position-bottom .chip-section {
+  border-top: 4px solid #2a1f15;
+}
+
+.chip-section-row {
+  display: flex;
+  flex-direction: row;
+  height: 28px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+.chip-section-row.is-unset {
+  opacity: 0.55;
+}
+.chip-row-label {
+  background: #1c1c1c;
+}
+.chip-row-track {
+  background: #181818;
+}
+
+/* Mit canvas: single flex column wrapping every slot's mit group. Leftover
+   vertical space distributes proportionally to each slot's sub-lane count
+   (via flexGrow set inline on .slot-mit-group), so the per-sub-lane height
+   stays uniform across the whole canvas instead of being equal per slot. */
+.mit-canvas {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 0;
+  min-height: 0;
+}
+.slot-mit-group {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  flex-basis: auto;
+}
+.slot-mit-group-rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lane-scroll.theme-light .job-gutter {
+  border-right-color: #d4d4d4;
+}
+.lane-scroll.theme-light .job-gutter--phantom {
+  border-right-color: transparent;
+}
+.lane-scroll.theme-light .chip-section-row {
+  border-bottom-color: #ececec;
+}
+.lane-scroll.theme-light .chip-row-label {
+  background: #f3f3f3;
+}
+.lane-scroll.theme-light .chip-row-track {
+  background: #ffffff;
+}
+.lane-scroll.theme-light.chip-position-top .chip-section {
+  border-bottom-color: #fff1e0;
+}
+.lane-scroll.theme-light.chip-position-bottom .chip-section {
+  border-top-color: #fff1e0;
+}
+
 /* ─── Conflicts panel (right sidebar) ─────────────────────────────────── */
 
 /* Right-sidebar wrapper. The inspector pins to the top (natural height); the

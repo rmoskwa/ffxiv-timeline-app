@@ -4,15 +4,18 @@ import { flushSync } from "react-dom";
 import { DEFAULT_FIGHT_DURATION_SEC } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossLane } from "./BossLane";
-import { PlayerLane } from "./PlayerLane";
+import { PlayerChipRow, PlayerLane, SlotMitGroup } from "./PlayerLane";
 import { Ruler } from "./Ruler";
 import {
   clampZoom,
   DEFAULT_PX_PER_SEC,
+  JOB_GUTTER_PX,
+  LANE_LABEL_WIDTH_PX,
   pickTickIntervalSec,
   ZOOM_WHEEL_FACTOR,
 } from "./timeline-constants";
 import { type AppearanceTheme, useAppearanceStore } from "./use-appearance";
+import { type ChipPosition, useChipLayoutStore } from "./use-chip-layout";
 import { ICON_SIZE_MAX, ICON_SIZE_MIN, useRowSizeStore } from "./use-row-size";
 import { useViewStore } from "./use-view";
 import { useZoom, useZoomStore } from "./use-zoom";
@@ -26,10 +29,6 @@ import { useZoom, useZoomStore } from "./use-zoom";
 // Ctrl/Alt + wheel zooms around the cursor: we use flushSync so the new px/s
 // is committed before we recompute scrollLeft from the post-zoom geometry —
 // otherwise the scroll snap and the zoom would race for the same paint frame.
-// Width of the sticky lane label column. Subtracted from the scroll container's
-// width to derive the visible track region — must stay in sync with the
-// `.lane-label` width in index.css.
-const LANE_LABEL_WIDTH_PX = 140;
 
 export function TimelineCanvas() {
   const roster = useTimelineStore((s) => s.timeline?.roster);
@@ -39,18 +38,22 @@ export function TimelineCanvas() {
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
   const { pxPerSec } = useZoom();
   const theme = useAppearanceStore((s) => s.theme);
+  const chipPosition = useChipLayoutStore((s) => s.position);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const setZoom = useZoomStore((s) => s.setZoom);
   const setMinPxPerSec = useZoomStore((s) => s.setMinPxPerSec);
 
   // Floor zoom at "the full fight fits in the visible track region" so users
   // can never zoom out into empty space past the end of the timeline. Re-runs
-  // whenever the viewport resizes or the fight duration changes.
+  // whenever the viewport resizes, the fight duration changes, or the chip
+  // layout adds/removes the job gutter column.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    const labelRegion =
+      chipPosition === "interleaved" ? LANE_LABEL_WIDTH_PX : LANE_LABEL_WIDTH_PX + JOB_GUTTER_PX;
     const recompute = () => {
-      const trackWidth = Math.max(0, el.clientWidth - LANE_LABEL_WIDTH_PX);
+      const trackWidth = Math.max(0, el.clientWidth - labelRegion);
       if (trackWidth <= 0 || fightDurationSec <= 0) return;
       setMinPxPerSec(trackWidth / fightDurationSec);
     };
@@ -58,7 +61,7 @@ export function TimelineCanvas() {
     const ro = new ResizeObserver(recompute);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [fightDurationSec, setMinPxPerSec]);
+  }, [fightDurationSec, setMinPxPerSec, chipPosition]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLDivElement>) => {
@@ -87,11 +90,34 @@ export function TimelineCanvas() {
   if (!roster) return null;
 
   const tickIntervalSec = pickTickIntervalSec(pxPerSec);
+  const visibleSlots = roster
+    .map((slot, i) => ({ slot, index: i }))
+    .filter(({ slot }) => !hiddenSlotIds.has(slot.id));
+
+  const separated = chipPosition !== "interleaved";
+  const chipSection = separated ? (
+    <div className="chip-section">
+      {visibleSlots.map(({ slot, index }) => (
+        <PlayerChipRow key={slot.id} slot={slot} index={index} />
+      ))}
+    </div>
+  ) : null;
+  const mitCanvas = separated ? (
+    <div className="mit-canvas">
+      {visibleSlots.map(({ slot, index }) => (
+        <SlotMitGroup key={slot.id} slot={slot} index={index} />
+      ))}
+    </div>
+  ) : null;
 
   return (
     <div className="timeline-canvas">
       <ZoomToolbar />
-      <div ref={scrollRef} className={`lane-scroll theme-${theme}`} onWheel={handleWheel}>
+      <div
+        ref={scrollRef}
+        className={`lane-scroll theme-${theme} chip-position-${chipPosition}`}
+        onWheel={handleWheel}
+      >
         <div
           className="lane-content"
           style={
@@ -102,8 +128,16 @@ export function TimelineCanvas() {
         >
           <Ruler />
           <BossLane />
-          {roster.map((slot, i) =>
-            hiddenSlotIds.has(slot.id) ? null : <PlayerLane key={slot.id} slot={slot} index={i} />,
+          {separated ? (
+            <>
+              {chipPosition === "top" && chipSection}
+              {mitCanvas}
+              {chipPosition === "bottom" && chipSection}
+            </>
+          ) : (
+            visibleSlots.map(({ slot, index }) => (
+              <PlayerLane key={slot.id} slot={slot} index={index} />
+            ))
           )}
         </div>
       </div>
@@ -120,6 +154,8 @@ function ZoomToolbar() {
   const setIconSize = useRowSizeStore((s) => s.setIconSize);
   const theme = useAppearanceStore((s) => s.theme);
   const setTheme = useAppearanceStore((s) => s.setTheme);
+  const chipPosition = useChipLayoutStore((s) => s.position);
+  const setChipPosition = useChipLayoutStore((s) => s.setPosition);
   const tickIntervalSec = pickTickIntervalSec(pxPerSec);
   const percent = Math.round((pxPerSec / DEFAULT_PX_PER_SEC) * 100);
   const tickLabel = tickIntervalSec >= 60 ? "1m" : `${tickIntervalSec}s`;
@@ -127,6 +163,13 @@ function ZoomToolbar() {
   const themeOptions: readonly { value: AppearanceTheme; label: string }[] = [
     { value: "light", label: "Light" },
     { value: "dark", label: "Dark" },
+  ];
+
+  // Spatial order: Top (chips above mit canvas) → Interleaved → Bottom.
+  const chipPositionOptions: readonly { value: ChipPosition; label: string }[] = [
+    { value: "top", label: "Top" },
+    { value: "interleaved", label: "Interleaved" },
+    { value: "bottom", label: "Bottom" },
   ];
 
   return (
@@ -184,6 +227,20 @@ function ZoomToolbar() {
             className={`toolbar-toggle${theme === opt.value ? " is-selected" : ""}`}
             onClick={() => setTheme(opt.value)}
             aria-pressed={theme === opt.value}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      <span className="timeline-toolbar-title">Timeline Damage Chips:</span>
+      <div className="timeline-toolbar-zoom">
+        {chipPositionOptions.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            className={`toolbar-toggle${chipPosition === opt.value ? " is-selected" : ""}`}
+            onClick={() => setChipPosition(opt.value)}
+            aria-pressed={chipPosition === opt.value}
           >
             {opt.label}
           </button>
