@@ -61,7 +61,11 @@ A type-level enum on a boss ability with two values: `raidwide` (hits all 8 play
 _Avoid_: attack type, distribution, spread pattern
 
 **Affects**:
-A type-level enum on a mitigation describing whom it reaches (`self`, `target`, `party`, `boss_debuff`). `affects: target` is the mit-side trigger for required **Targeting** (one slot). The verb form is *reaches* — "this mit reaches the entire party."
+A type-level enum on a mitigation describing whom it reaches (`self`, `target`, `party`, `boss_debuff`, `target_or_self`, `none`). `affects: target` and `affects: target_or_self` are the mit-side triggers for required **Targeting** (one slot). The verb form is *reaches* — "this mit reaches the entire party."
+
+- `target_or_self` is identical to `target` for math, but the picker offers all 8 slots including the caster (DRK TBN).
+- `none` is a planner-anchor affects mode (used by **Utility entries**) — the mit produces no coverage and no barrier on any player.
+
 _Avoid_: scope, audience
 
 **Pull**:
@@ -84,8 +88,24 @@ _Avoid_: damage event, impact, strike
 Whether a given mitigation instance reduces damage for a given **hit**. Composed of three conditions: the hit's effect time falls inside the mit's **active window**, damage-type match, and reach (mit affects this player AND the hit lands on this player).
 _Avoid_: protection, applies
 
+**Barrier** / **Shield**:
+Interchangeable. An HP-equivalent absorption pool seeded by a mitigation type that carries a `barrier: { kind: "max_hp_pct", value }` field. Incoming damage is reduced by % mits (and **Tank Mastery**) first, then absorbed by barrier pools, then hits HP. A pool expires at duration end or when fully consumed.
+_Avoid_: absorb, ward (when used as a noun)
+
+**Barrier pool** / **Shield pool**:
+A single instance of a barrier on a recipient — one `MitigationInstance` seeds at most one pool per recipient slot. Multiple pools on one player stack additively. **Consumption order** is soonest-to-expire-first; ties broken oldest-applied-first.
+_Avoid_: shield instance, ward pool
+
+**Tank Mastery**:
+A tank-only always-on 20% all-source damage reduction. Applied multiplicatively at the % mit step (not as a barrier). Derived from **Role** at math time — not stored on the slot.
+_Avoid_: tank passive, tank mit
+
+**Utility entry**:
+A mit-library entry with `mechanic: "utility"`, no % mit, and no **Barrier**. Acts as a planner anchor for abilities whose strategic value matters even without direct damage reduction (e.g. Macrocosmos, Pneuma). Renders as a marker on the timeline but contributes no math.
+_Avoid_: planner mit, dummy mit
+
 **Lethal**:
-A computed property of a **hit**, true when post-mit damage for the targeted player ≥ the slot's **HP**. Drives the red **damage chip** styling and the lethal flag on a **marker**.
+A computed property of a **hit**, true when this hit's damage-to-HP (post-% mit, post-**Tank Mastery**, post-**Barrier**) is at least the targeted player's max **HP**. HP is evaluated per-hit against the player's full max — earlier hits don't decrement the HP budget — so lethality describes this hit *in isolation*. Drives the red **damage chip** styling and the lethal flag on a **marker**.
 _Avoid_: deadly, fatal, kill
 
 **HP**:
@@ -156,8 +176,13 @@ A Bar is *authoritative* over its `[effect_time, effect_time + cooldown_seconds]
 _Avoid_: block, segment (use "active segment" or "cooldown tail" explicitly), span
 
 **Damage chip**:
-The per-player numeric damage readout that appears on a player lane's header track at each hit time. Tagged as *lethal* when post-mit damage ≥ `PLAYER_MAX_HP`.
-_Avoid_: damage label, hit chip, number tag
+The per-player stacked HP/shield bar that appears on a player lane's header track at each hit time, with a damage-taken numeric label overlaid. The bar has a uniform pixel width across all players (`CHIP_BAR_PX`); each segment is a percentage fill of that player's own max **HP**. HP is evaluated per-hit against the player's full max — the bar shows what HP the player ends this hit with *assuming full HP entering the hit*. **Barrier** pools, by contrast, are stateful and carry between hits; a partially-drained shield from an earlier hit is visible on later chips until it is fully consumed or expires. Layered left-to-right:
+
+- **Green** base — HP remaining after this hit (`max_hp − damage_to_hp`).
+- **White** right-anchored overlay — HP lost this hit. On a **Lethal** hit this segment tints red.
+- **Orange** left-anchored overlay — remaining barrier total as a fraction of max HP, capped at the bar width. A 100%-shielded player reads as fully orange.
+
+_Avoid_: damage label, hit chip, number tag, HP bar
 
 **Selection**:
 The transient state marking one **instance** as the focus of editing. **Mutually exclusive** across kinds — at most one boss instance *or* one mit instance is selected at any moment; selecting one clears the other. Pressing `Delete` removes the selected instance; `Esc` deselects.
