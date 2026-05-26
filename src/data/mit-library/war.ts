@@ -9,8 +9,8 @@ import type { MitigationType } from "@/domain/types";
 // share a single recast in-game (the "war.bloodwhetting_nf" group) — casting
 // one locks the other out for 25s.
 // Shake It Off dispels Thrill of Battle, Damnation, and Bloodwhetting on the
-// caster at cast time (via `consumes_many`); the 2%-per-dispelled-effect
-// self-absorb bonus is deferred.
+// caster at cast time (via `consumes_many`); each dispelled effect adds 2pp
+// to the seeded barrier's max-HP fraction (via `barrier_bonus_per_dispelled_pct`).
 export const WAR_MITS: MitigationType[] = [
   {
     id: "war.rampart",
@@ -116,10 +116,11 @@ export const WAR_MITS: MitigationType[] = [
     mechanic: "mit",
     barrier: { kind: "max_hp_pct", value: 15 },
     // Multi-target dispel: ends Thrill of Battle / Damnation / Bloodwhetting
-    // on the caster slot at this cast's effect_time. The 2%-per-dispelled-effect
-    // self-absorb bonus (in-game) is still deferred — the 15% max-HP barrier
-    // is the flat magnitude.
+    // on the caster slot at this cast's effect_time. Each dispelled type adds
+    // 2pp to the barrier's max-HP fraction (uniform across party), so the
+    // seeded barrier is 15/17/19/21% by dispel count.
     consumes_many: ["war.thrill_of_battle", "war.damnation", "war.bloodwhetting"],
+    barrier_bonus_per_dispelled_pct: 2,
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Shake_It_Off",
   },
 ];

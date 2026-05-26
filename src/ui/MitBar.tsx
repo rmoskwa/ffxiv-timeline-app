@@ -85,7 +85,15 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
   // buff outlasts the encounter); clip the rendered widths so the bar stops
   // at the timeline edge.
   const remainingSec = Math.max(0, laneDurationSec - renderEffectTime);
-  const visibleDurationSec = Math.min(type.duration_seconds, remainingSec);
+  // Dispel-clip: when a `consumes_many` consumer truncated this instance, the
+  // visible active band ends at the dispel time and the cooldown tail
+  // backfills the freed span. Total bar footprint (effective CD) is unchanged.
+  const dispelledAt = mitStates.get(instance.id)?.dispelled_at;
+  const effectiveActiveSec =
+    dispelledAt != null
+      ? Math.max(0, Math.min(type.duration_seconds, dispelledAt - renderEffectTime))
+      : type.duration_seconds;
+  const visibleDurationSec = Math.min(effectiveActiveSec, remainingSec);
   const visibleZoneExtensionSec = Math.max(
     0,
     Math.min(zoneExtensionSec, remainingSec - visibleDurationSec),
@@ -101,9 +109,10 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
     mitStates,
   );
   // The CD tail visually starts AFTER the execution zone when the zone extends
-  // past active (PRD §6.2 / Sun Sign case). The total off-to-off cooldown is
-  // unchanged — only the visual split between active and tail shifts.
-  const visualActivePlusZone = Math.max(type.duration_seconds, maxChildExecZone);
+  // past active (PRD §6.2 / Sun Sign case), or after the dispel time if this
+  // instance was truncated. The total off-to-off cooldown is unchanged — only
+  // the visual split between active and tail shifts.
+  const visualActivePlusZone = Math.max(effectiveActiveSec, maxChildExecZone);
   const cooldownTailSec = Math.max(0, effectiveCdSec - visualActivePlusZone);
   const visibleCooldownTailSec = Math.max(
     0,

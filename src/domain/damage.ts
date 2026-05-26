@@ -79,6 +79,13 @@ export interface MitInstanceState {
   // effect_time. Drives the bar's static-marker render; the damage chip
   // already reflects the actual reduction applied.
   conditional_bonus_applied?: boolean;
+  // Earliest moment a `consumes_many` consumer ended this instance's
+  // contribution on its caster slot. Set only when truncated; absent ⇒ the
+  // instance runs its natural duration. Drives bar-render clipping of the
+  // active band (active runs [effect_time, dispelled_at); cooldown backfills
+  // from there to the natural CD end). Damage math uses the same value via
+  // the engine's precomputed dispel map.
+  dispelled_at?: number;
 }
 
 // In-flight barrier pool tracked while walking hits chronologically.
@@ -138,7 +145,11 @@ export function computeDamageTimeline(
   // caster slot ends at `dispelledEnds[instId]`" — % mit, tiers, max-HP buff,
   // and conditional-bonus gating all stop past that instant on the caster.
   // Barrier pools seeded before this time are not touched (locked at seed-time).
-  const dispelledEnds = computeDispelledEnds(allMits, lookupMitType);
+  // `consumerDispelCounts` is parallel state — count of distinct `consumes_many`
+  // types actually ended by each consumer — used at seed time for the
+  // per-dispelled-effect barrier bonus.
+  const { instanceEnds: dispelledEnds, consumerCounts: consumerDispelCounts } =
+    computeDispelledEnds(allMits, lookupMitType);
 
   // Effective max HP at a given time for a given slot. Scales the base cap by
   // every max-HP buff mit whose window covers `t` and whose recipient
@@ -203,6 +214,9 @@ export function computeDamageTimeline(
   for (const [id, satisfied] of conditionalSatisfied) {
     if (satisfied) ensureState(id).conditional_bonus_applied = true;
   }
+  for (const [id, t] of dispelledEnds) {
+    ensureState(id).dispelled_at = t;
+  }
 
   // Pre-compute barrier-seeding events; each fires at a mit's effect_time.
   // We don't gate seeding on coverage of any single hit — barriers apply
@@ -236,7 +250,15 @@ export function computeDamageTimeline(
       const seed = sortedSeeds[seedIdx];
       if (!seed) break;
       if (seed.at > uptoT) break;
-      seedBarrier(seed.mit, seed.type, roster, pools, effectiveMaxHpAt, ensureState);
+      seedBarrier(
+        seed.mit,
+        seed.type,
+        roster,
+        pools,
+        effectiveMaxHpAt,
+        ensureState,
+        consumerDispelCounts.get(seed.mit.id) ?? 0,
+      );
       seedIdx++;
     }
   };
@@ -354,6 +376,7 @@ function seedBarrier(
   pools: BarrierPool[][],
   effectiveMaxHpAt: (slotIdx: number, t: number) => number,
   ensureState: (id: string) => MitInstanceState,
+  dispelCount: number,
 ) {
   // Cross-type consume: dispel the consumed mit's barrier pool on the caster
   // slot before seeding this mit's own pool. Independent of whether this mit
@@ -376,6 +399,11 @@ function seedBarrier(
   }
   const barrier = type.barrier;
   if (!barrier) return;
+  // Per-dispelled-effect bonus: barrier value scales linearly with the count
+  // of `consumes_many` types this cast actually dispelled. Applied uniformly
+  // to every recipient — the bonus is a property of the cast, not per-slot.
+  const bonusPct = (type.barrier_bonus_per_dispelled_pct ?? 0) * dispelCount;
+  const effectiveValue = barrier.value + bonusPct;
   for (let i = 0; i < 8; i++) {
     const player = roster[i];
     if (!player) continue;
@@ -388,7 +416,7 @@ function seedBarrier(
       pools[i] = prior.filter((p) => p.type_id !== type.id);
     }
     const cap = effectiveMaxHpAt(i, mit.effect_time);
-    const hpPool = (cap * barrier.value) / 100;
+    const hpPool = (cap * effectiveValue) / 100;
     if (hpPool <= 0) continue;
     pools[i]?.push({
       source_instance_id: mit.id,
@@ -503,23 +531,26 @@ function computeEffectiveEnds(
   return ends;
 }
 
-// Pre-compute the earliest dispel time for every instance whose contribution
-// to its caster slot is ended by a `consumes_many` consumer. Walks all mits
-// whose type carries `consumes_many`; for each listed target id, finds prior
-// same-caster instances of that id whose natural window covers the consumer's
-// effect_time, and records `dispelledEnds[targetInstId] = min(existing,
-// consumer.effect_time)`. Earliest-dispel-wins — a second consumer firing
-// later cannot un-end a buff already truncated by an earlier one.
+// Pre-compute dispel state for every `consumes_many` consumer.
+//   - `instanceEnds[targetInstId]` = earliest dispel time on the caster slot.
+//     Earliest-dispel-wins; a later consumer cannot un-end a buff.
+//   - `consumerCounts[consumerInstId]` = number of distinct `consumes_many`
+//     entries this consumer actually ended (live target instances at its
+//     effect_time on its caster slot). Drives the per-consumer barrier bonus.
+// Walks all mits whose type carries `consumes_many`; for each listed target
+// id, finds the in-window same-caster target instance and records both.
 function computeDispelledEnds(
   allMits: readonly MitigationInstance[],
   lookupMitType: MitTypeLookup,
-): Map<string, number> {
-  const out = new Map<string, number>();
+): { instanceEnds: Map<string, number>; consumerCounts: Map<string, number> } {
+  const instanceEnds = new Map<string, number>();
+  const consumerCounts = new Map<string, number>();
   for (const consumer of allMits) {
     const consumerType = lookupMitType(consumer.type_id);
     if (!consumerType?.consumes_many?.length) continue;
     const casterId = consumer.player_slot_id;
     const t = consumer.effect_time;
+    const dispelledTypeIds = new Set<string>();
     for (const target of allMits) {
       if (target.id === consumer.id) continue;
       if (target.player_slot_id !== casterId) continue;
@@ -528,11 +559,13 @@ function computeDispelledEnds(
       if (!targetType) continue;
       if (t < target.effect_time) continue;
       if (t > target.effect_time + targetType.duration_seconds) continue;
-      const existing = out.get(target.id);
-      if (existing == null || t < existing) out.set(target.id, t);
+      const existing = instanceEnds.get(target.id);
+      if (existing == null || t < existing) instanceEnds.set(target.id, t);
+      dispelledTypeIds.add(target.type_id);
     }
+    if (dispelledTypeIds.size > 0) consumerCounts.set(consumer.id, dispelledTypeIds.size);
   }
-  return out;
+  return { instanceEnds, consumerCounts };
 }
 
 // Cast-time snapshot for every instance whose type carries a `conditional_bonus`.

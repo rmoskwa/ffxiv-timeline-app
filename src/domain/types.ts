@@ -142,6 +142,14 @@ export interface MitigationType {
   // dispel — the cast is valid standalone. Mutually exclusive with `consumes`.
   // Used today for WAR Shake It Off → Thrill of Battle / Damnation / Bloodwhetting.
   consumes_many?: string[];
+  // Per-dispelled-effect bonus added to this entry's barrier `value` at seed
+  // time. Counted once at the consumer's effect_time as the number of distinct
+  // `consumes_many` entries actively dispelled on the caster slot. Final
+  // barrier size = (barrier.value + count × bonus)% of effective max HP,
+  // applied uniformly to every recipient. Only meaningful alongside
+  // `consumes_many` and `barrier`. Used today for WAR Shake It Off (+2% per
+  // dispelled effect).
+  barrier_bonus_per_dispelled_pct?: number;
   // Seconds shaved off a cooldown when *this entry's* shield is fully absorbed
   // by a boss hit. If the entry also has `consumes`, the reduction applies to
   // the consumed entry's instance (the "parent"), not self — PCT Tempera Grassa

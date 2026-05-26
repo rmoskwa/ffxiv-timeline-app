@@ -97,6 +97,21 @@ for (const mit of MIT_LIBRARY) {
       }
     }
   }
+  if (mit.barrier_bonus_per_dispelled_pct != null) {
+    if (mit.barrier_bonus_per_dispelled_pct <= 0) {
+      throw new Error(
+        `mit-library: ${mit.id} barrier_bonus_per_dispelled_pct must be > 0 if present`,
+      );
+    }
+    if (!mit.consumes_many) {
+      throw new Error(
+        `mit-library: ${mit.id} barrier_bonus_per_dispelled_pct requires consumes_many`,
+      );
+    }
+    if (!mit.barrier) {
+      throw new Error(`mit-library: ${mit.id} barrier_bonus_per_dispelled_pct requires barrier`);
+    }
+  }
   if (mit.conditional_bonus) {
     const cb = mit.conditional_bonus;
     if (cb.requires_active.length === 0) {
