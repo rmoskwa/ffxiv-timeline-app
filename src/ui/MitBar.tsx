@@ -170,7 +170,14 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
         ? effectiveCooldownSeconds(prev, prevType, allMits ?? [], getMitById, mitStates)
         : 0;
     const minT = prev ? prev.effect_time + prevEffectiveCd : 0;
-    const maxT = next ? next.effect_time - thisEffectiveCd : tl.metadata.fight_duration_sec;
+    let maxT = next ? next.effect_time - thisEffectiveCd : tl.metadata.fight_duration_sec;
+    // Offset-glued children must stay within the timeline. Snapshot each
+    // child's current offset and tighten the parent's right-edge clamp so
+    // dragging never pushes a child past fight_duration_sec.
+    for (const child of childInstances) {
+      const offset = child.effect_time - instance.effect_time;
+      maxT = Math.min(maxT, tl.metadata.fight_duration_sec - offset);
+    }
     dragStartRef.current = {
       pointerId: e.pointerId,
       clientX: e.clientX,
@@ -407,9 +414,13 @@ function ChildOverlay({
   const beginDrag = (e: React.PointerEvent<HTMLElement>) => {
     if (e.button !== 0) return;
     e.stopPropagation();
-    // Clamp to the execution zone on this parent.
-    const baseMin = parent.effect_time;
-    const baseMax = parent.effect_time + execZone;
+    // Clamp to the execution zone, shrunk by 1s on each end: the child can't
+    // share the parent's cast moment (+1s start boundary) and can't be cast on
+    // the last legal frame of the zone (-1s end boundary — players can't
+    // realistically activate at the tail of the buff). Also clamp to the
+    // timeline edge, like any other mit.
+    const baseMin = parent.effect_time + 1;
+    const baseMax = Math.min(parent.effect_time + execZone - 1, laneDurationSec);
     // Multi-charge gap clamp (today: SCH Consolation, 2s).
     let gapMin = baseMin;
     let gapMax = baseMax;

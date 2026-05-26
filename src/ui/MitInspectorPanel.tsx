@@ -11,6 +11,7 @@ import { defaultChildPositions, useTimelineStore } from "@/state/timeline-store"
 import { JobIcon } from "./JobIcon";
 import { TargetPicker } from "./TargetPicker";
 import { secondsToTimecode } from "./timeline-constants";
+import { useZoom } from "./use-zoom";
 
 // Mirrors the constant in MitBar — multi-charge gated children keep this gap.
 const GATED_CHILD_MIN_GAP_SECONDS = 2;
@@ -105,6 +106,7 @@ interface ChildSlotListProps {
 function ChildSlotList({ parent, parentType, childType, allMits }: ChildSlotListProps) {
   const addMit = useTimelineStore((s) => s.addMitigationInstance);
   const removeMit = useTimelineStore((s) => s.removeMitigationInstance);
+  const { laneDurationSec } = useZoom();
 
   const instances = allMits.filter(
     (m) => m.type_id === childType.id && m.parent_instance_id === parent.id,
@@ -112,8 +114,10 @@ function ChildSlotList({ parent, parentType, childType, allMits }: ChildSlotList
   const execZone = childType.execution_zone_seconds ?? parentType.duration_seconds;
   const middle = parent.effect_time + execZone / 2;
   const canonicalPositions = defaultChildPositions(middle, childType.max_charges);
-  const zoneMin = parent.effect_time;
-  const zoneMax = parent.effect_time + execZone;
+  // Match the drag-time clamp: +1s from parent's cast, -1s from the zone end,
+  // and never past the timeline edge.
+  const zoneMin = parent.effect_time + 1;
+  const zoneMax = Math.min(parent.effect_time + execZone - 1, laneDurationSec);
 
   // Pick a placement for a re-added child at `row`. Start at the canonical
   // position; if it's within the 2s gap of any existing sibling, shift to the
