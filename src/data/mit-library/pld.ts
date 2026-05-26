@@ -64,4 +64,18 @@ export const PLD_MITS: MitigationType[] = [
     mechanic: "invuln",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Hallowed_Ground",
   },
+  {
+    id: "pld.divine_veil",
+    name: "Divine Veil",
+    job: "PLD",
+    cooldown_seconds: 90,
+    duration_seconds: 30,
+    mitigation_per_type: {},
+    affects: "party",
+    max_charges: 1,
+    mechanic: "mit",
+    // Heal-trigger waived per Trust the timeline.
+    barrier: { kind: "max_hp_pct", value: 10 },
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Divine_Veil",
+  },
 ];

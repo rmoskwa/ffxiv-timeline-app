@@ -208,6 +208,20 @@ function seedBarrier(
   pools: BarrierPool[][],
   maxHp: readonly number[],
 ) {
+  // Cross-type consume: dispel the consumed mit's barrier pool on the caster
+  // slot before seeding this mit's own pool. Independent of whether this mit
+  // itself carries a barrier (a future utility-only consumer still ends the
+  // prior pool).
+  if (type.consumes) {
+    const casterIdx = roster.findIndex((s) => s.id === mit.player_slot_id);
+    const consumedId = type.consumes;
+    if (casterIdx >= 0) {
+      const prior = pools[casterIdx];
+      if (prior && prior.length > 0) {
+        pools[casterIdx] = prior.filter((p) => p.type_id !== consumedId);
+      }
+    }
+  }
   const barrier = type.barrier;
   if (!barrier) return;
   for (let i = 0; i < 8; i++) {

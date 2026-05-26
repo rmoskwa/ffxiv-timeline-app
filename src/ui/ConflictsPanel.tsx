@@ -49,6 +49,7 @@ export function ConflictsPanel() {
 
   const orphans = conflicts.filter((c) => c.kind === "orphan_mit");
   const unsetTargets = conflicts.filter((c) => c.kind === "unset_target");
+  const missingConsumed = conflicts.filter((c) => c.kind === "missing_consumed_mit");
 
   return (
     <aside className="conflicts-panel" aria-label="Conflicts">
@@ -129,6 +130,43 @@ export function ConflictsPanel() {
                   excludedSlotIds={mt.affects === "target" ? [m.player_slot_id] : []}
                   onChange={(ids) => updateMit(c.mit_instance_id, { target_slot_ids: ids })}
                 />
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {missingConsumed.length > 0 && (
+        <section className="conflicts-section">
+          <h4>Missing prerequisite</h4>
+          <ul>
+            {missingConsumed.map((c) => {
+              if (c.kind !== "missing_consumed_mit") return null;
+              const m = mitById.get(c.mit_instance_id);
+              if (!m) return null;
+              const mt = getMitById(m.type_id);
+              const slot = slotById.get(m.player_slot_id);
+              if (!mt || !slot) return null;
+              const idx = slotIndex.get(slot.id) ?? -1;
+              return (
+                <li key={c.mit_instance_id} className="conflict-row">
+                  <div className="conflict-row-main">
+                    <CautionIcon className="conflict-caution" />
+                    <SlotChip slot={slot} index={idx} />
+                    <div className="conflict-body">
+                      <div className="conflict-title">{mt.name}</div>
+                      <div className="conflict-detail">{c.message}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="conflict-action"
+                      title="Scroll to this mit"
+                      onClick={() => flashElement(`[data-mit-id="${c.mit_instance_id}"]`)}
+                    >
+                      →
+                    </button>
+                  </div>
+                </li>
               );
             })}
           </ul>

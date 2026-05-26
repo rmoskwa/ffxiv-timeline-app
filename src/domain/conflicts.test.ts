@@ -163,3 +163,94 @@ describe("detectConflicts — unset_target", () => {
     });
   });
 });
+
+describe("detectConflicts — missing_consumed_mit", () => {
+  // Stand in for PCT Tempera Coat / Tempera Grassa without depending on
+  // the live library entries.
+  const COAT: MitigationType = {
+    id: "synth.coat",
+    name: "Synth Coat",
+    job: "PCT",
+    cooldown_seconds: 120,
+    duration_seconds: 10,
+    mitigation_per_type: {},
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 20 },
+    wiki_url: "https://example.com/coat",
+  };
+  const GRASSA: MitigationType = {
+    id: "synth.grassa",
+    name: "Synth Grassa",
+    job: "PCT",
+    cooldown_seconds: 120,
+    duration_seconds: 10,
+    mitigation_per_type: {},
+    affects: "party",
+    max_charges: 1,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 10 },
+    consumes: "synth.coat",
+    wiki_url: "https://example.com/grassa",
+  };
+  const pctRoster = [...ROSTER] as unknown as Roster;
+  (pctRoster as { [k: number]: { id: string; job: string } })[6] = { id: "s6", job: "PCT" };
+  const lk = (id: string): MitigationType | undefined =>
+    id === COAT.id ? COAT : id === GRASSA.id ? GRASSA : id === RAMPART.id ? RAMPART : undefined;
+
+  function pctMit(id: string, type_id: string, effect_time: number): MitigationInstance {
+    return {
+      id,
+      type_id,
+      player_slot_id: "s6",
+      effect_time,
+      target_slot_ids: [],
+      coverage_overrides: [],
+    };
+  }
+
+  it("flags Grassa with no Coat active on the caster", () => {
+    const g = pctMit("g", GRASSA.id, 30);
+    const conflicts = detectConflicts([g], lk, pctRoster);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject<Partial<Conflict>>({
+      kind: "missing_consumed_mit",
+      mit_instance_id: "g",
+    });
+  });
+
+  it("does not flag Grassa when Coat is active within its natural window", () => {
+    // Coat at t=25, dur 10s → active in [25, 35]. Grassa at t=30 → covered.
+    const c = pctMit("c", COAT.id, 25);
+    const g = pctMit("g", GRASSA.id, 30);
+    expect(detectConflicts([c, g], lk, pctRoster)).toHaveLength(0);
+  });
+
+  it("flags Grassa cast after Coat's natural window expires", () => {
+    // Coat at t=10, dur 10s → expires t=20. Grassa at t=25 → conflict.
+    const c = pctMit("c", COAT.id, 10);
+    const g = pctMit("g", GRASSA.id, 25);
+    const conflicts = detectConflicts([c, g], lk, pctRoster);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.kind).toBe("missing_consumed_mit");
+  });
+
+  it("requires the Coat instance to be on the same caster slot", () => {
+    // Coat on a different PCT-slot than Grassa's caster.
+    const otherRoster = [...pctRoster] as unknown as Roster;
+    (otherRoster as { [k: number]: { id: string; job: string } })[7] = { id: "s7", job: "PCT" };
+    const c: MitigationInstance = {
+      id: "c",
+      type_id: COAT.id,
+      player_slot_id: "s7",
+      effect_time: 25,
+      target_slot_ids: [],
+      coverage_overrides: [],
+    };
+    const g = pctMit("g", GRASSA.id, 30);
+    const conflicts = detectConflicts([c, g], lk, otherRoster);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.kind).toBe("missing_consumed_mit");
+  });
+});

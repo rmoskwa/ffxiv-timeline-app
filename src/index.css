@@ -2158,7 +2158,8 @@ button {
 .boss-marker--lethal.boss-marker--needs-target .boss-marker-label {
   color: #b21010;
 }
-.mit-bar--needs-target .mit-bar-duration {
+.mit-bar--needs-target .mit-bar-duration,
+.mit-bar--in-conflict .mit-bar-duration {
   border: 1px dashed #fa3;
 }
 

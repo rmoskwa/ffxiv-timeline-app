@@ -104,6 +104,12 @@ export interface MitigationType {
   // Optional barrier/shield component. Present ⇒ the entry seeds an HP-equivalent
   // pool on each recipient when applied. Stacks additively across instances.
   barrier?: Barrier;
+  // Cross-type consume relationship: the id of another mit-library entry that
+  // this entry's activation ends on the caster slot. When this mit fires, any
+  // active barrier pool of `consumes` on the caster is dropped. Used for
+  // mit-dispels-mit pairs like PCT Tempera Grassa → Tempera Coat.
+  // ConflictsPanel flags placements where no active `consumes` instance exists.
+  consumes?: string;
   // FFXIV wiki page for this ability. Re-verify against this URL before
   // changing any numeric value — it is the source of truth.
   wiki_url: string;

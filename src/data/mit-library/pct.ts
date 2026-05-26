@@ -1,7 +1,6 @@
 import type { MitigationType } from "@/domain/types";
 
 // PCT mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Tempera Grassa rollout pending PR 5.
 export const PCT_MITS: MitigationType[] = [
   {
     id: "pct.addle",
@@ -27,5 +26,21 @@ export const PCT_MITS: MitigationType[] = [
     mechanic: "mit",
     barrier: { kind: "max_hp_pct", value: 20 },
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Tempera_Coat",
+  },
+  {
+    id: "pct.tempera_grassa",
+    name: "Tempera Grassa",
+    job: "PCT",
+    cooldown_seconds: 120, // stopgap: inherits Tempera Coat's CD; CD-reduce-on-absorb deferred
+    duration_seconds: 10,
+    mitigation_per_type: {},
+    affects: "party",
+    max_charges: 1,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 10 },
+    // Grassa is only castable while Coat is active. Activation ends Coat on the
+    // caster (its barrier pool is dropped) and seeds the party-wide pool.
+    consumes: "pct.tempera_coat",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Tempera_Grassa",
   },
 ];

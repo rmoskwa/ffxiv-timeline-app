@@ -7,6 +7,7 @@ import { MitIcon } from "./MitIcon";
 import { jobColor } from "./role-color";
 import { TargetPicker } from "./TargetPicker";
 import { secondsToTimecode } from "./timeline-constants";
+import { useConflictedMitIds } from "./use-derived";
 import { useRowSize } from "./use-row-size";
 import { useZoom } from "./use-zoom";
 
@@ -60,6 +61,9 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
   const needsTarget = targeting.maxCount > 0;
   const targetUnset = needsTarget && !targeting.isComplete;
   const targetSlot = needsTarget ? roster?.find((s) => s.id === targeting.selection[0]) : undefined;
+  // Any active conflict on this mit triggers the yellow-dashed outline and
+  // — via useDamageByInstance — excludes it from damage math.
+  const inConflict = useConflictedMitIds().has(instance.id);
 
   // Auto-open the picker for a newly-dropped target mit. The effect dep on
   // targetUnset re-opens if the field is somehow cleared later.
@@ -166,6 +170,7 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
         `mit-bar${selected ? " mit-bar--selected" : ""}` +
         `${dragging ? " mit-bar--dragging" : ""}` +
         `${targetUnset ? " mit-bar--needs-target" : ""}` +
+        `${inConflict ? " mit-bar--in-conflict" : ""}` +
         `${targetSlot ? " mit-bar--has-target" : ""}` +
         `${pickerOpen ? " has-picker-open" : ""}`
       }

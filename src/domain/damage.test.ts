@@ -196,6 +196,22 @@ const TYPES: Record<string, MitigationType> = {
     barrier: { kind: "max_hp_pct", value: 15 },
     wiki_url: "https://example.com/comboguardian",
   },
+  // Cross-type consumer — stands in for Tempera Grassa, which ends Tempera
+  // Coat (selfShield20) on the caster and seeds a 10% party pool.
+  consumerParty10: {
+    id: "synth.consumer_party_10",
+    name: "Synth Consumer Party 10",
+    job: "PCT",
+    cooldown_seconds: 120,
+    duration_seconds: 10,
+    mitigation_per_type: {},
+    affects: "party",
+    max_charges: 1,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 10 },
+    consumes: "synth.self_shield_20",
+    wiki_url: "https://example.com/consumer-party-10",
+  },
 };
 const lookup = (id: string): MitigationType | undefined =>
   Object.values(TYPES).find((t) => t.id === id);
@@ -616,6 +632,106 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 20_000,
+    });
+  });
+});
+
+// ─── Cross-type consume (Grassa → Coat) ─────────────────────────────────────
+
+describe("computeDamageTimeline — consumes drops the prior pool on caster", () => {
+  it("consumer fires while consumed is active → caster's prior pool dropped, party pool seeded", () => {
+    // selfShield20 on s6 (BLM, non-tank) at t=50: 20k pool, expires t=60.
+    // Consumer at t=55 on s6: caster's 20k pool dropped, 10k party pool
+    // seeded on all 8 slots, expires t=65.
+    const coat = mit({
+      id: "coat",
+      player_slot_id: "s6",
+      type_id: "synth.self_shield_20",
+      effect_time: 50,
+    });
+    const grassa = mit({
+      id: "grassa",
+      player_slot_id: "s6",
+      type_id: "synth.consumer_party_10",
+      effect_time: 55,
+    });
+    // 5k raidwide hit at t=58. Caster pool from selfShield20 should be gone;
+    // each player's 10k party pool from the consumer should absorb the hit.
+    const hit = bossInstance({ id: "h", effect_time: 58 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 5_000 })],
+      [coat, grassa],
+      lookup,
+      ROSTER,
+    );
+    // Non-tank s6: 5k absorbed by the 10k party pool, HP untouched, 5k left.
+    expect(out.get("h")?.[6]).toEqual({
+      damage_taken_to_hp: 0,
+      hp_after: 100_000,
+      active_shields_after: 5_000,
+    });
+    // Non-tank s2 (got party pool but never had a selfShield20):
+    expect(out.get("h")?.[2]).toEqual({
+      damage_taken_to_hp: 0,
+      hp_after: 100_000,
+      active_shields_after: 5_000,
+    });
+  });
+
+  it("consumer fires without the consumed active → engine still seeds the consumer's pool", () => {
+    // Soft-warn semantics: conflict reported by detectConflicts, but the
+    // engine does not block placement — the consumer's own pool still applies.
+    const grassa = mit({
+      id: "grassa",
+      player_slot_id: "s6",
+      type_id: "synth.consumer_party_10",
+      effect_time: 55,
+    });
+    const hit = bossInstance({ id: "h", effect_time: 58 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 5_000 })],
+      [grassa],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]).toEqual({
+      damage_taken_to_hp: 0,
+      hp_after: 100_000,
+      active_shields_after: 5_000,
+    });
+  });
+
+  it("consumed pool on the caster is dropped, not retained alongside the consumer", () => {
+    // selfShield20 on s6 at t=50 (20k pool). Consumer at t=55 (10k party pool).
+    // 25k hit at t=58 on s6 (non-tank): without consume, s6 would absorb 20k
+    // (selfShield20, expires t=60, sooner) + 5k (consumer) = 25k → HP untouched.
+    // WITH consume, only the 10k consumer pool remains → 15k hits HP.
+    const coat = mit({
+      id: "coat",
+      player_slot_id: "s6",
+      type_id: "synth.self_shield_20",
+      effect_time: 50,
+    });
+    const grassa = mit({
+      id: "grassa",
+      player_slot_id: "s6",
+      type_id: "synth.consumer_party_10",
+      effect_time: 55,
+    });
+    const hit = bossInstance({ id: "h", effect_time: 58 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 25_000 })],
+      [coat, grassa],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]).toEqual({
+      damage_taken_to_hp: 15_000,
+      hp_after: 85_000,
+      active_shields_after: 0,
     });
   });
 });

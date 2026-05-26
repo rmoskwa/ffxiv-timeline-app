@@ -5,6 +5,11 @@
 //   - unset_target: a `targeted` boss instance or affects:target mit instance
 //     whose target hasn't been picked yet — its damage math returns 0 until
 //     the user resolves it.
+//   - missing_consumed_mit: a mit with a `consumes` relationship was placed
+//     when no instance of the consumed mit type is active on the caster slot
+//     at the placement's effect_time (e.g. PCT Tempera Grassa without
+//     Tempera Coat). Soft warning — the engine still runs but the in-game
+//     ability would be uncastable.
 //
 // Pure function — no React, no I/O.
 
@@ -27,6 +32,11 @@ export type Conflict =
   | {
       kind: "unset_target";
       target_kind: "mitigation";
+      mit_instance_id: string;
+      message: string;
+    }
+  | {
+      kind: "missing_consumed_mit";
       mit_instance_id: string;
       message: string;
     };
@@ -84,6 +94,31 @@ export function detectConflicts(
         target_kind: "mitigation",
         mit_instance_id: m.id,
         message: `${mt.name} needs a target picked`,
+      });
+    }
+  }
+
+  // ─── Missing consumed mit ─────────────────────────────────────────────────
+  // A mit with `consumes` requires an active instance of the consumed type on
+  // the same caster slot at its effect_time. Natural windows only — earlier
+  // truncation by yet another consumer is rare enough to ignore here.
+  for (const m of mits) {
+    const mt = lookupMitType(m.type_id);
+    if (!mt?.consumes) continue;
+    const consumedId = mt.consumes;
+    const consumedType = lookupMitType(consumedId);
+    if (!consumedType) continue;
+    const hasActive = mits.some((other) => {
+      if (other.type_id !== consumedId) return false;
+      if (other.player_slot_id !== m.player_slot_id) return false;
+      const natural = other.effect_time + consumedType.duration_seconds;
+      return other.effect_time <= m.effect_time && m.effect_time < natural;
+    });
+    if (!hasActive) {
+      conflicts.push({
+        kind: "missing_consumed_mit",
+        mit_instance_id: m.id,
+        message: `${mt.name} requires ${consumedType.name} active on the caster`,
       });
     }
   }
