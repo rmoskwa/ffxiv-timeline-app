@@ -379,6 +379,22 @@ const TYPES: Record<string, MitigationType> = {
     mechanic: "mit",
     wiki_url: "https://example.com/dispellable-mit-40",
   },
+  // Passage of Arms-shaped held ability: 15% party mit, 5s floor that the
+  // player can extend by holding up to 23s. Tests exercise the
+  // instanceActiveDurationSeconds helper across the engine.
+  heldPartyMit15: {
+    id: "synth.held_party_mit_15",
+    name: "Synth Held Party Mit 15",
+    job: "PLD",
+    cooldown_seconds: 120,
+    duration_seconds: 23,
+    min_duration_seconds: 5,
+    mitigation_per_type: { all: 15 },
+    affects: "party",
+    max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://example.com/held-party-mit-15",
+  },
   // Shake It Off-shaped multi-target consumer: party-wide 15% max-HP barrier
   // (+2pp per dispelled effect), 30s duration, opportunistically dispels three
   // self-only entries on the caster slot at cast time.
@@ -1440,6 +1456,113 @@ describe("effectiveCooldownSeconds", () => {
       id === tinyCoat.id ? tinyCoat : lookup(id);
     const states = new Map<string, MitInstanceState>([["coat", { absorbed_at: 5 }]]);
     expect(effectiveCooldownSeconds(m, tinyCoat, [m], tinyLookup, states)).toBe(0);
+  });
+});
+
+// ─── Held abilities (min_duration_seconds / held_duration_seconds) ──────────
+
+describe("held abilities — instance-resolved active duration", () => {
+  it("defaults to min_duration_seconds when held_duration_seconds is unset", () => {
+    // Held mit at t=50, no held_duration_seconds → 5s active (50..55).
+    // Hit at t=53 inside the floor window → 15% applied. 100k × 0.85 = 85k.
+    const m = mit({
+      player_slot_id: "s0",
+      type_id: "synth.held_party_mit_15",
+      effect_time: 50,
+    });
+    const hit3 = computeDamagePerPlayer(
+      bossInstance({ effect_time: 53 }),
+      bossType({ base_damage: 100_000 }),
+      [m],
+      lookup,
+      ROSTER,
+    );
+    expect(hit3[6]?.damage_taken_to_hp).toBe(85_000);
+    // Hit at t=58 past the floor → no coverage. 100k full damage.
+    const hit8 = computeDamagePerPlayer(
+      bossInstance({ effect_time: 58 }),
+      bossType({ base_damage: 100_000 }),
+      [m],
+      lookup,
+      ROSTER,
+    );
+    expect(hit8[6]?.damage_taken_to_hp).toBe(100_000);
+  });
+
+  it("held_duration_seconds extends the active window to the user-chosen value", () => {
+    // Same mit, held to 23s (max). Hit at t=70 (rel=20) still inside.
+    const m = mit({
+      player_slot_id: "s0",
+      type_id: "synth.held_party_mit_15",
+      effect_time: 50,
+      held_duration_seconds: 23,
+    });
+    const hit20 = computeDamagePerPlayer(
+      bossInstance({ effect_time: 70 }),
+      bossType({ base_damage: 100_000 }),
+      [m],
+      lookup,
+      ROSTER,
+    );
+    expect(hit20[6]?.damage_taken_to_hp).toBe(85_000);
+    // Hit at t=74 past the held end → uncovered.
+    const hit24 = computeDamagePerPlayer(
+      bossInstance({ effect_time: 74 }),
+      bossType({ base_damage: 100_000 }),
+      [m],
+      lookup,
+      ROSTER,
+    );
+    expect(hit24[6]?.damage_taken_to_hp).toBe(100_000);
+  });
+
+  it("intermediate held value covers inside the held window only", () => {
+    // Held to 10s. Hit at t=58 (rel=8, inside) covered; t=62 (rel=12) not.
+    const m = mit({
+      player_slot_id: "s0",
+      type_id: "synth.held_party_mit_15",
+      effect_time: 50,
+      held_duration_seconds: 10,
+    });
+    const inside = computeDamagePerPlayer(
+      bossInstance({ effect_time: 58 }),
+      bossType({ base_damage: 100_000 }),
+      [m],
+      lookup,
+      ROSTER,
+    );
+    expect(inside[6]?.damage_taken_to_hp).toBe(85_000);
+    const outside = computeDamagePerPlayer(
+      bossInstance({ effect_time: 62 }),
+      bossType({ base_damage: 100_000 }),
+      [m],
+      lookup,
+      ROSTER,
+    );
+    expect(outside[6]?.damage_taken_to_hp).toBe(100_000);
+  });
+
+  it("held value is ignored on non-held types (field is opt-in via min_duration_seconds)", () => {
+    // Rampart has no min_duration_seconds. Setting held_duration_seconds on
+    // its instance must not change anything — the helper returns
+    // type.duration_seconds for non-held types. Hit at t=75 is outside
+    // Rampart's 20s window regardless.
+    const m = mit({
+      player_slot_id: "s0",
+      type_id: "drk.rampart",
+      effect_time: 50,
+      held_duration_seconds: 60,
+    });
+    const out = computeDamagePerPlayer(
+      bossInstance({ effect_time: 75 }),
+      bossType({ base_damage: 100_000 }),
+      [m],
+      lookup,
+      ROSTER,
+    );
+    // Tank takes 80k (Tank Mastery only). Without the floor-out, this would
+    // have been 64k (Rampart 20% × Tank Mastery 80%).
+    expect(out[0]?.damage_taken_to_hp).toBe(80_000);
   });
 });
 

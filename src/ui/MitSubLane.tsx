@@ -3,7 +3,12 @@ import { useMemo, useState } from "react";
 import { getMitById, getSharedRecastPartners } from "@/data/mit-library";
 import { assignChargeRows } from "@/domain/charges";
 import { effectiveBarFootprintSeconds, effectiveCooldownSeconds } from "@/domain/damage";
-import type { MitigationInstance, MitigationType, PlayerSlot } from "@/domain/types";
+import {
+  instanceActiveDurationSeconds,
+  type MitigationInstance,
+  type MitigationType,
+  type PlayerSlot,
+} from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { MitBar } from "./MitBar";
 import { MitIcon } from "./MitIcon";
@@ -181,18 +186,23 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
     setHoverSec(null);
   };
 
+  // Ghost reflects what the bar will look like right after placement: held
+  // abilities default to their min_duration_seconds floor (the user grows the
+  // bar with the right-edge handle afterwards), every other ability uses its
+  // duration_seconds directly.
+  const defaultActiveSec = instanceActiveDurationSeconds(mitType, null);
   const ghostActivePx =
     hoverSec === null
       ? 0
-      : Math.max(0, Math.min(mitType.duration_seconds, laneDurationSec - hoverSec)) * pxPerSec;
+      : Math.max(0, Math.min(defaultActiveSec, laneDurationSec - hoverSec)) * pxPerSec;
   const ghostCooldownTailPx =
     hoverSec === null
       ? 0
       : Math.max(
           0,
           Math.min(
-            mitType.cooldown_seconds - mitType.duration_seconds,
-            laneDurationSec - hoverSec - mitType.duration_seconds,
+            mitType.cooldown_seconds - defaultActiveSec,
+            laneDurationSec - hoverSec - defaultActiveSec,
           ),
         ) * pxPerSec;
 

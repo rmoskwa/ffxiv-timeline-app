@@ -18,7 +18,7 @@ import type {
   Roster,
   TargetPattern,
 } from "./types";
-import { mitPercentFor, resolveBossAbility } from "./types";
+import { instanceActiveDurationSeconds, mitPercentFor, resolveBossAbility } from "./types";
 
 // A "resolved" hit folds the type defaults + any per-instance overrides into a
 // single object so coverage logic doesn't need both inputs.
@@ -104,7 +104,7 @@ export function mitCovers(
   if (truncatedEndExclusive !== undefined) {
     if (hit.effect_time >= truncatedEndExclusive) return false;
   } else {
-    if (hit.effect_time > mitStart + mitType.duration_seconds) return false;
+    if (hit.effect_time > mitStart + instanceActiveDurationSeconds(mitType, mit)) return false;
   }
 
   // 2. Damage-type match (any non-zero % for this hit's damage type counts)

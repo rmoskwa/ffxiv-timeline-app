@@ -59,6 +59,16 @@ for (const mit of MIT_LIBRARY) {
   if (mit.max_hp_buff_pct != null && mit.max_hp_buff_pct <= 0) {
     throw new Error(`mit-library: ${mit.id} max_hp_buff_pct must be > 0 if present`);
   }
+  if (mit.min_duration_seconds != null) {
+    if (mit.min_duration_seconds <= 0) {
+      throw new Error(`mit-library: ${mit.id} min_duration_seconds must be > 0 if present`);
+    }
+    if (mit.min_duration_seconds >= mit.duration_seconds) {
+      throw new Error(
+        `mit-library: ${mit.id} min_duration_seconds (${mit.min_duration_seconds}) must be < duration_seconds (${mit.duration_seconds})`,
+      );
+    }
+  }
   if (mit.tiers) {
     for (let i = 0; i < mit.tiers.length; i++) {
       const t = mit.tiers[i];

@@ -25,6 +25,7 @@ import {
   type BossAbilityInstance,
   type BossAbilityType,
   deriveRole,
+  instanceActiveDurationSeconds,
   type MitigationInstance,
   type MitigationType,
   mitPercentFor,
@@ -173,7 +174,7 @@ export function computeDamageTimeline(
       if (!mt) continue;
       if (mt.max_hp_buff_pct == null) continue;
       if (t < m.effect_time) continue;
-      if (t > m.effect_time + mt.duration_seconds) continue;
+      if (t > m.effect_time + instanceActiveDurationSeconds(mt, m)) continue;
       if (!recipientIncludes(mt.affects, m, player.id)) continue;
       const dispelEnd = dispelledEnds.get(m.id);
       if (dispelEnd != null && m.player_slot_id === player.id && t >= dispelEnd) continue;
@@ -429,7 +430,7 @@ function seedBarrier(
       source_instance_id: mit.id,
       type_id: type.id,
       applied_at: mit.effect_time,
-      expires_at: mit.effect_time + type.duration_seconds,
+      expires_at: mit.effect_time + instanceActiveDurationSeconds(type, mit),
       hp_remaining: hpPool,
     });
   }
@@ -518,7 +519,7 @@ function computeEffectiveEnds(
       if (!cur || !next) continue;
       const mt = lookupMitType(cur.type_id);
       if (!mt) continue;
-      const natural = cur.effect_time + mt.duration_seconds;
+      const natural = cur.effect_time + instanceActiveDurationSeconds(mt, cur);
       if (next.effect_time < natural) {
         ends.set(`${cur.id}|${recipientId}`, next.effect_time);
       }
@@ -565,7 +566,7 @@ function computeDispelledEnds(
       const targetType = lookupMitType(target.type_id);
       if (!targetType) continue;
       if (t < target.effect_time) continue;
-      if (t > target.effect_time + targetType.duration_seconds) continue;
+      if (t > target.effect_time + instanceActiveDurationSeconds(targetType, target)) continue;
       const existing = instanceEnds.get(target.id);
       if (existing == null || t < existing) instanceEnds.set(target.id, t);
       dispelledTypeIds.add(target.type_id);
@@ -600,7 +601,7 @@ function computeConditionalSatisfaction(
       const ot = lookupMitType(other.type_id);
       if (!ot) continue;
       if (m.effect_time < other.effect_time) continue;
-      if (m.effect_time > other.effect_time + ot.duration_seconds) continue;
+      if (m.effect_time > other.effect_time + instanceActiveDurationSeconds(ot, other)) continue;
       // A gating entry dispelled on its caster slot before this instance's
       // cast time no longer counts (exclusive at dispel time).
       const dispelEnd = dispelledEnds.get(other.id);
@@ -636,10 +637,11 @@ function computeConditionalSatisfaction(
 //      found at all.
 // Blocking footprint (in seconds) for a single mit instance — the period from
 // `inst.effect_time` during which no other instance of the same (type, recipient)
-// may be placed or dragged into. Equals `max(effectiveCooldownSeconds, type.duration_seconds)`:
+// may be placed or dragged into. Equals `max(effectiveCooldownSeconds, active)`:
 // the buff's active window is itself blocking even when the cooldown is
 // shorter than the duration (Holy Sheltron: 5s CD, 8s active). For every other
-// mit today CD > duration, so this is a no-op.
+// mit today CD > duration, so this is a no-op. Held abilities feed their
+// instance-resolved active window in (still bounded by type.duration_seconds).
 export function effectiveBarFootprintSeconds(
   inst: MitigationInstance,
   type: MitigationType,
@@ -649,7 +651,7 @@ export function effectiveBarFootprintSeconds(
 ): number {
   return Math.max(
     effectiveCooldownSeconds(inst, type, allMits, lookupMitType, perInstanceState),
-    type.duration_seconds,
+    instanceActiveDurationSeconds(type, inst),
   );
 }
 
@@ -716,7 +718,7 @@ function findConsumedParent(
   for (const other of allMits) {
     if (other.type_id !== consumedId) continue;
     if (other.player_slot_id !== inst.player_slot_id) continue;
-    const natural = other.effect_time + consumedType.duration_seconds;
+    const natural = other.effect_time + instanceActiveDurationSeconds(consumedType, other);
     if (!(other.effect_time <= inst.effect_time && inst.effect_time < natural)) continue;
     if (!best || other.effect_time > best.effect_time) best = other;
   }

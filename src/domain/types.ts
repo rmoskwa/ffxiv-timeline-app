@@ -112,7 +112,15 @@ export interface MitigationType {
   job: Job;
   cooldown_seconds: number;
   // duration_seconds: 0 is allowed for instant-effect entries (utility entries).
+  // For held abilities (min_duration_seconds set), this is the MAXIMUM possible
+  // active window; the floor is min_duration_seconds.
   duration_seconds: number;
+  // Held-ability floor: the active window applied immediately, before the
+  // player extends it by holding. When set, `duration_seconds` becomes the
+  // maximum the user can drag to. Today: PLD Passage of Arms (5s floor, 23s
+  // max — 5s effect + up to 18s of hold refresh). See
+  // docs/mit-library.md "First-class held abilities".
+  min_duration_seconds?: number;
   // Per-damage-type %. Use "all" as a shorthand when every type shares the
   // same value (the common case). Per-type keys override "all" for that type.
   // Invulns use {all: 100} together with mechanic: "invuln". An empty object
@@ -259,6 +267,29 @@ export interface MitigationInstance {
   // Set when a gated child is auto-spawned or re-added via the inspector.
   // Null/undefined for non-children.
   parent_instance_id?: string;
+  // User-chosen active duration for held abilities (those whose type sets
+  // `min_duration_seconds`). When absent, the engine uses the type's
+  // min_duration_seconds. Bounded to [min_duration_seconds, duration_seconds].
+  // Today: PLD Passage of Arms.
+  held_duration_seconds?: number;
+}
+
+// Effective active duration for a single placement. Held-ability semantics:
+//   - If the type opts in via `min_duration_seconds`, the instance's
+//     `held_duration_seconds` wins (the user's chosen hold time); absent →
+//     fall back to the floor (`min_duration_seconds`).
+//   - Otherwise, the type's `duration_seconds` is authoritative — any stray
+//     `held_duration_seconds` on the instance is ignored. This keeps held
+//     semantics strictly opt-in at the type level, so a corrupted save cannot
+//     silently extend a non-held mit.
+// Pass `undefined` for the not-yet-placed case (hover ghost) to get the
+// default-at-placement.
+export function instanceActiveDurationSeconds(
+  type: MitigationType,
+  instance: MitigationInstance | null | undefined,
+): number {
+  if (type.min_duration_seconds == null) return type.duration_seconds;
+  return instance?.held_duration_seconds ?? type.min_duration_seconds;
 }
 
 // ─── Roster ─────────────────────────────────────────────────────────────────
@@ -306,7 +337,7 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 8 as const;
+export const TIMELINE_SCHEMA_VERSION = 9 as const;
 
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 

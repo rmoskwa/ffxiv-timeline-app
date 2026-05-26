@@ -16,6 +16,7 @@
 import type { MitInstanceState, MitTypeLookup } from "./damage";
 import { targetingForBoss, targetingForMit } from "./targeting";
 import type { BossAbilityInstance, BossAbilityType, MitigationInstance, Roster } from "./types";
+import { instanceActiveDurationSeconds } from "./types";
 
 export type Conflict =
   | {
@@ -115,7 +116,7 @@ export function detectConflicts(
     const hasActive = mits.some((other) => {
       if (other.type_id !== consumedId) return false;
       if (other.player_slot_id !== m.player_slot_id) return false;
-      const natural = other.effect_time + consumedType.duration_seconds;
+      const natural = other.effect_time + instanceActiveDurationSeconds(consumedType, other);
       if (!(other.effect_time <= m.effect_time && m.effect_time < natural)) return false;
       const absorbedAt = perInstanceState.get(other.id)?.absorbed_at;
       return absorbedAt == null || m.effect_time <= absorbedAt;

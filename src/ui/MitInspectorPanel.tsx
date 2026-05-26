@@ -6,7 +6,11 @@
 
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
 import { targetingForMit } from "@/domain/targeting";
-import type { MitigationInstance, MitigationType } from "@/domain/types";
+import {
+  instanceActiveDurationSeconds,
+  type MitigationInstance,
+  type MitigationType,
+} from "@/domain/types";
 import { defaultChildPositions, useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { TargetPicker } from "./TargetPicker";
@@ -34,8 +38,9 @@ export function MitInspectorPanel() {
   const targeting = targetingForMit(mit, type);
   const childTypes = getGatedChildrenOf(type.id);
   const hasGatedChildren = childTypes.length > 0;
-  // Hide the panel when there's neither a target need nor any gated children.
-  if (targeting.maxCount === 0 && !hasGatedChildren) return null;
+  const isHeldAbility = type.min_duration_seconds != null;
+  // Hide the panel when nothing instance-editable applies.
+  if (targeting.maxCount === 0 && !hasGatedChildren && !isHeldAbility) return null;
 
   const slot = roster.find((s) => s.id === mit.player_slot_id);
   const slotLabel = slot ? (slot.name_label ?? (slot.job === "unset" ? "Unset" : slot.job)) : "—";
@@ -78,6 +83,7 @@ export function MitInspectorPanel() {
           />
         </div>
       )}
+      {isHeldAbility && <HeldDurationField mit={mit} type={type} />}
       {hasGatedChildren && (
         <div className="mit-inspector-children">
           <h4>Children</h4>
@@ -93,6 +99,47 @@ export function MitInspectorPanel() {
         </div>
       )}
     </aside>
+  );
+}
+
+interface HeldDurationFieldProps {
+  mit: MitigationInstance;
+  type: MitigationType;
+}
+
+// Numeric editor for held-ability active duration. Mirrors the right-edge
+// resize handle on the bar — useful when the user wants a precise value or
+// when the bar is too small at the current zoom for fine drag control.
+function HeldDurationField({ mit, type }: HeldDurationFieldProps) {
+  const updateMit = useTimelineStore((s) => s.updateMitigationInstance);
+  const min = type.min_duration_seconds ?? 0;
+  const max = type.duration_seconds;
+  const current = instanceActiveDurationSeconds(type, mit);
+  return (
+    <div className="mit-inspector-held">
+      <label className="mit-inspector-held-label" htmlFor={`held-${mit.id}`}>
+        Hold duration
+      </label>
+      <input
+        id={`held-${mit.id}`}
+        type="number"
+        min={min}
+        max={max}
+        step={1}
+        value={current}
+        onChange={(e) => {
+          const parsed = Number.parseInt(e.target.value, 10);
+          if (Number.isNaN(parsed)) return;
+          const clamped = Math.max(min, Math.min(max, parsed));
+          if (clamped !== current) {
+            updateMit(mit.id, { held_duration_seconds: clamped });
+          }
+        }}
+      />
+      <span className="mit-inspector-held-range">
+        {min}–{max}s
+      </span>
+    </div>
   );
 }
 

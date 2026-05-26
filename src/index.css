@@ -1603,6 +1603,75 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-left: none;
 }
+/* Held-ability extension: visualizes the still-extensible headroom for a
+   held mit (today: PLD Passage of Arms). Same translucent fill as
+   .mit-bar-zone-extension but with a dashed right border at the type max so
+   the reader can see "the drag stops here". The faded fill ends at the
+   right-edge resize handle; dragging the handle right consumes this zone. */
+.mit-bar-held-extension {
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-left: none;
+  border-right: 1px dashed rgba(255, 255, 255, 0.4);
+}
+.lane-scroll.theme-light .mit-bar-held-extension {
+  border-color: rgba(0, 0, 0, 0.14);
+  border-right: 1px dashed rgba(0, 0, 0, 0.4);
+}
+/* Right-edge resize handle for a held-ability bar. Sits absolutely at the
+   active band's right edge with a 6px hit target (positioned via inline
+   `left: durationPx - 3`). Cursor change signals the affordance; the visual
+   line is a thin column so it reads as "grab here". */
+.mit-bar-resize-handle {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 3;
+  /* Subtle vertical line centered in the hit target — visible but unobtrusive. */
+  background: linear-gradient(
+    to right,
+    transparent 0,
+    transparent 2px,
+    rgba(255, 255, 255, 0.55) 2px,
+    rgba(255, 255, 255, 0.55) 4px,
+    transparent 4px
+  );
+  touch-action: none;
+}
+.mit-bar-resize-handle:hover,
+.mit-bar--resizing .mit-bar-resize-handle {
+  background: linear-gradient(
+    to right,
+    transparent 0,
+    transparent 1px,
+    rgba(255, 255, 255, 0.9) 1px,
+    rgba(255, 255, 255, 0.9) 5px,
+    transparent 5px
+  );
+}
+.lane-scroll.theme-light .mit-bar-resize-handle {
+  background: linear-gradient(
+    to right,
+    transparent 0,
+    transparent 2px,
+    rgba(0, 0, 0, 0.55) 2px,
+    rgba(0, 0, 0, 0.55) 4px,
+    transparent 4px
+  );
+}
+.lane-scroll.theme-light .mit-bar-resize-handle:hover,
+.lane-scroll.theme-light .mit-bar--resizing .mit-bar-resize-handle {
+  background: linear-gradient(
+    to right,
+    transparent 0,
+    transparent 1px,
+    rgba(0, 0, 0, 0.85) 1px,
+    rgba(0, 0, 0, 0.85) 5px,
+    transparent 5px
+  );
+}
 /* Inner execution-zone treatment for the "zone shorter than active" case
    (Divine Caress). Thin top/bottom borders communicate "child icons can live
    in this sub-range". Pointer-transparent — clicks fall through to the parent
@@ -2011,6 +2080,35 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+
+/* Held-ability numeric editor — mirrors the bar's right-edge resize handle
+   for users who want a precise value. */
+.mit-inspector-held {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-top: 1px solid #2a2a2a;
+  padding-top: 0.5rem;
+}
+.mit-inspector-held-label {
+  font-size: 0.72rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mit-inspector-held input {
+  width: 4rem;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: inherit;
+  padding: 0.1rem 0.3rem;
+  font: inherit;
+}
+.mit-inspector-held-range {
+  font-size: 0.72rem;
+  color: #888;
 }
 
 /* Children section — renders when the selected mit is a parent type with at

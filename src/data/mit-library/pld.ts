@@ -8,6 +8,8 @@ import type { MitigationType } from "@/domain/types";
 // Knight's Benediction regen is deferred per shielded-mits policy.
 // Intervention also carries a conditional +10% bonus when cast under Rampart
 // or Guardian (cast-time snapshot, applies for the full active window).
+// Passage of Arms is a first-class held ability: the cast applies a 5s effect
+// that refreshes while held, up to a 23s active window (18s max hold + 5s tail).
 export const PLD_MITS: MitigationType[] = [
   {
     id: "pld.rampart",
@@ -53,7 +55,11 @@ export const PLD_MITS: MitigationType[] = [
     name: "Passage of Arms",
     job: "PLD",
     cooldown_seconds: 120,
-    duration_seconds: 18,
+    // Held ability: 5s effect refreshed each tick of hold, up to 23s total
+    // (18s max hold + 5s residual after release). User extends via the bar's
+    // right-edge resize handle; default at placement is min.
+    duration_seconds: 23,
+    min_duration_seconds: 5,
     mitigation_per_type: { all: 15 },
     affects: "party",
     max_charges: 1,

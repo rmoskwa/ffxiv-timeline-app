@@ -3,7 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
 import { effectiveBarFootprintSeconds, effectiveCooldownSeconds } from "@/domain/damage";
 import { targetingForMit } from "@/domain/targeting";
-import { formatMitMagnitude, type MitigationInstance, type MitigationType } from "@/domain/types";
+import {
+  formatMitMagnitude,
+  instanceActiveDurationSeconds,
+  type MitigationInstance,
+  type MitigationType,
+} from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { MitIcon } from "./MitIcon";
 import { jobColor } from "./role-color";
@@ -58,6 +63,13 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
   const [dragging, setDragging] = useState(false);
   const renderEffectTime = dragEffectTime ?? instance.effect_time;
   const dragDelta = renderEffectTime - instance.effect_time;
+  // Right-edge resize drag for held abilities (today: PLD Passage of Arms).
+  // Overrides the instance's effective active duration during the gesture;
+  // commits to `held_duration_seconds` on pointerup.
+  const [dragHeldDuration, setDragHeldDuration] = useState<number | null>(null);
+  const [resizing, setResizing] = useState(false);
+  const isHeldAbility = type.min_duration_seconds != null;
+  const heldDurationSec = dragHeldDuration ?? instanceActiveDurationSeconds(type, instance);
 
   // Gated children attached to this parent. Resolves to actual instances on
   // the timeline (one-shot auto-spawn populates these; the user can delete
@@ -91,12 +103,23 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
   const dispelledAt = mitStates.get(instance.id)?.dispelled_at;
   const effectiveActiveSec =
     dispelledAt != null
-      ? Math.max(0, Math.min(type.duration_seconds, dispelledAt - renderEffectTime))
-      : type.duration_seconds;
+      ? Math.max(0, Math.min(heldDurationSec, dispelledAt - renderEffectTime))
+      : heldDurationSec;
   const visibleDurationSec = Math.min(effectiveActiveSec, remainingSec);
+  // Held-ability extension zone: the still-extensible headroom from the current
+  // held value out to the type's maximum. Faded fill signals "drag the right
+  // edge to here." Hidden once held == max, when dispelled, and for any
+  // non-held ability. Does not affect drag clamping or sub-lane stacking —
+  // footprint reservation already uses the max via effectiveBarFootprintSeconds.
+  const heldExtensionSec =
+    isHeldAbility && dispelledAt == null ? Math.max(0, type.duration_seconds - heldDurationSec) : 0;
+  const visibleHeldExtensionSec = Math.max(
+    0,
+    Math.min(heldExtensionSec, remainingSec - visibleDurationSec),
+  );
   const visibleZoneExtensionSec = Math.max(
     0,
-    Math.min(zoneExtensionSec, remainingSec - visibleDurationSec),
+    Math.min(zoneExtensionSec, remainingSec - visibleDurationSec - visibleHeldExtensionSec),
   );
   // Effective cooldown after CD-reduce-on-absorb (Coat-on-Coat-absorb,
   // Coat-on-Grassa-absorb) and consumes-mirror (Grassa's bar always matches
@@ -109,16 +132,22 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
     mitStates,
   );
   // The CD tail visually starts AFTER the execution zone when the zone extends
-  // past active (PRD §6.2 / Sun Sign case), or after the dispel time if this
-  // instance was truncated. The total off-to-off cooldown is unchanged — only
-  // the visual split between active and tail shifts.
-  const visualActivePlusZone = Math.max(effectiveActiveSec, maxChildExecZone);
+  // past active (PRD §6.2 / Sun Sign case), or after the held extension when
+  // the ability is held (the extension visualizes part of the active window),
+  // or after the dispel time if this instance was truncated. The total
+  // off-to-off cooldown is unchanged — only the visual split between active
+  // and tail shifts.
+  const visualActivePlusZone = Math.max(effectiveActiveSec + heldExtensionSec, maxChildExecZone);
   const cooldownTailSec = Math.max(0, effectiveCdSec - visualActivePlusZone);
   const visibleCooldownTailSec = Math.max(
     0,
-    Math.min(cooldownTailSec, remainingSec - visibleDurationSec - visibleZoneExtensionSec),
+    Math.min(
+      cooldownTailSec,
+      remainingSec - visibleDurationSec - visibleHeldExtensionSec - visibleZoneExtensionSec,
+    ),
   );
   const durationPx = visibleDurationSec * pxPerSec;
+  const heldExtensionPx = visibleHeldExtensionSec * pxPerSec;
   const zoneExtensionPx = visibleZoneExtensionSec * pxPerSec;
   const cooldownTailPx = visibleCooldownTailSec * pxPerSec;
 
@@ -258,10 +287,80 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
     setDragEffectTime(null);
   };
 
+  // Right-edge resize for held abilities. Independent of the bar's
+  // pointer-down move-drag — stopPropagation in handleResizeDown prevents the
+  // outer handler from also capturing.
+  const resizeStartRef = useRef<{
+    pointerId: number;
+    clientX: number;
+    startHeld: number;
+    minHeld: number;
+    maxHeld: number;
+    dragging: boolean;
+  } | null>(null);
+
+  const handleResizeDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    if (!isHeldAbility) return;
+    e.stopPropagation();
+    const minHeld = type.min_duration_seconds ?? 0;
+    const maxHeld = type.duration_seconds;
+    resizeStartRef.current = {
+      pointerId: e.pointerId,
+      clientX: e.clientX,
+      startHeld: heldDurationSec,
+      minHeld,
+      maxHeld,
+      dragging: false,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleResizeMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const start = resizeStartRef.current;
+    if (!start || e.pointerId !== start.pointerId) return;
+    const dx = e.clientX - start.clientX;
+    if (!start.dragging) {
+      if (Math.abs(dx) < DRAG_THRESHOLD_PX) return;
+      start.dragging = true;
+      setResizing(true);
+    }
+    const raw = start.startHeld + Math.round(dx / pxPerSec);
+    const clamped = Math.max(start.minHeld, Math.min(start.maxHeld, raw));
+    setDragHeldDuration(clamped);
+  };
+
+  const handleResizeUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const start = resizeStartRef.current;
+    if (!start || e.pointerId !== start.pointerId) return;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    if (start.dragging) {
+      const finalHeld = dragHeldDuration ?? heldDurationSec;
+      const current = instanceActiveDurationSeconds(type, instance);
+      if (finalHeld !== current) {
+        updateMit(instance.id, { held_duration_seconds: finalHeld });
+      }
+    }
+    resizeStartRef.current = null;
+    setResizing(false);
+    setDragHeldDuration(null);
+  };
+
+  const handleResizeCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    const start = resizeStartRef.current;
+    if (!start || e.pointerId !== start.pointerId) return;
+    resizeStartRef.current = null;
+    setResizing(false);
+    setDragHeldDuration(null);
+  };
+
+  const titleActive = isHeldAbility
+    ? `${heldDurationSec}s active (held, ${type.min_duration_seconds}–${type.duration_seconds}s)`
+    : `${type.duration_seconds}s active`;
   const title =
     `${type.name} @ ${secondsToTimecode(renderEffectTime)}\n` +
     `${formatMitMagnitude(type)} · ` +
-    `${type.duration_seconds}s active / ${type.cooldown_seconds}s cd` +
+    `${titleActive} / ${type.cooldown_seconds}s cd` +
     (targetUnset ? "\n⚠ no target picked — click the ? badge to assign" : "");
 
   return (
@@ -269,6 +368,7 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
       className={
         `mit-bar${selected ? " mit-bar--selected" : ""}` +
         `${dragging ? " mit-bar--dragging" : ""}` +
+        `${resizing ? " mit-bar--resizing" : ""}` +
         `${targetUnset ? " mit-bar--needs-target" : ""}` +
         `${inConflict ? " mit-bar--in-conflict" : ""}` +
         `${targetSlot ? " mit-bar--has-target" : ""}` +
@@ -305,6 +405,28 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
           </button>
         )}
       </div>
+      {heldExtensionPx > 0 && (
+        <div
+          className="mit-bar-held-extension"
+          style={{
+            width: heldExtensionPx,
+            background: `color-mix(in srgb, ${jobColor(type.job)} 16%, transparent)`,
+          }}
+          aria-hidden
+          title={`Drag the right edge to extend up to ${type.duration_seconds}s`}
+        />
+      )}
+      {isHeldAbility && durationPx > 0 && (
+        <div
+          className="mit-bar-resize-handle"
+          style={{ left: durationPx - 3 }}
+          title={`Hold duration: ${heldDurationSec}s (drag to ${type.min_duration_seconds}–${type.duration_seconds}s)`}
+          onPointerDown={handleResizeDown}
+          onPointerMove={handleResizeMove}
+          onPointerUp={handleResizeUp}
+          onPointerCancel={handleResizeCancel}
+        />
+      )}
       {zoneExtensionPx > 0 && (
         <div
           className="mit-bar-zone-extension"
@@ -358,10 +480,11 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
         const dispel = s?.dispel_bonus_applied;
         if (!conditional && !dispel) return null;
         // Top-right of the final cell of the active band. Anchor by the bar's
-        // right edge with the cooldown tail + zone-extension widths added back
-        // in, so the glyph sits flush against the active band's right edge
-        // regardless of dispel-clip or zone extension.
-        const rightOffsetPx = cooldownTailPx + zoneExtensionPx + 2;
+        // right edge with the cooldown tail + held-extension + zone-extension
+        // widths added back in, so the glyph sits flush against the active
+        // band's right edge regardless of dispel-clip, hold extension, or zone
+        // extension.
+        const rightOffsetPx = cooldownTailPx + heldExtensionPx + zoneExtensionPx + 2;
         return (
           <span
             className="mit-bar-conditional-marker"
