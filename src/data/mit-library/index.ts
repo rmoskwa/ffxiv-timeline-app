@@ -95,3 +95,11 @@ export function getMitsForJob(job: Job): MitigationType[] {
 export function getGatedChildrenOf(parentId: string): MitigationType[] {
   return MIT_LIBRARY.filter((m) => m.gated_by === parentId);
 }
+
+// Other library entries that share `mit`'s recast group, excluding `mit`
+// itself. Returns [] when `mit` has no group.
+export function getSharedRecastPartners(mit: MitigationType): MitigationType[] {
+  const group = mit.shared_recast_group;
+  if (!group) return [];
+  return MIT_LIBRARY.filter((m) => m.shared_recast_group === group && m.id !== mit.id);
+}

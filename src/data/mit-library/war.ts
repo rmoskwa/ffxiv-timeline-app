@@ -5,7 +5,9 @@ import type { MitigationType } from "@/domain/types";
 // Raw Intuition is omitted — it upgrades to Bloodwhetting via trait at L82.
 // Bloodwhetting and Nascent Flash carry tiered % mit (10% / 8s outer + 10% /
 // 0–4s inner via Stem the Flow); their cure-potency heal-on-weaponskill +
-// Stem the Tide barrier are deferred per shielded-mits policy.
+// Stem the Tide barrier are deferred per shielded-mits policy. They also
+// share a single recast in-game (the "war.bloodwhetting_nf" group) — casting
+// one locks the other out for 25s.
 export const WAR_MITS: MitigationType[] = [
   {
     id: "war.rampart",
@@ -66,8 +68,9 @@ export const WAR_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     // 400-potency heal-on-weaponskill + Stem the Tide barrier (cure-potency-based,
-    // 20s) deferred. In-game shares recast with Nascent Flash — not modeled.
+    // 20s) deferred.
     tiers: [{ offset_seconds: 0, duration_seconds: 4, mitigation_per_type: { all: 10 } }],
+    shared_recast_group: "war.bloodwhetting_nf",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Bloodwhetting",
   },
   {
@@ -81,8 +84,8 @@ export const WAR_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     // Heal-on-weaponskill + Stem the Tide barrier components deferred (cure-potency).
-    // In-game shares recast with Bloodwhetting — not modeled.
     tiers: [{ offset_seconds: 0, duration_seconds: 4, mitigation_per_type: { all: 10 } }],
+    shared_recast_group: "war.bloodwhetting_nf",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Nascent_Flash",
   },
   {

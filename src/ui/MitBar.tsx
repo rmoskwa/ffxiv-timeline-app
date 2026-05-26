@@ -21,6 +21,11 @@ interface MitBarProps {
   // same ability are unrelated for drag purposes. May include this bar itself;
   // the handler filters self out.
   rowSiblings: readonly MitigationInstance[];
+  // Placements of shared-recast partner mits on the same slot (e.g. Nascent
+  // Flash instances when this bar is Bloodwhetting). Their effective cooldown
+  // windows block this bar from being dragged into them, mirroring the
+  // placement gate in MitSubLane.legalHoverSec.
+  partnerInstances: readonly MitigationInstance[];
 }
 
 // Pixel distance the pointer must travel after pointerdown before we treat
@@ -34,7 +39,7 @@ const GATED_CHILD_MIN_GAP_SECONDS = 2;
 
 // Solid segment for the active window (T → T+duration), faded segment for the
 // remaining cooldown (T+duration → T+cooldown).
-export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
+export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBarProps) {
   const updateMit = useTimelineStore((s) => s.updateMitigationInstance);
   const selectMitInstance = useTimelineStore((s) => s.selectMitInstance);
   const selected = useTimelineStore(
@@ -171,7 +176,7 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
       prev && prevType
         ? effectiveBarFootprintSeconds(prev, prevType, allMits ?? [], getMitById, mitStates)
         : 0;
-    const minT = prev ? prev.effect_time + prevFootprint : 0;
+    let minT = prev ? prev.effect_time + prevFootprint : 0;
     let maxT = next ? next.effect_time - thisFootprint : tl.metadata.fight_duration_sec;
     // Offset-glued children must stay within the timeline. Snapshot each
     // child's current offset and tighten the parent's right-edge clamp so
@@ -179,6 +184,19 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
     for (const child of childInstances) {
       const offset = child.effect_time - instance.effect_time;
       maxT = Math.min(maxT, tl.metadata.fight_duration_sec - offset);
+    }
+    // Shared-recast partners on the same slot block dragging into their
+    // effective cooldown window. Partner active duration is irrelevant — the
+    // mits never share an active window — so we clamp against partner CD only.
+    for (const p of partnerInstances) {
+      const pType = getMitById(p.type_id);
+      if (!pType) continue;
+      const pCd = effectiveCooldownSeconds(p, pType, allMits ?? [], getMitById, mitStates);
+      if (p.effect_time < instance.effect_time) {
+        minT = Math.max(minT, p.effect_time + pCd);
+      } else {
+        maxT = Math.min(maxT, p.effect_time - thisFootprint);
+      }
     }
     dragStartRef.current = {
       pointerId: e.pointerId,

@@ -151,6 +151,11 @@ export interface MitigationType {
   // WAR Nascent Flash, GNB Heart of Corundum), where the first 4s of an 8s
   // window carry an extra reduction layer.
   tiers?: Tier[];
+  // Identifier for a recast group shared with one or more other library entries
+  // (e.g. WAR Bloodwhetting ↔ Nascent Flash). Casting any group member locks
+  // every other member out of its sub-lane for that member's effective cooldown
+  // window; the UI paints a phantom cooldown bar on the locked-out partner.
+  shared_recast_group?: string;
 }
 
 // Resolve the % mit an ability applies to a given damage type.

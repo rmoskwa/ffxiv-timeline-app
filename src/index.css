@@ -1571,6 +1571,24 @@ button {
   border-left: none;
   border-radius: 0 3px 3px 0;
 }
+/* Phantom cooldown for a shared-recast partner placement (e.g. when WAR
+   Bloodwhetting is cast, the Nascent Flash sub-lane shows this stripe over
+   the same CD window). Same stripe pattern as .mit-bar-cooldown but
+   standalone — self-rounded, pointer-inert, no associated duration band. */
+.mit-shared-cd {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 13px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(160, 160, 160, 0.22) 0 6px,
+    rgba(160, 160, 160, 0.08) 6px 12px
+  );
+  border: 1px solid rgba(160, 160, 160, 0.3);
+  border-radius: 3px;
+  pointer-events: none;
+}
 /* Execution-zone extension past the parent's active end (Sun Sign case).
    Same bar height as the active band, in the parent's color at lower opacity
    so the user reads it as "extension of the active window for children only".

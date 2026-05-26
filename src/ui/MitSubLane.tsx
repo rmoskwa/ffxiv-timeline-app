@@ -1,8 +1,8 @@
 import type React from "react";
 import { useMemo, useState } from "react";
-import { getMitById } from "@/data/mit-library";
+import { getMitById, getSharedRecastPartners } from "@/data/mit-library";
 import { assignChargeRows } from "@/domain/charges";
-import { effectiveBarFootprintSeconds } from "@/domain/damage";
+import { effectiveBarFootprintSeconds, effectiveCooldownSeconds } from "@/domain/damage";
 import type { MitigationInstance, MitigationType, PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { MitBar } from "./MitBar";
@@ -113,6 +113,24 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
   );
   const ghostFootprintSec = Math.max(mitType.cooldown_seconds, mitType.duration_seconds);
 
+  // Shared-recast partners on this slot: any placement of a sibling mit in the
+  // same shared_recast_group locks every charge of this lane out for the
+  // partner's effective cooldown window. The active duration of the partner
+  // doesn't matter here — only its CD — because the two mits never share an
+  // active window (one is always locked when the other is cast).
+  const partnerTypes = getSharedRecastPartners(mitType);
+  const partnerInstances =
+    partnerTypes.length === 0
+      ? []
+      : (allMits ?? []).filter(
+          (m) => m.player_slot_id === slot.id && partnerTypes.some((p) => p.id === m.type_id),
+        );
+  const partnerCdEnds = partnerInstances.map((m) => {
+    const t = getMitById(m.type_id);
+    if (!t) return null;
+    return m.effect_time + effectiveCooldownSeconds(m, t, allMits ?? [], getMitById, mitStates);
+  });
+
   const legalHoverSec = (raw: number): number | null => {
     if (raw < 0 || raw > laneDurationSec) return null;
     for (let i = 0; i < instances.length; i++) {
@@ -120,6 +138,12 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
       const nEnd = neighborEnds[i];
       if (!n || nEnd == null) continue;
       if (raw < nEnd && raw + ghostFootprintSec > n.effect_time) return null;
+    }
+    for (let i = 0; i < partnerInstances.length; i++) {
+      const p = partnerInstances[i];
+      const pEnd = partnerCdEnds[i];
+      if (!p || pEnd == null) continue;
+      if (raw < pEnd && raw + ghostFootprintSec > p.effect_time) return null;
     }
     return raw;
   };
@@ -191,6 +215,21 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
           aria-hidden
         />
       ))}
+      {partnerInstances.map((p, i) => {
+        const pEnd = partnerCdEnds[i];
+        if (pEnd == null) return null;
+        const leftSec = Math.max(0, p.effect_time);
+        const widthSec = Math.max(0, Math.min(pEnd, laneDurationSec) - leftSec);
+        if (widthSec <= 0) return null;
+        return (
+          <div
+            key={`shared-cd-${p.id}`}
+            className="mit-shared-cd"
+            style={{ left: leftSec * pxPerSec, width: widthSec * pxPerSec }}
+            aria-hidden
+          />
+        );
+      })}
       {hoverSec !== null && (
         <div className="hover-ghost" style={{ left: hoverSec * pxPerSec }} aria-hidden>
           <div className="hover-ghost-active" style={{ width: ghostActivePx }} />
@@ -200,7 +239,13 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
         </div>
       )}
       {instances.map((m) => (
-        <MitBar key={m.id} instance={m} type={mitType} rowSiblings={instances} />
+        <MitBar
+          key={m.id}
+          instance={m}
+          type={mitType}
+          rowSiblings={instances}
+          partnerInstances={partnerInstances}
+        />
       ))}
     </div>
   );
