@@ -108,6 +108,18 @@ _Avoid_: dispel (use only as a verb in passing prose), eat
 When a mit's `cooldown_reduce_on_absorb` is set and its barrier is **Absorbed**, the named number of seconds is shaved off a cooldown. Convention: when the mit also has `consumes`, the reduction targets the consumed instance's cooldown (PCT Tempera Grassa absorbed → -30s on Tempera Coat). Otherwise it targets self (Tempera Coat absorbed → -60s on self). A consumer mit's bar (Grassa) renders at the consumed parent's effective cooldown — the visual length always matches the Coat it came from.
 _Avoid_: cd refund, cooldown rebate
 
+**Parent mit** / **Child mit**:
+A pair of `MitigationType`s linked by `gated_by` on the child. The parent provides a gating window (e.g., Temperance's buff window, the Suntouched buff seeded by Neutral Sect, the Summon Seraph window). A child can only be cast inside the parent's **execution zone** and has no sub-lane of its own — its icon renders on the parent's bar at its `effect_time`. Each child `MitigationInstance` carries `parent_instance_id` linking it to the specific parent instance it belongs to. Deleting the parent deletes every child bound to it. Pairs today: WHM Temperance → Divine Caress, PCT Tempera Coat → Tempera Grassa, AST Neutral Sect → Sun Sign, SCH Summon Seraph → Consolation. The PCT pair is the only one that *also* uses **Consume** — gating and consuming are distinct relationships that may co-apply.
+_Avoid_: prerequisite, follower, gate (use only as a verb in passing prose)
+
+**Execution zone**:
+The interval `[parent.effect_time, parent.effect_time + execution_zone_seconds]` during which a **child mit** can be cast. The child-side `execution_zone_seconds` field overrides the default; when omitted, the execution zone equals the parent's `duration_seconds`. Today only AST Sun Sign carries an explicit value (30s — Neutral Sect's Suntouched buff outlasts its own 20s active by 10s). When the execution zone differs from the parent's active window, the parent's bar gets a distinct visual treatment over the divergent region (lighter solid extension past the parent's active end, or a sub-range shading inside it when the execution zone is shorter than the parent's active). The child's `effect_time` is clamped to the execution zone during drag.
+_Avoid_: gate window, casting window, parent window
+
+**Auto-spawn**:
+The behavior of materializing **child mit** instances at the moment a parent is placed. Each gated child auto-creates at the middle of its **execution zone**. Auto-spawn is one-shot — it runs at parent-placement time, consults the gating pass (PCT Tempera Grassa is skipped if Tempera Coat is known to be absorbed before the middle position), and from then on the child is a normal user-controlled `MitigationInstance` — drag to move, X-affordance to delete, **MitInspectorPanel** to re-add. For SCH Consolation (two charges per Summon Seraph window), both charges auto-spawn at packed-middle positions (t=parent_middle and t=parent_middle+2) with a minimum 2s gap enforced on subsequent drags.
+_Avoid_: auto-add, auto-create
+
 **Tank Mastery**:
 A tank-only always-on 20% all-source damage reduction. Applied multiplicatively at the % mit step (not as a barrier). Derived from **Role** at math time — not stored on the slot.
 _Avoid_: tank passive, tank mit
@@ -138,7 +150,7 @@ Cooldown overlap is *not* a conflict kind: two Bars on the same sub-lane (same s
 _Avoid_: error, warning, problem
 
 **Schema version**:
-The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `7` (bumped from `6` when per-slot **HP** was added to `PlayerSlot` — see the **HP** entry).
+The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `8` (bumped from `7` when `MitigationInstance.parent_instance_id` and `MitigationType.gated_by` / `execution_zone_seconds` were added for the **Parent mit / Child mit** redesign).
 _Avoid_: file version, format version
 
 ### Canvas
@@ -184,6 +196,8 @@ How a mit instance renders on a sub-lane's Track — a horizontal range spanning
 - **Cooldown tail**: the faded trailing portion (`effect_time + duration_seconds` → `effect_time + cooldown_seconds`). Visual-only — shows when the mit becomes available for re-placement. Does *not* contribute to coverage.
 
 A Bar is *authoritative* over its `[effect_time, effect_time + cooldown_seconds]` range on its sub-lane: two Bars in the same sub-lane (i.e., same slot + mit type) can never have overlapping ranges. **Placement** and drag both auto-snap `effect_time` to the earliest legal value when the requested position would overlap a neighbor or fall outside the timeline. A Bar is a selectable, horizontally-draggable entity; click selects, drag along the sub-lane's time axis moves.
+
+**Child mit** instances are the exception — they do not render as Bars on their own sub-lane. Instead, they appear as an icon on their parent's Bar at the child's `effect_time`, optionally with a translucent duration band overlaid on the parent's active segment and a hashed extension stripe past the parent's window when the child's effect duration extends beyond it. See **Parent mit / Child mit** and **Execution zone**.
 
 _Avoid_: block, segment (use "active segment" or "cooldown tail" explicitly), span
 
