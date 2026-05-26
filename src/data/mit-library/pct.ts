@@ -1,8 +1,7 @@
 import type { MitigationType } from "@/domain/types";
 
 // PCT mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Tempera Coat / Tempera Grassa are excluded — shield-only.
-// Only the caster role action Addle applies.
+// Tempera Grassa rollout pending PR 5.
 export const PCT_MITS: MitigationType[] = [
   {
     id: "pct.addle",
@@ -15,5 +14,18 @@ export const PCT_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Addle",
+  },
+  {
+    id: "pct.tempera_coat",
+    name: "Tempera Coat",
+    job: "PCT",
+    cooldown_seconds: 120, // CD-reduce-on-absorb deferred per PRD
+    duration_seconds: 10,
+    mitigation_per_type: {},
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 20 },
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Tempera_Coat",
   },
 ];
