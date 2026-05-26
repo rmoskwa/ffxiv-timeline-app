@@ -29,7 +29,7 @@ import { useZoom, useZoomStore } from "./use-zoom";
 // Width of the sticky lane label column. Subtracted from the scroll container's
 // width to derive the visible track region — must stay in sync with the
 // `.lane-label` width in index.css.
-const LANE_LABEL_WIDTH_PX = 130;
+const LANE_LABEL_WIDTH_PX = 140;
 
 export function TimelineCanvas() {
   const roster = useTimelineStore((s) => s.timeline?.roster);
