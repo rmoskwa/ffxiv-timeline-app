@@ -129,12 +129,16 @@ export function BossAbilityPanel() {
 
   return (
     <section className="boss-panel">
-      <BossAbilityPanelHeader
-        formOpen={newTypeFormOpen}
-        onOpenForm={() => setNewTypeFormOpen(true)}
-        onImport={handleImport}
-        onExport={handleExport}
-      />
+      <BossAbilityPanelHeader onImport={handleImport} onExport={handleExport} />
+      {!newTypeFormOpen && (
+        <button
+          type="button"
+          className="new-ability-toggle new-ability-toggle--row"
+          onClick={() => setNewTypeFormOpen(true)}
+        >
+          + New Ability
+        </button>
+      )}
       {newTypeFormOpen && <NewTypeForm onClose={() => setNewTypeFormOpen(false)} />}
       <p className="hint">Edit metadata here. Click the boss lane to place at a time.</p>
 
@@ -162,13 +166,9 @@ export function BossAbilityPanel() {
 }
 
 function BossAbilityPanelHeader({
-  formOpen,
-  onOpenForm,
   onImport,
   onExport,
 }: {
-  formOpen: boolean;
-  onOpenForm: () => void;
   onImport: () => void;
   onExport: () => void;
 }) {
@@ -177,16 +177,11 @@ function BossAbilityPanelHeader({
       <h3>Boss Abilities</h3>
       <div className="boss-panel-header-actions">
         <button type="button" className="link-button" onClick={onImport}>
-          import…
+          Import
         </button>
         <button type="button" className="link-button" onClick={onExport}>
-          export…
+          Export
         </button>
-        {!formOpen && (
-          <button type="button" className="new-ability-toggle" onClick={onOpenForm}>
-            + New Ability
-          </button>
-        )}
       </div>
     </header>
   );

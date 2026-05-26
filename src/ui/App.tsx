@@ -81,13 +81,13 @@ export function App() {
         </div>
         <div className="header-actions">
           <button type="button" className="link-button" onClick={handleOpenTimeline}>
-            Open Timeline…
+            Open Timeline
           </button>
           <button type="button" className="link-button" onClick={handleSaveTimeline}>
-            Save Timeline…
+            Save Timeline
           </button>
           <button type="button" className="link-button" onClick={handleDiscard}>
-            discard
+            Discard
           </button>
         </div>
       </header>

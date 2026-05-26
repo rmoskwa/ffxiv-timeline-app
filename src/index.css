@@ -253,8 +253,33 @@ button {
 }
 .header-actions {
   display: flex;
-  gap: 1rem;
+  gap: 0.4rem;
   align-items: center;
+}
+/* Toolbar buttons — promote .link-button instances inside the app header
+   and boss-panel header from hyperlink-styled text into actual button-
+   shaped affordances. Inline link-buttons inside forms/rows keep the
+   original hyperlink look. */
+.header-actions .link-button,
+.boss-panel-header-actions .link-button {
+  text-decoration: none;
+  background: #2a2a2a;
+  border: 1px solid #454545;
+  border-radius: 4px;
+  padding: 0.22rem 0.6rem;
+  font-size: 0.75rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.header-actions .link-button:hover,
+.boss-panel-header-actions .link-button:hover {
+  background: #353535;
+  border-color: #5a5a5a;
+  color: #cfe6ff;
+}
+.header-actions .link-button:active,
+.boss-panel-header-actions .link-button:active {
+  background: #232323;
 }
 .hydrating {
   display: flex;
@@ -962,6 +987,17 @@ button {
 }
 .new-ability-toggle:hover {
   background: #1f2a35;
+}
+/* Row variant: full-width affordance below the boss panel header. The
+   solid border (vs the inline dashed) reinforces this is a primary,
+   frequently-pressed action distinct from the import/export link buttons. */
+.new-ability-toggle--row {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  border-style: solid;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.8rem;
 }
 .new-ability-form {
   display: flex;
