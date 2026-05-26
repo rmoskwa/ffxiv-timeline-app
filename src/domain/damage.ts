@@ -86,6 +86,10 @@ export interface MitInstanceState {
   // from there to the natural CD end). Damage math uses the same value via
   // the engine's precomputed dispel map.
   dispelled_at?: number;
+  // True for a `consumes_many` consumer whose cast actually dispelled at
+  // least one listed type on the caster slot. Drives the "+" bonus glyph on
+  // the consumer's bar; the damage chip already reflects the bigger barrier.
+  dispel_bonus_applied?: boolean;
 }
 
 // In-flight barrier pool tracked while walking hits chronologically.
@@ -216,6 +220,9 @@ export function computeDamageTimeline(
   }
   for (const [id, t] of dispelledEnds) {
     ensureState(id).dispelled_at = t;
+  }
+  for (const [id, count] of consumerDispelCounts) {
+    if (count > 0) ensureState(id).dispel_bonus_applied = true;
   }
 
   // Pre-compute barrier-seeding events; each fires at a mit's effect_time.

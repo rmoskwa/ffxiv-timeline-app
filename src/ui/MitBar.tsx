@@ -352,15 +352,31 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
       {cooldownTailPx > 0 && (
         <div className="mit-bar-cooldown" style={{ width: cooldownTailPx }} aria-hidden />
       )}
-      {type.conditional_bonus && mitStates.get(instance.id)?.conditional_bonus_applied && (
-        <span
-          className="mit-bar-conditional-marker"
-          aria-hidden
-          title="Conditional bonus active — gate satisfied at cast time"
-        >
-          +
-        </span>
-      )}
+      {(() => {
+        const s = mitStates.get(instance.id);
+        const conditional = type.conditional_bonus && s?.conditional_bonus_applied;
+        const dispel = s?.dispel_bonus_applied;
+        if (!conditional && !dispel) return null;
+        // Top-right of the final cell of the active band. Anchor by the bar's
+        // right edge with the cooldown tail + zone-extension widths added back
+        // in, so the glyph sits flush against the active band's right edge
+        // regardless of dispel-clip or zone extension.
+        const rightOffsetPx = cooldownTailPx + zoneExtensionPx + 2;
+        return (
+          <span
+            className="mit-bar-conditional-marker"
+            style={{ right: rightOffsetPx }}
+            aria-hidden
+            title={
+              dispel
+                ? "Barrier bonus active — dispelled effects boosted the shield"
+                : "Conditional bonus active — gate satisfied at cast time"
+            }
+          >
+            +
+          </span>
+        );
+      })()}
       <span className="mit-bar-icon-overlay" style={{ left: pxPerSec / 2 }}>
         <MitIcon name={type.name} size={mitIconSize} title={type.name} />
       </span>

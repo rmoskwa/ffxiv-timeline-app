@@ -1239,6 +1239,36 @@ describe("computeDamageTimeline — consumes_many truncates dispelled instances 
     expect(states.get("damn")?.dispelled_at).toBe(55);
     expect(states.get("shake")?.dispelled_at).toBeUndefined();
   });
+
+  it("sets dispel_bonus_applied on the consumer when at least one type was dispelled", () => {
+    const damnation = mit({
+      id: "damn",
+      player_slot_id: "s6",
+      type_id: "synth.dispellable_mit_40",
+      effect_time: 50,
+    });
+    const shake = mit({
+      id: "shake",
+      player_slot_id: "s6",
+      type_id: "synth.multi_consumer",
+      effect_time: 55,
+    });
+    const states = new Map<string, MitInstanceState>();
+    computeDamageTimeline([], [], [damnation, shake], lookup, ROSTER, states);
+    expect(states.get("shake")?.dispel_bonus_applied).toBe(true);
+  });
+
+  it("leaves dispel_bonus_applied unset when nothing was dispelled", () => {
+    const shake = mit({
+      id: "shake",
+      player_slot_id: "s6",
+      type_id: "synth.multi_consumer",
+      effect_time: 55,
+    });
+    const states = new Map<string, MitInstanceState>();
+    computeDamageTimeline([], [], [shake], lookup, ROSTER, states);
+    expect(states.get("shake")?.dispel_bonus_applied).toBeUndefined();
+  });
 });
 
 // ─── Absorbed-at tracking + effective cooldown ──────────────────────────────

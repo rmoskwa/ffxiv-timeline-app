@@ -1633,15 +1633,19 @@ button {
   z-index: 1;
 }
 
-/* Conditional bonus marker: a small "+" glyph near the top-right of the
-   active band, indicating that the entry carries a cast-time-gated bonus
-   (e.g. PLD Intervention's +10% under Rampart/Guardian). Static — the marker
-   does NOT reflect whether the gate was satisfied; the damage chip is the
-   source of truth for the actual reduction applied. */
+/* Bonus marker: a small "+" glyph rendered in the top-right of the final
+   cell of the active band. Fires when a cast-time bonus is active on this
+   instance — either a `conditional_bonus` gate satisfied (e.g. PLD
+   Intervention under Rampart/Guardian) or a `consumes_many` dispel-bonus
+   that boosted the seeded barrier (e.g. WAR Shake It Off after dispelling
+   Thrill / Damnation / Bloodwhetting). `right` is set inline (in px) to
+   `cooldownTailPx + zoneExtensionPx + 2` so the glyph tracks zoom, dispel
+   clipping, and zone extension. The damage chip is the source of truth for
+   the actual reduction / pool size; the glyph is an at-a-glance indicator
+   that *some* bonus is active. */
 .mit-bar-conditional-marker {
   position: absolute;
   top: 1px;
-  right: 2px;
   font-size: 10px;
   line-height: 10px;
   font-weight: 700;
