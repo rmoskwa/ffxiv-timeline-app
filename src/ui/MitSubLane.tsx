@@ -125,6 +125,13 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
   };
 
   const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Bail if the pointer is over a popover that lives inside this track (e.g.
+    // a MitBar's TargetPicker) — otherwise the bubbled pointermove paints a
+    // placement ghost while the user is interacting with the picker.
+    if (e.target instanceof Element && e.target.closest(".mit-bar-popover")) {
+      setHoverSec(null);
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     const raw = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec);
     setHoverSec(legalHoverSec(raw));
@@ -133,6 +140,10 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
   const handleLeave = () => setHoverSec(null);
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Bail when the click originates inside a popover (e.g. a TargetPicker
+    // button) — otherwise picking a target would also place a new mit at the
+    // popover's anchor position on the lane.
+    if (e.target instanceof Element && e.target.closest(".mit-bar-popover")) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const raw = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec);
     if (legalHoverSec(raw) === null) return;
