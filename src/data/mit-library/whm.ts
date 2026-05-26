@@ -2,7 +2,7 @@ import type { MitigationType } from "@/domain/types";
 
 // WHM mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Divine Benison, Divine Grace, Plenary Indulgence excluded — rotational cure-potency / heal-buff.
-// Aspected Helios excluded — rotational cure-potency.
+// Utility entries (planner anchors, 0% mit): Liturgy of the Bell, Divine Caress.
 export const WHM_MITS: MitigationType[] = [
   {
     id: "whm.temperance",
@@ -27,5 +27,29 @@ export const WHM_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Aquaveil",
+  },
+  {
+    id: "whm.liturgy_of_the_bell",
+    name: "Liturgy of the Bell",
+    job: "WHM",
+    cooldown_seconds: 180,
+    duration_seconds: 20,
+    mitigation_per_type: {},
+    affects: "none",
+    max_charges: 1,
+    mechanic: "utility",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Liturgy_of_the_Bell",
+  },
+  {
+    id: "whm.divine_caress",
+    name: "Divine Caress",
+    job: "WHM",
+    cooldown_seconds: 120, // stopgap: inherits Temperance's CD (combo-chain gated)
+    duration_seconds: 0,
+    mitigation_per_type: {},
+    affects: "party",
+    max_charges: 1,
+    mechanic: "utility",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Divine_Caress",
   },
 ];
