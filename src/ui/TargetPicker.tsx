@@ -13,6 +13,9 @@ interface TargetPickerProps {
   // header reads "(X/N)" for fixed-cardinality picks. When min < max (only
   // boss `targeted` today), the header reads "(X selected)".
   minSelections?: number;
+  // Slot ids that cannot be picked. Rendered disabled in the grid. Used by
+  // affects:target mits to exclude the caster (target_or_self keeps all 8).
+  excludedSlotIds?: readonly string[];
   onChange: (ids: string[]) => void;
   onClose: () => void;
   // Popovers (BossMarker, MitBar, conflicts-panel rows) want click-outside to
@@ -29,6 +32,7 @@ export function TargetPicker({
   selectedIds,
   maxSelections,
   minSelections,
+  excludedSlotIds,
   onChange,
   onClose,
   dismissOnOutsideClick = true,
@@ -56,6 +60,7 @@ export function TargetPicker({
   }, [onClose, dismissOnOutsideClick]);
 
   const toggle = (slotId: string) => {
+    if (excludedSlotIds?.includes(slotId)) return;
     if (selectedIds.includes(slotId)) {
       onChange(selectedIds.filter((id) => id !== slotId));
       return;
@@ -101,15 +106,21 @@ export function TargetPicker({
       <ul className="target-picker-grid">
         {roster.map((slot, i) => {
           const selected = selectedIds.includes(slot.id);
+          const excluded = excludedSlotIds?.includes(slot.id) ?? false;
           const label = slot.name_label ?? (slot.job === "unset" ? "Unset" : slot.job);
           const isUnset = slot.job === "unset";
           return (
             <li key={slot.id}>
               <button
                 type="button"
-                className={`target-picker-slot${selected ? " is-selected" : ""}${isUnset ? " is-unset" : ""}`}
+                className={`target-picker-slot${selected ? " is-selected" : ""}${isUnset ? " is-unset" : ""}${excluded ? " is-excluded" : ""}`}
                 onClick={() => toggle(slot.id)}
-                title={`Slot ${i + 1} · ${label}`}
+                disabled={excluded}
+                title={
+                  excluded
+                    ? `Slot ${i + 1} · ${label} (caster — not targetable)`
+                    : `Slot ${i + 1} · ${label}`
+                }
                 style={isUnset ? undefined : { backgroundColor: jobColor(slot.job) }}
               >
                 <span className="target-picker-num">{i + 1}</span>

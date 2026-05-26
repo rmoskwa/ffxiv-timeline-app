@@ -21,6 +21,7 @@ import { secondsToTimecode } from "./timeline-constants";
 import { useConflicts } from "./use-derived";
 
 const EMPTY_MITS: readonly MitigationInstance[] = [];
+const EMPTY_EXCLUDED: readonly string[] = [];
 
 export function ConflictsPanel() {
   const conflicts = useConflicts();
@@ -97,6 +98,7 @@ export function ConflictsPanel() {
                     onAction={() => selectBossInstance(c.boss_instance_id)}
                     roster={roster}
                     targeting={targeting}
+                    excludedSlotIds={EMPTY_EXCLUDED}
                     onChange={(ids) => updateBoss(c.boss_instance_id, { target_slot_ids: ids })}
                   />
                 );
@@ -124,6 +126,7 @@ export function ConflictsPanel() {
                   onAction={() => flashElement(`[data-mit-id="${c.mit_instance_id}"]`)}
                   roster={roster}
                   targeting={targeting}
+                  excludedSlotIds={mt.affects === "target" ? [m.player_slot_id] : []}
                   onChange={(ids) => updateMit(c.mit_instance_id, { target_slot_ids: ids })}
                 />
               );
@@ -183,6 +186,7 @@ interface UnsetTargetRowProps {
   onAction: () => void;
   roster: Roster;
   targeting: TargetingState;
+  excludedSlotIds: readonly string[];
   onChange: (ids: string[]) => void;
 }
 
@@ -197,6 +201,7 @@ function UnsetTargetRow({
   onAction,
   roster,
   targeting,
+  excludedSlotIds,
   onChange,
 }: UnsetTargetRowProps) {
   return (
@@ -230,6 +235,7 @@ function UnsetTargetRow({
             selectedIds={targeting.selection}
             minSelections={targeting.minCount}
             maxSelections={targeting.maxCount}
+            excludedSlotIds={excludedSlotIds}
             onChange={onChange}
             onClose={onClose}
           />

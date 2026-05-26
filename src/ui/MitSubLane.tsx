@@ -1,5 +1,6 @@
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { assignChargeRows } from "@/domain/charges";
 import type { MitigationInstance, MitigationType, PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { MitBar } from "./MitBar";
@@ -21,16 +22,76 @@ interface MitSubLaneProps {
   damageMarks: readonly DamageMark[];
 }
 
-// One row per (player slot, mit type). The whole row's track is the click
-// surface for placing a new instance of this mit. The hover ghost only
-// renders when the cursor sits in a legal slot — clicking elsewhere is a
-// no-op, so two bars on the same sub-lane can never overlap by construction.
-// A bar's footprint may extend past the timeline end (the buff outlasts the
-// encounter); the portion past `laneDurationSec` is clipped visually.
+// One row per (player slot, mit type). For max_charges > 1, the row is split
+// into N independent charge-rows — each behaves as its own ability slot with
+// its own cooldown rule, so the user can place up to max_charges placements
+// without them visually colliding. Row assignment is derived (greedy
+// chronological); no schema field. The whole sub-lane shares one left label.
 export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLaneProps) {
+  const { subLaneHeight } = useRowSize();
+
+  const rows = useMemo(() => {
+    // Sticky row-of-record: instance.charge_row when set (placements from the
+    // current schema); derived chronologically when not (loaded saves
+    // pre-dating the field). The derived fallback only fires when charge_row
+    // is undefined — surviving placements never re-flow onto other rows just
+    // because a neighbor was deleted.
+    const derived = assignChargeRows(instances, mitType);
+    const maxRow = Math.max(1, mitType.max_charges);
+    const buckets: MitigationInstance[][] = Array.from({ length: maxRow }, () => []);
+    for (const inst of instances) {
+      const sticky = inst.charge_row;
+      const rowIdx =
+        sticky !== undefined && sticky >= 0 && sticky < maxRow
+          ? sticky
+          : (derived.get(inst.id)?.rowIndex ?? 0);
+      buckets[rowIdx]?.push(inst);
+    }
+    return buckets;
+  }, [instances, mitType]);
+
+  return (
+    <div
+      className={`sub-lane${mitType.max_charges > 1 ? " sub-lane--charged" : ""}`}
+      style={{ minHeight: subLaneHeight * Math.max(1, mitType.max_charges) }}
+    >
+      <div className="sub-lane-label" title={mitType.name}>
+        <MitIcon name={mitType.name} size={18} title={mitType.name} />
+        <span className="sub-lane-name">{mitType.name}</span>
+      </div>
+      <div className="sub-lane-rows">
+        {rows.map((rowInstances, rowIdx) => (
+          <ChargeRow
+            // biome-ignore lint/suspicious/noArrayIndexKey: row index IS the identity here — there are exactly max_charges rows and they don't reorder.
+            key={rowIdx}
+            rowIndex={rowIdx}
+            slot={slot}
+            mitType={mitType}
+            instances={rowInstances}
+            damageMarks={damageMarks}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface ChargeRowProps {
+  rowIndex: number;
+  slot: PlayerSlot;
+  mitType: MitigationType;
+  instances: readonly MitigationInstance[];
+  damageMarks: readonly DamageMark[];
+}
+
+// One charge-row's track. Hover ghost only renders when the cursor sits in a
+// legal slot — clicking elsewhere is a no-op, so two bars on the same row can
+// never overlap by construction. A bar's footprint may extend past the timeline
+// end (the buff outlasts the encounter); the portion past `laneDurationSec` is
+// clipped visually.
+function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRowProps) {
   const addMit = useTimelineStore((s) => s.addMitigationInstance);
   const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
-  const { subLaneHeight } = useRowSize();
   const [hoverSec, setHoverSec] = useState<number | null>(null);
 
   const neighborTimes = instances.map((m) => m.effect_time);
@@ -61,6 +122,7 @@ export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLane
       player_slot_id: slot.id,
       effect_time: raw,
       target_slot_ids: [],
+      charge_row: rowIndex,
     });
     setHoverSec(null);
   };
@@ -81,41 +143,35 @@ export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLane
         ) * pxPerSec;
 
   return (
-    <div className="sub-lane" style={{ minHeight: subLaneHeight }}>
-      <div className="sub-lane-label" title={mitType.name}>
-        <MitIcon name={mitType.name} size={18} title={mitType.name} />
-        <span className="sub-lane-name">{mitType.name}</span>
-      </div>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: sub-lane track is a mouse-only placement surface; keyboard placement deferred */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above */}
-      <div
-        className="lane-track sub-lane-track"
-        style={{ width: laneWidthPx }}
-        onPointerMove={handleMove}
-        onPointerLeave={handleLeave}
-        onClick={handleClick}
-      >
-        <div className="lane-gridlines" aria-hidden />
-        {damageMarks.map((m) => (
-          <div
-            key={m.id}
-            className={`damage-guide${m.lethal ? " damage-guide--lethal" : ""}`}
-            style={{ left: m.effectTime * pxPerSec }}
-            aria-hidden
-          />
-        ))}
-        {hoverSec !== null && (
-          <div className="hover-ghost" style={{ left: hoverSec * pxPerSec }} aria-hidden>
-            <div className="hover-ghost-active" style={{ width: ghostActivePx }} />
-            {ghostCooldownTailPx > 0 && (
-              <div className="hover-ghost-cooldown" style={{ width: ghostCooldownTailPx }} />
-            )}
-          </div>
-        )}
-        {instances.map((m) => (
-          <MitBar key={m.id} instance={m} type={mitType} />
-        ))}
-      </div>
+    // biome-ignore lint/a11y/noStaticElementInteractions: sub-lane track is a mouse-only placement surface; keyboard placement deferred
+    // biome-ignore lint/a11y/useKeyWithClickEvents: see above
+    <div
+      className="lane-track sub-lane-track"
+      style={{ width: laneWidthPx }}
+      onPointerMove={handleMove}
+      onPointerLeave={handleLeave}
+      onClick={handleClick}
+    >
+      <div className="lane-gridlines" aria-hidden />
+      {damageMarks.map((m) => (
+        <div
+          key={m.id}
+          className={`damage-guide${m.lethal ? " damage-guide--lethal" : ""}`}
+          style={{ left: m.effectTime * pxPerSec }}
+          aria-hidden
+        />
+      ))}
+      {hoverSec !== null && (
+        <div className="hover-ghost" style={{ left: hoverSec * pxPerSec }} aria-hidden>
+          <div className="hover-ghost-active" style={{ width: ghostActivePx }} />
+          {ghostCooldownTailPx > 0 && (
+            <div className="hover-ghost-cooldown" style={{ width: ghostCooldownTailPx }} />
+          )}
+        </div>
+      )}
+      {instances.map((m) => (
+        <MitBar key={m.id} instance={m} type={mitType} rowSiblings={instances} />
+      ))}
     </div>
   );
 }

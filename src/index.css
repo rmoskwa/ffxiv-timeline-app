@@ -1217,6 +1217,21 @@ button {
   background: #181818;
   cursor: crosshair;
 }
+/* Container for the per-charge rows of a multi-charge mit. Stacks tracks
+   vertically so each charge slot has its own independent placement strip. */
+.sub-lane-rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.sub-lane-rows > .sub-lane-track {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.sub-lane--charged .sub-lane-rows > .sub-lane-track:not(:last-child) {
+  border-bottom: 1px solid #242424;
+}
 
 .lane-label {
   position: sticky;
@@ -2058,6 +2073,14 @@ button {
 }
 .target-picker-slot.is-unset {
   opacity: 0.55;
+}
+.target-picker-slot.is-excluded {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+.target-picker-slot.is-excluded:hover {
+  border-color: rgba(255, 255, 255, 0.18);
 }
 .target-picker-num {
   color: rgba(255, 255, 255, 0.65);

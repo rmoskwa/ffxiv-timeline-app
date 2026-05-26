@@ -61,6 +61,7 @@ export function MitInspectorPanel() {
           selectedIds={targeting.selection}
           minSelections={targeting.minCount}
           maxSelections={targeting.maxCount}
+          excludedSlotIds={type.affects === "target" ? [mit.player_slot_id] : []}
           onChange={(ids) => updateMit(mit.id, { target_slot_ids: ids })}
           // Esc still deselects (via this onClose); click-outside is owned by
           // the editor's selection model, not the picker.

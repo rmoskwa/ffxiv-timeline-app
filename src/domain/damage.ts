@@ -53,8 +53,12 @@ export interface PerPlayerHitResult {
 // In-flight barrier pool tracked while walking hits chronologically.
 interface BarrierPool {
   // Unique per (mit instance, recipient slot) — multi-charge casts of the same
-  // ability produce separate instances and therefore separate pools.
+  // ability produce separate instances and therefore separate pools, except
+  // when overwriting: the (type_id, recipient) pair has at most one pool at
+  // any time (per FFXIV ability semantics — re-applying the same buff refreshes
+  // it, not double-stacks).
   source_instance_id: string;
+  type_id: string;
   applied_at: number; // mit.effect_time
   expires_at: number; // applied_at + duration
   hp_remaining: number;
@@ -96,6 +100,12 @@ export function computeDamageTimeline(
   // between hits; HP is computed per-hit against max HP.
   const maxHp: number[] = roster.map((s) => s.hp ?? PLAYER_MAX_HP);
   const pools: BarrierPool[][] = roster.map(() => []);
+
+  // Charged-mit overwrite: precomputed exclusive upper bounds per
+  // (mit.id, recipient_slot_id) when a later same-(type, recipient) instance
+  // would otherwise double-stack. Lookups in the per-hit loop key on the
+  // player slot being evaluated.
+  const effectiveEnds = computeEffectiveEnds(allMits, lookupMitType, roster);
 
   // Pre-compute barrier-seeding events; each fires at a mit's effect_time.
   // We don't gate seeding on coverage of any single hit — barriers apply
@@ -146,12 +156,14 @@ export function computeDamageTimeline(
 
     for (let i = 0; i < 8; i++) {
       if (!hitLandsOn(resolvedHit, i, roster)) continue;
+      const playerId = roster[i]?.id ?? "";
 
       let postMit = baseDamage;
       for (const m of allMits) {
         const mt = lookupMitType(m.type_id);
         if (!mt) continue;
-        if (mitCovers(m, mt, resolvedHit, i, roster)) {
+        const trunc = effectiveEnds.get(`${m.id}|${playerId}`);
+        if (mitCovers(m, mt, resolvedHit, i, roster, trunc)) {
           postMit *= 1 - mitPercentFor(mt, resolvedHit.damage_type) / 100;
         }
       }
@@ -202,11 +214,19 @@ function seedBarrier(
     const player = roster[i];
     if (!player) continue;
     if (!recipientIncludes(type.affects, mit, player.id)) continue;
+    // Overwrite per (type_id, recipient): drop any in-flight pool of the same
+    // ability on this recipient before seeding the new one. Any leftover hp
+    // on the prior pool is discarded; the new pool starts fresh at full size.
+    const prior = pools[i];
+    if (prior && prior.length > 0) {
+      pools[i] = prior.filter((p) => p.type_id !== type.id);
+    }
     const cap = maxHp[i] ?? PLAYER_MAX_HP;
     const hpPool = (cap * barrier.value) / 100;
     if (hpPool <= 0) continue;
     pools[i]?.push({
       source_instance_id: mit.id,
+      type_id: type.id,
       applied_at: mit.effect_time,
       expires_at: mit.effect_time + type.duration_seconds,
       hp_remaining: hpPool,
@@ -231,6 +251,76 @@ function recipientIncludes(
     case "none":
       return false;
   }
+}
+
+// Recipient ids used when grouping instances for (type_id, recipient) overwrite.
+// boss_debuff folds into per-player groups because the engine evaluates coverage
+// per player; using each player's id keeps the per-hit lookup in computeDamage
+// uniform across affects kinds.
+function recipientIdsForOverwrite(
+  mt: MitigationType,
+  m: MitigationInstance,
+  roster: Roster,
+): string[] {
+  switch (mt.affects) {
+    case "self":
+      return [m.player_slot_id];
+    case "target":
+    case "target_or_self":
+      return [...m.target_slot_ids];
+    case "party":
+    case "boss_debuff":
+      return roster.map((s) => s.id);
+    case "none":
+      return [];
+  }
+}
+
+// Per (mit instance, recipient) → exclusive upper bound for the mit's active
+// window when the next same-(type, recipient) instance starts inside its
+// natural duration. Absent entries → no overwrite; mitCovers uses the natural
+// inclusive window.
+function computeEffectiveEnds(
+  allMits: readonly MitigationInstance[],
+  lookupMitType: MitTypeLookup,
+  roster: Roster,
+): Map<string, number> {
+  interface Group {
+    instances: MitigationInstance[];
+  }
+  const groups = new Map<string, Group>();
+  for (const m of allMits) {
+    const mt = lookupMitType(m.type_id);
+    if (!mt) continue;
+    for (const rid of recipientIdsForOverwrite(mt, m, roster)) {
+      const key = `${m.type_id}|${rid}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { instances: [] };
+        groups.set(key, g);
+      }
+      g.instances.push(m);
+    }
+  }
+
+  const ends = new Map<string, number>();
+  for (const [key, g] of groups) {
+    if (g.instances.length < 2) continue;
+    const recipientId = key.slice(key.indexOf("|") + 1);
+    const sorted = [...g.instances].sort((a, b) => a.effect_time - b.effect_time);
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const cur = sorted[i];
+      const next = sorted[i + 1];
+      if (!cur || !next) continue;
+      const mt = lookupMitType(cur.type_id);
+      if (!mt) continue;
+      const natural = cur.effect_time + mt.duration_seconds;
+      if (next.effect_time < natural) {
+        ends.set(`${cur.id}|${recipientId}`, next.effect_time);
+      }
+    }
+  }
+  return ends;
 }
 
 // Soonest-to-expire-first; equal-expiry tiebroken oldest-applied-first.

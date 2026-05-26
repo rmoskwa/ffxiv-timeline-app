@@ -154,6 +154,11 @@ export interface MitigationInstance {
   // target-mits before the user picks (auto-opens the picker; coverage is
   // 0 until set). See domain/targeting.ts.
   target_slot_ids: string[];
+  // Which charge-row this placement lives on (0-based). Sticky — set at
+  // placement so that deleting one charge of a multi-charge ability does not
+  // re-flow surviving placements onto other rows. Omitted on load → derived
+  // chronologically by domain/charges.ts. Always 0 for 1-charge mits.
+  charge_row?: number;
   coverage_overrides: CoverageOverride[]; // deferred to v0.2; empty in v0.1
 }
 
@@ -202,7 +207,7 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 7 as const;
+export const TIMELINE_SCHEMA_VERSION = 8 as const;
 
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 

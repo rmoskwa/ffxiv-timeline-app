@@ -154,6 +154,34 @@ const TYPES: Record<string, MitigationType> = {
     barrier: { kind: "max_hp_pct", value: 15 },
     wiki_url: "https://example.com/partyshield15",
   },
+  // Two-charge target_or_self shield — used to exercise overwrite vs independence
+  // across recipients.
+  targetOrSelfShield20x2: {
+    id: "synth.tos_shield_20x2",
+    name: "Synth ToS Shield 20 (x2)",
+    job: "DRK",
+    cooldown_seconds: 15,
+    duration_seconds: 30,
+    mitigation_per_type: {},
+    affects: "target_or_self",
+    max_charges: 2,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 20 },
+    wiki_url: "https://example.com/tos-shield-20x2",
+  },
+  // Two-charge target_or_self % mit — used to exercise % overwrite.
+  targetOrSelfMit10x2: {
+    id: "synth.tos_mit_10x2",
+    name: "Synth ToS Mit 10 (x2)",
+    job: "DRK",
+    cooldown_seconds: 60,
+    duration_seconds: 10,
+    mitigation_per_type: { all: 10 },
+    affects: "target_or_self",
+    max_charges: 2,
+    mechanic: "mit",
+    wiki_url: "https://example.com/tos-mit-10x2",
+  },
   // Combo: 40% all-mit + 15% max-HP barrier on self.
   comboGuardian: {
     id: "synth.combo_guardian",
@@ -427,8 +455,10 @@ describe("computeDamagePerPlayer — barriers", () => {
     });
   });
 
-  it("multi-charge: two simultaneous casts produce two additive independent pools", () => {
-    // Same ability dropped twice on s6 — each cast yields its own 20k pool.
+  it("multi-charge: re-cast on the same recipient overwrites (refresh, not stack)", () => {
+    // Same ability dropped twice on s6: the second cast overwrites the first.
+    // The engine drops A's pool at B.effect_time and seeds B fresh — partial
+    // hp on A is discarded; no additive stacking on the same (type, recipient).
     const a = mit({
       id: "mit-a",
       player_slot_id: "s6",
@@ -441,8 +471,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       type_id: "synth.self_shield_20x2",
       effect_time: 52,
     });
-    // 30k hit at t=60: 20k drains pool A (expires t=80, earliest applied),
-    // remaining 10k drains from B → B has 10k left.
+    // 30k hit at t=60: only B's pool (20k) absorbs. A is gone.
     const result = computeDamagePerPlayer(
       bossInstance({ effect_time: 60 }),
       bossType({ base_damage: 30_000 }),
@@ -451,10 +480,86 @@ describe("computeDamagePerPlayer — barriers", () => {
       ROSTER,
     );
     expect(result[6]).toEqual({
-      damage_taken_to_hp: 0,
-      hp_after: 100_000,
-      active_shields_after: 10_000, // 40k seeded, 30k absorbed → 10k left
+      damage_taken_to_hp: 10_000,
+      hp_after: 90_000,
+      active_shields_after: 0,
     });
+  });
+
+  it("multi-charge: two casts on different recipients seed independent pools", () => {
+    // Same charged ability targeting different players: no overwrite (the
+    // (type, recipient) keys differ), both pools remain active.
+    const a = mit({
+      id: "mit-a",
+      player_slot_id: "s0",
+      type_id: "synth.tos_shield_20x2",
+      target_slot_ids: ["s6"],
+      effect_time: 50,
+    });
+    const b = mit({
+      id: "mit-b",
+      player_slot_id: "s0",
+      type_id: "synth.tos_shield_20x2",
+      target_slot_ids: ["s7"],
+      effect_time: 52,
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 60 }),
+      bossType({ base_damage: 30_000 }),
+      [a, b],
+      lookup,
+      ROSTER,
+    );
+    // s6 and s7 each have their own 20k pool; 30k hit drains 20k → HP loses 10k.
+    expect(result[6]).toEqual({
+      damage_taken_to_hp: 10_000,
+      hp_after: 90_000,
+      active_shields_after: 0,
+    });
+    expect(result[7]).toEqual({
+      damage_taken_to_hp: 10_000,
+      hp_after: 90_000,
+      active_shields_after: 0,
+    });
+  });
+
+  it("multi-charge % mit: re-cast on the same target overwrites coverage windows", () => {
+    // Two charged % mit casts on the same recipient. The earlier one's window
+    // truncates at the later's start (exclusive); the later runs its natural
+    // duration. Hits inside the overlap region are covered by exactly one — no
+    // double-stacking.
+    const a = mit({
+      id: "mit-a",
+      player_slot_id: "s0",
+      type_id: "synth.tos_mit_10x2",
+      target_slot_ids: ["s6"],
+      effect_time: 0,
+    });
+    const b = mit({
+      id: "mit-b",
+      player_slot_id: "s0",
+      type_id: "synth.tos_mit_10x2",
+      target_slot_ids: ["s6"],
+      effect_time: 5,
+    });
+    // Hit at t=3: only A covers (B hasn't started). 100k × 0.9 = 90k.
+    const hit3 = computeDamagePerPlayer(
+      bossInstance({ id: "hit-3", effect_time: 3 }),
+      bossType({ base_damage: 100_000 }),
+      [a, b],
+      lookup,
+      ROSTER,
+    );
+    expect(hit3[6]?.damage_taken_to_hp).toBe(90_000);
+    // Hit at t=8: B covers (A truncated at 5); single 10% applied, not 19%.
+    const hit8 = computeDamagePerPlayer(
+      bossInstance({ id: "hit-8", effect_time: 8 }),
+      bossType({ base_damage: 100_000 }),
+      [a, b],
+      lookup,
+      ROSTER,
+    );
+    expect(hit8[6]?.damage_taken_to_hp).toBe(90_000);
   });
 
   it("party shield with heterogeneous slot.hp sizes pools per recipient", () => {

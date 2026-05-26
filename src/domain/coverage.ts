@@ -87,14 +87,25 @@ export function mitCovers(
   hit: ResolvedHit,
   forPlayerSlotIdx: number,
   roster: Roster,
+  // Charged-mit overwrite: when a later same-(type, recipient) instance starts
+  // during this one's natural window, the engine treats this one as ending at
+  // the later's effect_time (exclusive). Caller supplies it for the (mit,
+  // recipient) pair under consideration. When omitted, the natural inclusive
+  // window applies — the existing behavior for all 1-charge mits.
+  truncatedEndExclusive?: number,
 ): boolean {
   const player = roster[forPlayerSlotIdx];
   if (!player) return false;
 
-  // 1. Temporal window: [mit.effect_time, mit.effect_time + duration]
+  // 1. Temporal window: [mit.effect_time, mit.effect_time + duration] by
+  //    default; [mit.effect_time, truncatedEndExclusive) when overwritten.
   const mitStart = mit.effect_time;
-  const mitEnd = mit.effect_time + mitType.duration_seconds;
-  if (hit.effect_time < mitStart || hit.effect_time > mitEnd) return false;
+  if (hit.effect_time < mitStart) return false;
+  if (truncatedEndExclusive !== undefined) {
+    if (hit.effect_time >= truncatedEndExclusive) return false;
+  } else {
+    if (hit.effect_time > mitStart + mitType.duration_seconds) return false;
+  }
 
   // 2. Damage-type match (any non-zero % for this hit's damage type counts)
   if (mitPercentFor(mitType, hit.damage_type) <= 0) return false;

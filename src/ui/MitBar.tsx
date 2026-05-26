@@ -13,6 +13,11 @@ import { useZoom } from "./use-zoom";
 interface MitBarProps {
   instance: MitigationInstance;
   type: MitigationType;
+  // Other placements on this bar's charge-row. Used to clamp drag bounds
+  // against immediate row neighbors only — bars on other charge-rows of the
+  // same ability are unrelated for drag purposes. May include this bar itself;
+  // the handler filters self out.
+  rowSiblings: readonly MitigationInstance[];
 }
 
 // Pixel distance the pointer must travel after pointerdown before we treat
@@ -21,7 +26,7 @@ const DRAG_THRESHOLD_PX = 3;
 
 // Solid segment for the active window (T → T+duration), faded segment for the
 // remaining cooldown (T+duration → T+cooldown).
-export function MitBar({ instance, type }: MitBarProps) {
+export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
   const updateMit = useTimelineStore((s) => s.updateMitigationInstance);
   const selectMitInstance = useTimelineStore((s) => s.selectMitInstance);
   const selected = useTimelineStore(
@@ -79,12 +84,10 @@ export function MitBar({ instance, type }: MitBarProps) {
     e.stopPropagation();
     const tl = useTimelineStore.getState().timeline;
     if (!tl) return;
-    const neighbors = tl.mitigation_instances.filter(
-      (m) =>
-        m.id !== instance.id &&
-        m.player_slot_id === instance.player_slot_id &&
-        m.type_id === instance.type_id,
-    );
+    // Only this bar's charge-row matters for drag clamping. Bars on the other
+    // charge-row of a multi-charge mit are independent placements and must
+    // not constrain this bar's movement.
+    const neighbors = rowSiblings.filter((m) => m.id !== instance.id);
     // Immediate neighbors on each side, by effect_time.
     let prev: MitigationInstance | null = null;
     let next: MitigationInstance | null = null;
@@ -210,6 +213,7 @@ export function MitBar({ instance, type }: MitBarProps) {
             selectedIds={targeting.selection}
             minSelections={targeting.minCount}
             maxSelections={targeting.maxCount}
+            excludedSlotIds={type.affects === "target" ? [instance.player_slot_id] : []}
             onChange={(ids) => updateMit(instance.id, { target_slot_ids: ids })}
             onClose={() => setPickerOpen(false)}
           />

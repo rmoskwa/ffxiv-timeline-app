@@ -23,7 +23,7 @@ export const WHM_MITS: MitigationType[] = [
     cooldown_seconds: 60,
     duration_seconds: 8,
     mitigation_per_type: { all: 15 },
-    affects: "target",
+    affects: "target_or_self",
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Aquaveil",
