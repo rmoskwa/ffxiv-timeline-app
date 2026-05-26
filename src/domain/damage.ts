@@ -395,17 +395,24 @@ function computeEffectiveEnds(
   return ends;
 }
 
-// Effective cooldown (in seconds) for a single mit instance, after applying
+// Effective cooldown (in seconds) for a single mit instance — the length from
+// `inst.effect_time` to the end of this instance's footprint after applying
 // CD-reduce-on-absorb. Two cases:
-//   1. The instance itself has `cooldown_reduce_on_absorb` and no `consumes`
-//      (e.g. PCT Tempera Coat): self-absorb reduces self's CD; additionally,
-//      any consumer instance that dispelled THIS instance and was itself
-//      absorbed contributes its own reduction (Grassa-absorbed → -30 to Coat).
-//   2. The instance has `consumes` (e.g. PCT Tempera Grassa): its bar mirrors
-//      the consumed parent's effective CD (Grassa's bar is always as long as
-//      the Coat it came from). If no parent is recorded (consumer placed
-//      without a live consumed pool — i.e. conflicted), falls back to the
-//      mit's own data CD.
+//   1. Non-consumer mit (e.g. PCT Tempera Coat): self-absorb reduces self's
+//      CD; additionally, any consumer instance that dispelled THIS instance
+//      and was itself absorbed contributes its own reduction
+//      (Grassa-absorbed → -30 to Coat).
+//   2. Consumer mit (e.g. PCT Tempera Grassa): the consumer's footprint ends
+//      at the SAME absolute time as its parent's — Grassa is a chained
+//      extension of Coat, not an independent ability. The returned value is
+//      `(parent.effect_time + parent_effective_cd) − inst.effect_time` so the
+//      caller's bar ends at the parent's endpoint x-coordinate. Parent comes
+//      from `consumed_from_instance_id` when recorded by the engine; for
+//      consumers placed without a live consumed pool (gated/conflicted), the
+//      function looks up the in-window consumed-type instance on the same
+//      caster slot — its yellow-dashed bar still mirrors a Coat endpoint.
+//      Falls back to the consumer's own data CD only when no candidate is
+//      found at all.
 export function effectiveCooldownSeconds(
   inst: MitigationInstance,
   type: MitigationType,
@@ -414,19 +421,16 @@ export function effectiveCooldownSeconds(
   perInstanceState: ReadonlyMap<string, MitInstanceState>,
 ): number {
   if (type.consumes) {
-    const parentId = perInstanceState.get(inst.id)?.consumed_from_instance_id;
-    if (parentId) {
-      const parent = allMits.find((m) => m.id === parentId);
-      const parentType = parent ? lookupMitType(parent.type_id) : undefined;
-      if (parent && parentType) {
-        return effectiveCooldownSeconds(
-          parent,
-          parentType,
-          allMits,
-          lookupMitType,
-          perInstanceState,
-        );
-      }
+    const parent = findConsumedParent(inst, type, allMits, lookupMitType, perInstanceState);
+    if (parent) {
+      const parentCd = effectiveCooldownSeconds(
+        parent.instance,
+        parent.type,
+        allMits,
+        lookupMitType,
+        perInstanceState,
+      );
+      return Math.max(0, parent.instance.effect_time + parentCd - inst.effect_time);
     }
     return type.cooldown_seconds;
   }
@@ -446,6 +450,37 @@ export function effectiveCooldownSeconds(
     }
   }
   return Math.max(0, type.cooldown_seconds - reduction);
+}
+
+function findConsumedParent(
+  inst: MitigationInstance,
+  type: MitigationType,
+  allMits: readonly MitigationInstance[],
+  lookupMitType: MitTypeLookup,
+  perInstanceState: ReadonlyMap<string, MitInstanceState>,
+): { instance: MitigationInstance; type: MitigationType } | null {
+  const recordedId = perInstanceState.get(inst.id)?.consumed_from_instance_id;
+  if (recordedId) {
+    const rec = allMits.find((m) => m.id === recordedId);
+    const recType = rec ? lookupMitType(rec.type_id) : undefined;
+    if (rec && recType) return { instance: rec, type: recType };
+  }
+  const consumedId = type.consumes;
+  if (!consumedId) return null;
+  const consumedType = lookupMitType(consumedId);
+  if (!consumedType) return null;
+  // Latest in-window same-caster instance of the consumed type. Used for the
+  // gated-consumer case (consumer placed when the consumed pool was already
+  // absorbed) — the bar still mirrors the would-be parent's endpoint.
+  let best: MitigationInstance | null = null;
+  for (const other of allMits) {
+    if (other.type_id !== consumedId) continue;
+    if (other.player_slot_id !== inst.player_slot_id) continue;
+    const natural = other.effect_time + consumedType.duration_seconds;
+    if (!(other.effect_time <= inst.effect_time && inst.effect_time < natural)) continue;
+    if (!best || other.effect_time > best.effect_time) best = other;
+  }
+  return best ? { instance: best, type: consumedType } : null;
 }
 
 // Soonest-to-expire-first; equal-expiry tiebroken oldest-applied-first.

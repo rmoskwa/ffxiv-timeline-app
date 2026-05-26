@@ -116,11 +116,24 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
         if (!next || n.effect_time < next.effect_time) next = n;
       }
     }
-    const minT = prev ? prev.effect_time + type.cooldown_seconds : 0;
-    // Right bound clamps against the next neighbor's left edge if any;
-    // otherwise the timeline end. A bar's footprint may extend past the
-    // end (the buff outlasts the encounter), so we don't subtract cooldown.
-    const maxT = next ? next.effect_time - type.cooldown_seconds : tl.metadata.fight_duration_sec;
+    // Use the previous neighbor's EFFECTIVE cooldown so a shrunken bar (e.g.
+    // a Tempera Coat whose shield was absorbed) frees up the post-shrinkage
+    // gap for this bar's left edge. The dragged bar's own right edge uses its
+    // own effective cooldown for the same reason.
+    const thisEffectiveCd = effectiveCooldownSeconds(
+      instance,
+      type,
+      allMits ?? [],
+      getMitById,
+      mitStates,
+    );
+    const prevType = prev ? getMitById(prev.type_id) : undefined;
+    const prevEffectiveCd =
+      prev && prevType
+        ? effectiveCooldownSeconds(prev, prevType, allMits ?? [], getMitById, mitStates)
+        : 0;
+    const minT = prev ? prev.effect_time + prevEffectiveCd : 0;
+    const maxT = next ? next.effect_time - thisEffectiveCd : tl.metadata.fight_duration_sec;
     dragStartRef.current = {
       pointerId: e.pointerId,
       clientX: e.clientX,

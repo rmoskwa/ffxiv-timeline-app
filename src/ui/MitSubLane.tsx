@@ -1,11 +1,14 @@
 import type React from "react";
 import { useMemo, useState } from "react";
+import { getMitById } from "@/data/mit-library";
 import { assignChargeRows } from "@/domain/charges";
+import { effectiveCooldownSeconds } from "@/domain/damage";
 import type { MitigationInstance, MitigationType, PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { MitBar } from "./MitBar";
 import { MitIcon } from "./MitIcon";
 import { snapClientXToSecond } from "./timeline-constants";
+import { useMitInstanceStates } from "./use-derived";
 import { useRowSize } from "./use-row-size";
 import { useZoom } from "./use-zoom";
 
@@ -91,16 +94,28 @@ interface ChargeRowProps {
 // clipped visually.
 function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRowProps) {
   const addMit = useTimelineStore((s) => s.addMitigationInstance);
+  const allMits = useTimelineStore((s) => s.timeline?.mitigation_instances);
+  const mitStates = useMitInstanceStates();
   const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
   const [hoverSec, setHoverSec] = useState<number | null>(null);
 
-  const neighborTimes = instances.map((m) => m.effect_time);
+  // Neighbor end-time uses each placement's EFFECTIVE cooldown — when a
+  // Tempera shield is absorbed, the freed-up space behind the shrunken bar
+  // becomes available for the next placement. The hover ghost's own footprint
+  // still uses the data cooldown (worst case — the new placement's eventual
+  // absorption state is unknown until a boss hit interacts with it).
+  const neighborEnds = instances.map(
+    (m) =>
+      m.effect_time + effectiveCooldownSeconds(m, mitType, allMits ?? [], getMitById, mitStates),
+  );
 
   const legalHoverSec = (raw: number): number | null => {
     if (raw < 0 || raw > laneDurationSec) return null;
-    for (const n of neighborTimes) {
-      const nEnd = n + mitType.cooldown_seconds;
-      if (raw < nEnd && raw + mitType.cooldown_seconds > n) return null;
+    for (let i = 0; i < instances.length; i++) {
+      const n = instances[i];
+      const nEnd = neighborEnds[i];
+      if (!n || nEnd == null) continue;
+      if (raw < nEnd && raw + mitType.cooldown_seconds > n.effect_time) return null;
     }
     return raw;
   };

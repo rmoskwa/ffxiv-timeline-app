@@ -896,22 +896,37 @@ describe("effectiveCooldownSeconds", () => {
     expect(effectiveCooldownSeconds(coat, TEMPERA_COAT, mits, lookup, states)).toBe(30);
   });
 
-  it("Grassa mirrors its parent Coat's effective CD", () => {
+  it("Grassa's footprint ends at its parent Coat's endpoint (mirrored endpoint)", () => {
+    // Coat at t=50 self-absorbed → effective_cd = 60 → ends at t=110.
+    // Grassa at t=55 should end at t=110 too → returned value = 110-55 = 55.
     const mits = allMits([
       { id: "coat", type_id: "synth.tempera_coat", effect_time: 50 },
       { id: "grassa", type_id: "synth.tempera_grassa", effect_time: 55 },
     ]);
-    // Coat self-absorbed → Coat effective CD = 60 → Grassa mirrors that.
     const states = new Map<string, MitInstanceState>([
       ["coat", { absorbed_at: 53 }],
       ["grassa", { consumed_from_instance_id: "coat" }],
     ]);
     const grassa = mits[1];
     if (!grassa) throw new Error("fixture missing");
-    expect(effectiveCooldownSeconds(grassa, TEMPERA_GRASSA, mits, lookup, states)).toBe(60);
+    expect(effectiveCooldownSeconds(grassa, TEMPERA_GRASSA, mits, lookup, states)).toBe(55);
   });
 
-  it("Grassa without a recorded parent → falls back to its own data CD", () => {
+  it("Grassa without state still mirrors the in-window same-caster Coat endpoint", () => {
+    // No recorded parent (e.g. consumer placed when consumed pool was absorbed)
+    // but a Coat is in window on the same caster slot. Coat at t=50, effective
+    // cd = 120 (no absorption), ends at t=170. Grassa at t=55 → 170-55 = 115.
+    const mits = allMits([
+      { id: "coat", type_id: "synth.tempera_coat", effect_time: 50 },
+      { id: "grassa", type_id: "synth.tempera_grassa", effect_time: 55 },
+    ]);
+    const states = new Map<string, MitInstanceState>();
+    const grassa = mits[1];
+    if (!grassa) throw new Error("fixture missing");
+    expect(effectiveCooldownSeconds(grassa, TEMPERA_GRASSA, mits, lookup, states)).toBe(115);
+  });
+
+  it("Grassa with no in-window Coat at all → falls back to its own data CD", () => {
     const m = mit({ id: "grassa", player_slot_id: "s6", type_id: "synth.tempera_grassa" });
     const states = new Map<string, MitInstanceState>();
     expect(effectiveCooldownSeconds(m, TEMPERA_GRASSA, [m], lookup, states)).toBe(120);
