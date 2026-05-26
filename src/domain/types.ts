@@ -156,6 +156,13 @@ export interface MitigationType {
   // every other member out of its sub-lane for that member's effective cooldown
   // window; the UI paints a phantom cooldown bar on the locked-out partner.
   shared_recast_group?: string;
+  // Max-HP buff (percentage points above 1×). Present ⇒ during the entry's
+  // active window each recipient's effective max HP is scaled by (1 + value/100).
+  // Buffs from multiple entries active on the same recipient stack multiplicatively.
+  // Drives both the lethality cap at hit-time and the size of `max_hp_pct`
+  // barriers seeded during the window (locked at seed-time). See
+  // docs/mit-library.md "First-class max-HP buffs".
+  max_hp_buff_pct?: number;
 }
 
 // Resolve the % mit an ability applies to a given damage type.
@@ -167,23 +174,27 @@ export function mitPercentFor(mit: MitigationType, dt: DamageType): number {
 // Tooltip-friendly magnitude string. Examples:
 // "20%" (all-types), "10% phys / 5% mag" (split), "Invuln",
 // "30% max-HP shield" (barrier-only), "40% + 15% max-HP shield" (combo),
+// "+20% max HP" (buff-only), "40% + +20% max HP" (combo),
 // "Utility" (planner anchor).
 export function formatMitMagnitude(mit: MitigationType): string {
   if (mit.mechanic === "invuln") return "Invuln";
   const t = mit.mitigation_per_type;
-  const pctParts: string[] = [];
+  const parts: string[] = [];
   if (t.all != null) {
-    pctParts.push(`${t.all}%`);
+    parts.push(`${t.all}%`);
   } else {
-    if (t.physical != null) pctParts.push(`${t.physical}% phys`);
-    if (t.magical != null) pctParts.push(`${t.magical}% mag`);
-    if (t.unaspected != null) pctParts.push(`${t.unaspected}% unasp`);
+    if (t.physical != null) parts.push(`${t.physical}% phys`);
+    if (t.magical != null) parts.push(`${t.magical}% mag`);
+    if (t.unaspected != null) parts.push(`${t.unaspected}% unasp`);
   }
-  const barrier = mit.barrier ? `${mit.barrier.value}% max-HP shield` : null;
-  if (pctParts.length === 0 && barrier) return barrier;
-  if (pctParts.length === 0 && mit.mechanic === "utility") return "Utility";
-  const pct = pctParts.join(" / ");
-  return barrier ? `${pct} + ${barrier}` : pct;
+  const pct = parts.join(" / ");
+  const extras: string[] = [];
+  if (mit.barrier) extras.push(`${mit.barrier.value}% max-HP shield`);
+  if (mit.max_hp_buff_pct != null) extras.push(`+${mit.max_hp_buff_pct}% max HP`);
+  if (pct.length === 0 && extras.length === 0 && mit.mechanic === "utility") return "Utility";
+  if (pct.length === 0) return extras.join(" + ");
+  if (extras.length === 0) return pct;
+  return `${pct} + ${extras.join(" + ")}`;
 }
 
 export type CoverageOverrideMode = "force_include" | "force_exclude";

@@ -6,7 +6,7 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitSubLane } from "./MitSubLane";
 import { jobColor } from "./role-color";
-import { CHIP_BAR_PX, PLAYER_MAX_HP } from "./timeline-constants";
+import { CHIP_BAR_PX } from "./timeline-constants";
 import { useDamageByInstance } from "./use-derived";
 import { useZoom } from "./use-zoom";
 
@@ -43,10 +43,12 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
     slot.job === "unset" ? [] : getMitsForJob(slot.job).filter((mt) => mt.gated_by == null);
 
   // Per-player damage marks: one entry per boss instance that targets this
-  // player. Drives both the chip bar and the vertical guide lines.
+  // player. Drives both the chip bar and the vertical guide lines. `maxHp` is
+  // the engine-provided buffed cap at this hit's instant — not `slot.hp` —
+  // so max-HP buffs (Thrill, Protraction, Great Nebula) widen lethality and
+  // resize the HP fill correctly.
   const damageMarks = useMemo<DamageMark[]>(() => {
     const marks: DamageMark[] = [];
-    const maxHp = slot.hp ?? PLAYER_MAX_HP;
     for (const inst of bossInstances) {
       const results = damageByInstance.get(inst.id);
       const r = results?.[index] as PerPlayerHitResult | null | undefined;
@@ -57,12 +59,12 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
         damage: r.damage_taken_to_hp,
         hpAfter: r.hp_after,
         shieldsAfter: r.active_shields_after,
-        maxHp,
-        lethal: r.damage_taken_to_hp >= maxHp,
+        maxHp: r.max_hp,
+        lethal: r.damage_taken_to_hp >= r.max_hp,
       });
     }
     return marks;
-  }, [bossInstances, damageByInstance, index, slot.hp]);
+  }, [bossInstances, damageByInstance, index]);
 
   const mitsBySlot = useMemo(
     () => allMits.filter((m) => m.player_slot_id === slot.id),

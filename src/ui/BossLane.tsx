@@ -18,7 +18,6 @@ import {
   estimateLabelWidth,
   LABEL_HEIGHT,
   LABEL_ROW_GAP,
-  PLAYER_MAX_HP,
   parseTimecode,
   STRIP_BOTTOM_PADDING,
   secondsToTimecode,
@@ -140,9 +139,7 @@ export function BossLane() {
           if (!type) return null; // orphan instance — store cascade should prevent this
           const results = damageByInstance.get(inst.id);
           const lethal =
-            results?.some(
-              (r, i) => r != null && r.damage_taken_to_hp >= (roster[i]?.hp ?? PLAYER_MAX_HP),
-            ) ?? false;
+            results?.some((r) => r != null && r.damage_taken_to_hp >= r.max_hp) ?? false;
           const rowIndex = packed.rowByInstanceId.get(inst.id) ?? 0;
           return (
             <BossMarker

@@ -14,7 +14,11 @@
 // shield from an earlier hit is what a later hit sees. A shield is removed
 // only when fully consumed by a hit, or when its duration expires.
 //
-// Roster max HP is sourced from `slot.hp ?? PLAYER_MAX_HP`.
+// Roster max HP is sourced from `slot.hp ?? PLAYER_MAX_HP`. Mits carrying
+// `max_hp_buff_pct` scale the effective cap during their active window;
+// stacking is multiplicative. A `max_hp_pct` barrier seeded during a buff
+// window is sized off the buffed cap and stays at that size after the buff
+// falls off (pool locked at seed-time).
 
 import { hitLandsOn, mitCovers, resolveHit } from "./coverage";
 import {
@@ -48,6 +52,11 @@ export interface PerPlayerHitResult {
   // Total barrier HP remaining across all of this player's active pools
   // immediately after this hit.
   active_shields_after: number;
+  // The recipient's effective max HP at this hit's effect_time — base
+  // `slot.hp ?? PLAYER_MAX_HP` scaled by any active `max_hp_buff_pct` mits
+  // (multiplicative stacking). Drives the lethality threshold and the chip
+  // HP fill on the UI side; readers must NOT recompute their own cap.
+  max_hp: number;
 }
 
 // Per-mit-instance state produced by the damage walk. Optional out-parameter
@@ -116,8 +125,32 @@ export function computeDamageTimeline(
 
   // Per-player state walked in chronological order. Only shield pools carry
   // between hits; HP is computed per-hit against max HP.
-  const maxHp: number[] = roster.map((s) => s.hp ?? PLAYER_MAX_HP);
+  const baseMaxHp: number[] = roster.map((s) => s.hp ?? PLAYER_MAX_HP);
   const pools: BarrierPool[][] = roster.map(() => []);
+
+  // Effective max HP at a given time for a given slot. Scales the base cap by
+  // every max-HP buff mit whose window covers `t` and whose recipient
+  // resolution includes the slot. Stacking is multiplicative. Window is
+  // [effect_time, effect_time + duration_seconds] inclusive on both ends —
+  // matches the seed-at-t-applies-before-hit-at-t convention used for shields.
+  const effectiveMaxHpAt = (slotIdx: number, t: number): number => {
+    const base = baseMaxHp[slotIdx] ?? PLAYER_MAX_HP;
+    const player = roster[slotIdx];
+    if (!player) return base;
+    let mult = 1;
+    for (const m of allMits) {
+      const mt = lookupMitType(m.type_id);
+      if (!mt) continue;
+      if (mt.max_hp_buff_pct == null) continue;
+      if (t < m.effect_time) continue;
+      if (t > m.effect_time + mt.duration_seconds) continue;
+      if (!recipientIncludes(mt.affects, m, player.id)) continue;
+      mult *= 1 + mt.max_hp_buff_pct / 100;
+    }
+    // HP is conceptually integer; round to avoid float drift like
+    // 100_000 * 1.1 = 110000.00000000001 leaking into UI strings and tests.
+    return Math.round(base * mult);
+  };
 
   // Charged-mit overwrite: precomputed exclusive upper bounds per
   // (mit.id, recipient_slot_id) when a later same-(type, recipient) instance
@@ -169,7 +202,7 @@ export function computeDamageTimeline(
       const seed = sortedSeeds[seedIdx];
       if (!seed) break;
       if (seed.at > uptoT) break;
-      seedBarrier(seed.mit, seed.type, roster, pools, maxHp, ensureState);
+      seedBarrier(seed.mit, seed.type, roster, pools, effectiveMaxHpAt, ensureState);
       seedIdx++;
     }
   };
@@ -244,13 +277,14 @@ export function computeDamageTimeline(
         pools[i] = playerPools.filter((p) => p.hp_remaining > 0);
       }
 
-      const cap = maxHp[i] ?? PLAYER_MAX_HP;
+      const cap = effectiveMaxHpAt(i, inst.effect_time);
       const newHp = Math.max(0, cap - toHp);
       const shieldsAfter = (pools[i] ?? []).reduce((s, p) => s + p.hp_remaining, 0);
       result[i] = {
         damage_taken_to_hp: toHp,
         hp_after: newHp,
         active_shields_after: shieldsAfter,
+        max_hp: cap,
       };
     }
 
@@ -274,7 +308,7 @@ function seedBarrier(
   type: MitigationType,
   roster: Roster,
   pools: BarrierPool[][],
-  maxHp: readonly number[],
+  effectiveMaxHpAt: (slotIdx: number, t: number) => number,
   ensureState: (id: string) => MitInstanceState,
 ) {
   // Cross-type consume: dispel the consumed mit's barrier pool on the caster
@@ -309,7 +343,7 @@ function seedBarrier(
     if (prior && prior.length > 0) {
       pools[i] = prior.filter((p) => p.type_id !== type.id);
     }
-    const cap = maxHp[i] ?? PLAYER_MAX_HP;
+    const cap = effectiveMaxHpAt(i, mit.effect_time);
     const hpPool = (cap * barrier.value) / 100;
     if (hpPool <= 0) continue;
     pools[i]?.push({

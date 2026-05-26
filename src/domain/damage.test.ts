@@ -278,6 +278,50 @@ const TYPES: Record<string, MitigationType> = {
     tiers: [{ offset_seconds: 0, duration_seconds: 4, mitigation_per_type: { all: 10 } }],
     wiki_url: "https://example.com/tiered-party-10",
   },
+  // Buff-only self entry — Thrill of Battle shape. +20% max HP for 10s, no
+  // % mit, no barrier.
+  selfBuff20: {
+    id: "synth.self_buff_20",
+    name: "Synth Self Buff 20",
+    job: "WAR",
+    cooldown_seconds: 90,
+    duration_seconds: 10,
+    mitigation_per_type: {},
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    max_hp_buff_pct: 20,
+    wiki_url: "https://example.com/self-buff-20",
+  },
+  // Buff-only target_or_self entry — Protraction shape. +10% max HP for 10s.
+  tosBuff10: {
+    id: "synth.tos_buff_10",
+    name: "Synth ToS Buff 10",
+    job: "SCH",
+    cooldown_seconds: 60,
+    duration_seconds: 10,
+    mitigation_per_type: {},
+    affects: "target_or_self",
+    max_charges: 1,
+    mechanic: "mit",
+    max_hp_buff_pct: 10,
+    wiki_url: "https://example.com/tos-buff-10",
+  },
+  // Combo: 40% all-mit + 20% max-HP buff on self — Great Nebula shape. Placed
+  // on a non-tank job so Tank Mastery doesn't muddy the math.
+  comboMitBuff: {
+    id: "synth.combo_mit_buff",
+    name: "Synth Combo Mit+Buff",
+    job: "BLM",
+    cooldown_seconds: 120,
+    duration_seconds: 15,
+    mitigation_per_type: { all: 40 },
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    max_hp_buff_pct: 20,
+    wiki_url: "https://example.com/combo-mit-buff",
+  },
 };
 const lookup = (id: string): MitigationType | undefined =>
   Object.values(TYPES).find((t) => t.id === id);
@@ -376,6 +420,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 70_000,
       hp_after: 30_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
   });
 
@@ -397,6 +442,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
   });
 
@@ -418,6 +464,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 20_000,
       hp_after: 80_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
   });
 
@@ -451,6 +498,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 25_000, // A had 30k, absorbed 5k → 25k left
+      max_hp: 100_000,
     });
   });
 
@@ -495,6 +543,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 25_000, // A 5k + B 20k untouched
+      max_hp: 100_000,
     });
   });
 
@@ -517,6 +566,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 50_000,
       hp_after: 50_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
   });
 
@@ -534,6 +584,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 33_000,
       hp_after: 67_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
   });
 
@@ -565,6 +616,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 10_000,
       hp_after: 90_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
   });
 
@@ -597,11 +649,13 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 10_000,
       hp_after: 90_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
     expect(result[7]).toEqual({
       damage_taken_to_hp: 10_000,
       hp_after: 90_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
   });
 
@@ -698,6 +752,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 20_000,
+      max_hp: 100_000,
     });
   });
 });
@@ -736,12 +791,14 @@ describe("computeDamageTimeline — consumes drops the prior pool on caster", ()
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 5_000,
+      max_hp: 100_000,
     });
     // Non-tank s2 (got party pool but never had a selfShield20):
     expect(out.get("h")?.[2]).toEqual({
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 5_000,
+      max_hp: 100_000,
     });
   });
 
@@ -766,6 +823,7 @@ describe("computeDamageTimeline — consumes drops the prior pool on caster", ()
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 5_000,
+      max_hp: 100_000,
     });
   });
 
@@ -798,6 +856,7 @@ describe("computeDamageTimeline — consumes drops the prior pool on caster", ()
       damage_taken_to_hp: 15_000,
       hp_after: 85_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
   });
 });
@@ -1099,11 +1158,13 @@ describe("computeDamageTimeline — shields persist across hits, HP does not", (
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 20_000,
+      max_hp: 100_000,
     });
     expect(out.get("h2")?.[6]).toEqual({
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 10_000,
+      max_hp: 100_000,
     });
   });
 
@@ -1124,11 +1185,13 @@ describe("computeDamageTimeline — shields persist across hits, HP does not", (
       damage_taken_to_hp: 50_000,
       hp_after: 50_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
     expect(out.get("h2")?.[6]).toEqual({
       damage_taken_to_hp: 50_000,
       hp_after: 50_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
   });
 
@@ -1153,11 +1216,203 @@ describe("computeDamageTimeline — shields persist across hits, HP does not", (
       damage_taken_to_hp: 20_000,
       hp_after: 80_000,
       active_shields_after: 0,
+      max_hp: 100_000,
     });
     expect(out.get("h2")?.[6]).toEqual({
       damage_taken_to_hp: 50_000,
       hp_after: 50_000,
       active_shields_after: 0,
+      max_hp: 100_000,
+    });
+  });
+});
+
+// ─── Max-HP buffs ──────────────────────────────────────────────────────────
+
+describe("computeDamageTimeline — max_hp_buff_pct scales effective HP", () => {
+  it("baseline-lethal hit becomes non-lethal under a +20% buff", () => {
+    // Non-tank s6 takes a 100k hit. Without any buff that's exactly lethal
+    // (damage_taken_to_hp >= max_hp). Under selfBuff20 (buff window 55..65)
+    // the buffed cap is 120k, so 100k is no longer lethal — and max_hp on the
+    // result reflects 120k.
+    const buff = mit({ player_slot_id: "s6", type_id: "synth.self_buff_20", effect_time: 55 });
+    const hit = bossInstance({ id: "h", effect_time: 60 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 100_000 })],
+      [buff],
+      lookup,
+      ROSTER,
+    );
+    const r = out.get("h")?.[6];
+    expect(r?.max_hp).toBe(120_000);
+    expect(r?.damage_taken_to_hp).toBe(100_000);
+    expect(r?.hp_after).toBe(20_000);
+    expect((r?.damage_taken_to_hp ?? 0) >= (r?.max_hp ?? 0)).toBe(false);
+  });
+
+  it("hit outside the buff window uses base max HP", () => {
+    // Buff window 55..65; hit at 70 is post-expiry → base 100k cap.
+    const buff = mit({ player_slot_id: "s6", type_id: "synth.self_buff_20", effect_time: 55 });
+    const hit = bossInstance({ id: "h", effect_time: 70 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 50_000 })],
+      [buff],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]?.max_hp).toBe(100_000);
+  });
+
+  it("multiple max-HP buffs on the same recipient stack multiplicatively", () => {
+    // Thrill-shape (+20%) self on s6 AND Protraction-shape (+10%) targeting s6.
+    // Cap = 100k × 1.2 × 1.1 = 132k. Multiplicative, not additive (would be 130k).
+    const thrill = mit({ player_slot_id: "s6", type_id: "synth.self_buff_20", effect_time: 55 });
+    const protraction = mit({
+      id: "prot",
+      player_slot_id: "s2",
+      type_id: "synth.tos_buff_10",
+      target_slot_ids: ["s6"],
+      effect_time: 55,
+    });
+    const hit = bossInstance({ id: "h", effect_time: 60 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 50_000 })],
+      [thrill, protraction],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]?.max_hp).toBe(132_000);
+  });
+
+  it("target_or_self buff only resizes the picked recipient", () => {
+    // Protraction-shape cast by s2 targeting s6. s6's cap = 110k; s2's cap = 100k.
+    const buff = mit({
+      player_slot_id: "s2",
+      type_id: "synth.tos_buff_10",
+      target_slot_ids: ["s6"],
+      effect_time: 55,
+    });
+    const hit = bossInstance({ id: "h", effect_time: 60 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 50_000 })],
+      [buff],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]?.max_hp).toBe(110_000);
+    expect(out.get("h")?.[2]?.max_hp).toBe(100_000);
+  });
+
+  it("max_hp_pct barrier seeded during a buff is sized off the buffed cap", () => {
+    // Buff at t=55 (active 55..65, +20%). Shield seeded at t=58 on s6 — pool
+    // sized off 120k cap → 0.30 × 120k = 36k. Hit at t=60 deals 40k → shield
+    // absorbs 36k, HP takes 4k. Without the buff the shield would be 30k and
+    // damage_to_hp would be 10k.
+    const buff = mit({
+      id: "buff",
+      player_slot_id: "s6",
+      type_id: "synth.self_buff_20",
+      effect_time: 55,
+    });
+    const shield = mit({
+      id: "shield",
+      player_slot_id: "s6",
+      type_id: "synth.self_shield_30",
+      effect_time: 58,
+    });
+    const hit = bossInstance({ id: "h", effect_time: 60 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 40_000 })],
+      [buff, shield],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]?.damage_taken_to_hp).toBe(4_000);
+  });
+
+  it("pool is locked at seed-time: buff falling off does not shrink the pool", () => {
+    // Buff active 55..65. Shield seeded at t=58 during buff → pool sized off
+    // 120k → 36k. Hit at t=70 is post-buff (cap reverts to 100k) but the
+    // shield's 20s window still covers t=70 (shield expires t=78). The 40k
+    // hit still drains the locked-at-seed 36k pool, leaving 4k to HP. If the
+    // pool tracked the buff's lifetime, damage_to_hp would be 10k.
+    const buff = mit({
+      id: "buff",
+      player_slot_id: "s6",
+      type_id: "synth.self_buff_20",
+      effect_time: 55,
+    });
+    const shield = mit({
+      id: "shield",
+      player_slot_id: "s6",
+      type_id: "synth.self_shield_30",
+      effect_time: 58,
+    });
+    const hit = bossInstance({ id: "h", effect_time: 70 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 40_000 })],
+      [buff, shield],
+      lookup,
+      ROSTER,
+    );
+    const r = out.get("h")?.[6];
+    expect(r?.max_hp).toBe(100_000); // hit is outside buff window
+    expect(r?.damage_taken_to_hp).toBe(4_000); // pool was 36k, not 30k
+  });
+
+  it("pool seeded before a buff does not grow when the buff comes on", () => {
+    // Shield seeded at t=40 (no buff active) → pool sized off base 100k → 30k.
+    // Buff applied at t=50 (active 50..60). Hit at t=55 sees the buff (cap 120k)
+    // but the pool stays 30k → 40k hit → 30k absorbed, 10k to HP.
+    const shield = mit({
+      id: "shield",
+      player_slot_id: "s6",
+      type_id: "synth.self_shield_30",
+      effect_time: 40,
+    });
+    const buff = mit({
+      id: "buff",
+      player_slot_id: "s6",
+      type_id: "synth.self_buff_20",
+      effect_time: 50,
+    });
+    const hit = bossInstance({ id: "h", effect_time: 55 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 40_000 })],
+      [shield, buff],
+      lookup,
+      ROSTER,
+    );
+    const r = out.get("h")?.[6];
+    expect(r?.max_hp).toBe(120_000);
+    expect(r?.damage_taken_to_hp).toBe(10_000); // pool was 30k (pre-buff seed)
+  });
+
+  it("combo entry (Great Nebula shape): mit + buff both apply on the same hit", () => {
+    // 40% all-mit + 20% max-HP buff on s6 (non-tank — keeps math clean).
+    // 100k hit × 0.6 (mit) = 60k post-%. No shield → 60k to HP.
+    // Buffed cap = 120k → not lethal, hp_after = 60k.
+    const combo = mit({ player_slot_id: "s6", type_id: "synth.combo_mit_buff", effect_time: 55 });
+    const hit = bossInstance({ id: "h", effect_time: 60 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 100_000 })],
+      [combo],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]).toEqual({
+      damage_taken_to_hp: 60_000,
+      hp_after: 60_000,
+      active_shields_after: 0,
+      max_hp: 120_000,
     });
   });
 });

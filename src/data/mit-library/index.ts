@@ -56,6 +56,9 @@ for (const mit of MIT_LIBRARY) {
       `mit-library: ${mit.id} is gated_by "${mit.gated_by}" but no such entry exists`,
     );
   }
+  if (mit.max_hp_buff_pct != null && mit.max_hp_buff_pct <= 0) {
+    throw new Error(`mit-library: ${mit.id} max_hp_buff_pct must be > 0 if present`);
+  }
   if (mit.tiers) {
     for (let i = 0; i < mit.tiers.length; i++) {
       const t = mit.tiers[i];

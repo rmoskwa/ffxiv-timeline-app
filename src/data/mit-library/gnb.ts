@@ -53,6 +53,7 @@ export const GNB_MITS: MitigationType[] = [
     affects: "self",
     max_charges: 1,
     mechanic: "mit",
+    max_hp_buff_pct: 20,
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Great_Nebula",
   },
   {
