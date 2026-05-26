@@ -2103,10 +2103,10 @@ button {
   flex-shrink: 0;
 }
 .lane-scroll.chip-position-top .chip-section {
-  border-bottom: 4px solid #2a1f15;
+  border-bottom: 10px solid #2a1f15;
 }
 .lane-scroll.chip-position-bottom .chip-section {
-  border-top: 4px solid #2a1f15;
+  border-top: 10px solid #2a1f15;
 }
 
 .chip-section-row {
@@ -2151,6 +2151,12 @@ button {
   flex: 1 1 auto;
   min-width: 0;
 }
+/* Separator between adjacent slot mit groups so same-role neighbors (e.g. two
+   tanks) don't visually merge into one block. The inter-row dividers inside a
+   slot stay subtle; only the slot boundary gets the high-contrast line. */
+.slot-mit-group + .slot-mit-group {
+  border-top: 4px solid #ffffff46;
+}
 
 .lane-scroll.theme-light .job-gutter {
   border-right-color: #d4d4d4;
@@ -2178,6 +2184,9 @@ button {
 }
 .lane-scroll.theme-light.chip-position-bottom .chip-section {
   border-top-color: #fff1e0;
+}
+.lane-scroll.theme-light .slot-mit-group + .slot-mit-group {
+  border-top-color: #333333;
 }
 
 /* ─── Conflicts panel (right sidebar) ─────────────────────────────────── */
