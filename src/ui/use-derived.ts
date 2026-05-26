@@ -6,33 +6,23 @@
 import { useMemo } from "react";
 import { getMitById } from "@/data/mit-library";
 import { type Conflict, detectConflicts } from "@/domain/conflicts";
-import { computeDamagePerPlayer } from "@/domain/damage";
+import { computeDamageTimeline, type PerPlayerHitResult } from "@/domain/damage";
 import { useTimelineStore } from "@/state/timeline-store";
 
-// Map<bossInstanceId, post-mit damage array of length 8>. Players not targeted
-// by a hit get `null`; targeted players get a number (0 when fully mitigated
-// by an invuln). See computeDamagePerPlayer.
-export function useDamageByInstance(): Map<string, (number | null)[]> {
+// Map<bossInstanceId, per-player results of length 8>. Players not targeted by
+// a hit get `null`; targeted players get a PerPlayerHitResult carrying the
+// post-shield damage to HP, current HP after the hit, and remaining shield total.
+export function useDamageByInstance(): Map<string, (PerPlayerHitResult | null)[]> {
   const timeline = useTimelineStore((s) => s.timeline);
   return useMemo(() => {
-    const out = new Map<string, (number | null)[]>();
-    if (!timeline) return out;
-    const typeById = new Map(timeline.boss_ability_types.map((t) => [t.id, t]));
-    for (const inst of timeline.boss_ability_instances) {
-      const type = typeById.get(inst.type_id);
-      if (!type) continue;
-      out.set(
-        inst.id,
-        computeDamagePerPlayer(
-          inst,
-          type,
-          timeline.mitigation_instances,
-          getMitById,
-          timeline.roster,
-        ),
-      );
-    }
-    return out;
+    if (!timeline) return new Map();
+    return computeDamageTimeline(
+      timeline.boss_ability_instances,
+      timeline.boss_ability_types,
+      timeline.mitigation_instances,
+      getMitById,
+      timeline.roster,
+    );
   }, [timeline]);
 }
 

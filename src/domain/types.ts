@@ -7,7 +7,15 @@ export type DamageType = "magical" | "physical" | "unaspected";
 
 export type TargetPattern = "raidwide" | "targeted";
 
-export type MitAffects = "self" | "target" | "party" | "boss_debuff";
+export type MitAffects =
+  | "self"
+  | "target"
+  | "party"
+  | "boss_debuff"
+  // target_or_self: picker offers all 8 slots including the caster (DRK TBN).
+  | "target_or_self"
+  // none: planner anchor with no recipient (utility entries only).
+  | "none";
 
 export type Job =
   // Tanks
@@ -70,21 +78,32 @@ export interface BossAbilityInstance {
 
 // ─── Mitigations ────────────────────────────────────────────────────────────
 
+// A shield/barrier attached to a mitigation type. Sized as a fraction of the
+// recipient's max HP at the moment of application; the resulting HP-equivalent
+// pool absorbs post-% damage until it expires or is fully consumed.
+export type Barrier = { kind: "max_hp_pct"; value: number };
+
 export interface MitigationType {
   id: string; // "{job_short}.{ability_short}" — stable forever
   name: string;
   job: Job;
   cooldown_seconds: number;
+  // duration_seconds: 0 is allowed for instant-effect entries (utility entries).
   duration_seconds: number;
   // Per-damage-type %. Use "all" as a shorthand when every type shares the
   // same value (the common case). Per-type keys override "all" for that type.
-  // Invulns use {all: 100} together with mechanic: "invuln".
+  // Invulns use {all: 100} together with mechanic: "invuln". An empty object
+  // {} is allowed (entry contributes no % mit; relies on barrier or utility).
   mitigation_per_type: Partial<Record<DamageType | "all", number>>;
   affects: MitAffects;
   max_charges: number;
   // UI discriminator. The math for an invuln is the same as 100% all-types mit;
   // this flag exists so the timeline can render invulns distinctly.
-  mechanic: "mit" | "invuln";
+  // "utility" entries are planner anchors with no % mit and no barrier.
+  mechanic: "mit" | "invuln" | "utility";
+  // Optional barrier/shield component. Present ⇒ the entry seeds an HP-equivalent
+  // pool on each recipient when applied. Stacks additively across instances.
+  barrier?: Barrier;
   // FFXIV wiki page for this ability. Re-verify against this URL before
   // changing any numeric value — it is the source of truth.
   wiki_url: string;
@@ -97,16 +116,25 @@ export function mitPercentFor(mit: MitigationType, dt: DamageType): number {
 }
 
 // Tooltip-friendly magnitude string. Examples:
-// "20%" (all-types), "10% phys / 5% mag" (split), "Invuln".
+// "20%" (all-types), "10% phys / 5% mag" (split), "Invuln",
+// "30% max-HP shield" (barrier-only), "40% + 15% max-HP shield" (combo),
+// "Utility" (planner anchor).
 export function formatMitMagnitude(mit: MitigationType): string {
   if (mit.mechanic === "invuln") return "Invuln";
   const t = mit.mitigation_per_type;
-  if (t.all != null) return `${t.all}%`;
-  const parts: string[] = [];
-  if (t.physical != null) parts.push(`${t.physical}% phys`);
-  if (t.magical != null) parts.push(`${t.magical}% mag`);
-  if (t.unaspected != null) parts.push(`${t.unaspected}% unasp`);
-  return parts.join(" / ");
+  const pctParts: string[] = [];
+  if (t.all != null) {
+    pctParts.push(`${t.all}%`);
+  } else {
+    if (t.physical != null) pctParts.push(`${t.physical}% phys`);
+    if (t.magical != null) pctParts.push(`${t.magical}% mag`);
+    if (t.unaspected != null) pctParts.push(`${t.unaspected}% unasp`);
+  }
+  const barrier = mit.barrier ? `${mit.barrier.value}% max-HP shield` : null;
+  if (pctParts.length === 0 && barrier) return barrier;
+  if (pctParts.length === 0 && mit.mechanic === "utility") return "Utility";
+  const pct = pctParts.join(" / ");
+  return barrier ? `${pct} + ${barrier}` : pct;
 }
 
 export type CoverageOverrideMode = "force_include" | "force_exclude";

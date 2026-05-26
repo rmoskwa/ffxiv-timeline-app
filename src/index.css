@@ -1602,29 +1602,53 @@ button {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  background: #103a1a;
-  color: #ffffff;
+  height: 18px;
+  color: #000000;
   border: 1px solid #3a8e4f;
   border-radius: 3px;
-  padding: 2px 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.4;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
   pointer-events: none;
-  /* Below sticky labels (z-index: 2) so chips for early boss instances stay
-     hidden behind the player-header label when the timeline is scrolled past
-     them, instead of bleeding over the label text. */
   z-index: 1;
   white-space: nowrap;
+  overflow: hidden;
+  background: transparent;
+}
+/* Stacked-bar segments. Order in the DOM is base (green) → missing (white)
+   → shield (orange overlay on top). All are absolutely positioned so the
+   label can center via flex on the container. */
+.damage-chip-hp {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #2f8a47;
+}
+.damage-chip-missing {
+  position: absolute;
+  inset: 0 0 0 auto;
+  background: #ffffff;
+}
+.damage-chip-shield {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #f0a040;
+  opacity: 0.92;
+}
+.damage-chip-label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 .damage-chip--lethal {
-  background: #3a1010;
-  color: #ffffff;
   border-color: #c33;
 }
+.damage-chip--lethal .damage-chip-missing {
+  background: #ff7878;
+}
 .damage-chip--zero {
-  background: #ffffff;
-  color: #222;
   border-color: #ddd;
 }
 
@@ -1729,19 +1753,26 @@ button {
   border-color: rgba(80, 80, 80, 0.45);
 }
 .lane-scroll.theme-light .damage-chip {
-  background: #e6ffe6;
-  color: #1a7a3a;
+  color: #000000;
   border-color: #3a8e4f;
 }
+.lane-scroll.theme-light .damage-chip-hp {
+  background: #5ab070;
+}
+.lane-scroll.theme-light .damage-chip-missing {
+  background: #f4f4f4;
+}
+.lane-scroll.theme-light .damage-chip-shield {
+  background: #e89020;
+}
 .lane-scroll.theme-light .damage-chip--lethal {
-  background: #ffe6e6;
-  color: #a02020;
   border-color: #c33;
 }
+.lane-scroll.theme-light .damage-chip--lethal .damage-chip-missing {
+  background: #f7a8a8;
+}
 .lane-scroll.theme-light .damage-chip--zero {
-  background: #2a2a2a;
-  color: #ffffff;
-  border-color: #555;
+  border-color: #888;
 }
 
 /* ─── Conflicts panel (right sidebar) ─────────────────────────────────── */

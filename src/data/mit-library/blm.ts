@@ -1,9 +1,6 @@
 import type { MitigationType } from "@/domain/types";
 
 // BLM mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Manaward is excluded — wiki confirms it is barrier-only ("nullifies damage
-// totaling up to 30% of maximum HP"), not flat % mit. Only the caster role
-// action Addle applies.
 export const BLM_MITS: MitigationType[] = [
   {
     id: "blm.addle",
@@ -16,5 +13,18 @@ export const BLM_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Addle",
+  },
+  {
+    id: "blm.manaward",
+    name: "Manaward",
+    job: "BLM",
+    cooldown_seconds: 120,
+    duration_seconds: 20,
+    mitigation_per_type: {},
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 30 },
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Manaward",
   },
 ];

@@ -72,6 +72,12 @@ function mitReachesPlayer(
       // Oblation / Aquaveil / Exaltation: covers only the user-picked target.
       // Empty target_slot_ids means the user hasn't picked yet — no coverage.
       return mitTargetSlotIds.includes(player.id);
+    case "target_or_self":
+      // DRK TBN: picker offers all 8 slots including the caster.
+      return mitTargetSlotIds.includes(player.id);
+    case "none":
+      // Utility entries reach nobody for coverage purposes.
+      return false;
   }
 }
 

@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 import { getMitsForJob } from "@/data/mit-library";
+import type { PerPlayerHitResult } from "@/domain/damage";
 import type { BossAbilityInstance, MitigationInstance, PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitSubLane } from "./MitSubLane";
 import { jobColor } from "./role-color";
-import { PLAYER_MAX_HP } from "./timeline-constants";
+import { CHIP_BAR_PX, PLAYER_MAX_HP } from "./timeline-constants";
 import { useDamageByInstance } from "./use-derived";
 import { useZoom } from "./use-zoom";
 
@@ -18,13 +19,12 @@ interface DamageMark {
   id: string;
   effectTime: number;
   damage: number;
+  hpAfter: number;
+  shieldsAfter: number;
+  maxHp: number;
   lethal: boolean;
 }
 
-// Module-level stable empty arrays so selectors return cached references when
-// no timeline is loaded. Zustand v5 + React 19's useSyncExternalStore throw
-// "getSnapshot should be cached" on unstable references; filtering must happen
-// outside the selector.
 const EMPTY_MITS: readonly MitigationInstance[] = [];
 const EMPTY_INSTANCES: readonly BossAbilityInstance[] = [];
 
@@ -40,25 +40,27 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
   const mits = slot.job === "unset" ? [] : getMitsForJob(slot.job);
 
   // Per-player damage marks: one entry per boss instance that targets this
-  // player (damage > 0). Drives both the top-row number labels and the vertical
-  // guide lines inside each sub-lane.
+  // player. Drives both the chip bar and the vertical guide lines.
   const damageMarks = useMemo<DamageMark[]>(() => {
     const marks: DamageMark[] = [];
+    const maxHp = slot.hp ?? PLAYER_MAX_HP;
     for (const inst of bossInstances) {
-      const damages = damageByInstance.get(inst.id);
-      const dmg = damages?.[index];
-      if (dmg == null) continue;
+      const results = damageByInstance.get(inst.id);
+      const r = results?.[index] as PerPlayerHitResult | null | undefined;
+      if (r == null) continue;
       marks.push({
         id: inst.id,
         effectTime: inst.effect_time,
-        damage: dmg,
-        lethal: dmg >= (slot.hp ?? PLAYER_MAX_HP),
+        damage: r.damage_taken_to_hp,
+        hpAfter: r.hp_after,
+        shieldsAfter: r.active_shields_after,
+        maxHp,
+        lethal: r.damage_taken_to_hp >= maxHp,
       });
     }
     return marks;
   }, [bossInstances, damageByInstance, index, slot.hp]);
 
-  // Same instance/slot filter as today — sub-lanes get only their own.
   const mitsBySlot = useMemo(
     () => allMits.filter((m) => m.player_slot_id === slot.id),
     [allMits, slot.id],
@@ -78,24 +80,7 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
         </div>
         <div className="lane-track player-header-track" style={{ width: laneWidthPx }}>
           {!isUnset &&
-            damageMarks.map((m) => {
-              const variant =
-                m.damage === 0 ? " damage-chip--zero" : m.lethal ? " damage-chip--lethal" : "";
-              return (
-                <div
-                  key={m.id}
-                  className={`damage-chip${variant}`}
-                  style={{ left: m.effectTime * pxPerSec }}
-                  title={
-                    m.damage === 0
-                      ? "Fully mitigated (invuln)"
-                      : `${Math.round(m.damage).toLocaleString()} damage`
-                  }
-                >
-                  {formatDamage(m.damage)}
-                </div>
-              );
-            })}
+            damageMarks.map((m) => <DamageChip key={m.id} mark={m} pxPerSec={pxPerSec} />)}
         </div>
       </div>
       {!isUnset &&
@@ -112,7 +97,42 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
   );
 }
 
-// 12345 → "12.3k" so chips stay narrow at default zoom.
+// Stacked HP/shield bar with damage-taken label, rendered as a single chip
+// anchored at the boss hit's effect_time. State shown is *immediately after*
+// the hit landed (post-shield, post-HP).
+function DamageChip({ mark, pxPerSec }: { mark: DamageMark; pxPerSec: number }) {
+  const variant =
+    mark.damage === 0 ? " damage-chip--zero" : mark.lethal ? " damage-chip--lethal" : "";
+  // Chip width is uniform across all players — segments are percentage fills,
+  // so a tank's chip and a caster's chip are the same physical size and the
+  // bar segments speak in fractions of each player's own max HP.
+  const hpFrac = mark.maxHp > 0 ? mark.hpAfter / mark.maxHp : 0;
+  const missingFrac = Math.max(0, 1 - hpFrac);
+  const shieldFrac = mark.maxHp > 0 ? Math.min(1, mark.shieldsAfter / mark.maxHp) : 0;
+  const title =
+    mark.damage === 0
+      ? "Fully mitigated (no damage to HP)"
+      : `${Math.round(mark.damage).toLocaleString()} damage` +
+        ` · HP ${Math.round(mark.hpAfter).toLocaleString()} / ${mark.maxHp.toLocaleString()}` +
+        (mark.shieldsAfter > 0
+          ? ` · shield ${Math.round(mark.shieldsAfter).toLocaleString()}`
+          : "");
+  return (
+    <div
+      className={`damage-chip${variant}`}
+      style={{ left: mark.effectTime * pxPerSec, width: CHIP_BAR_PX }}
+      title={title}
+    >
+      <div className="damage-chip-hp" style={{ width: `${hpFrac * 100}%` }} aria-hidden />
+      <div className="damage-chip-missing" style={{ width: `${missingFrac * 100}%` }} aria-hidden />
+      {shieldFrac > 0 && (
+        <div className="damage-chip-shield" style={{ width: `${shieldFrac * 100}%` }} aria-hidden />
+      )}
+      <span className="damage-chip-label">{formatDamage(mark.damage)}</span>
+    </div>
+  );
+}
+
 function formatDamage(n: number): string {
   if (n >= 10_000) return `${(n / 1000).toFixed(1)}k`;
   return Math.round(n).toString();

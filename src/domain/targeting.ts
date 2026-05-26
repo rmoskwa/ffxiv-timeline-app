@@ -50,9 +50,10 @@ export function targetingForBoss(inst: BossAbilityInstance, type: BossAbilityTyp
   };
 }
 
-// affects:target is the only mit kind that needs a user-picked recipient.
+// affects:target and affects:target_or_self both need a user-picked recipient.
+// They differ in picker behavior, not in the count requirement.
 export function targetingForMit(inst: MitigationInstance, type: MitigationType): TargetingState {
-  const needed = type.affects === "target" ? 1 : 0;
+  const needed = type.affects === "target" || type.affects === "target_or_self" ? 1 : 0;
   const selection = inst.target_slot_ids;
   return {
     minCount: needed,

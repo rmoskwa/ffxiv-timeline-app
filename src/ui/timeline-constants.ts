@@ -45,6 +45,10 @@ export function clampZoom(pxPerSec: number, minPxPerSec: number = FALLBACK_MIN_P
 // A hit is "lethal" if any player's post-mit damage ≥ PLAYER_MAX_HP.
 export const PLAYER_MAX_HP = 100_000;
 
+// Damage chip stacked-bar width. Uniform across all players — segments inside
+// (HP, missing, shield) are percentage fills of each player's own max HP.
+export const CHIP_BAR_PX = 64;
+
 // ─── Boss-lane geometry ───────────────────────────────────────────────────
 // The boss lane is a stack: a label strip above a pin track. Strip height
 // grows with the deepest row in greedy row-packing. Pin track is fixed.
