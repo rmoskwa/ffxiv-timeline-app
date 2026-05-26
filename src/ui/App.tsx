@@ -24,21 +24,21 @@ export function App() {
   // and isn't echoed back to disk on mount.
   const { lastSavedAt, error: saveError } = useAutoSave(hydrated && timeline !== null);
 
-  const handleExport = useCallback(async () => {
+  const handleSaveTimeline = useCallback(async () => {
     if (!timeline) return;
     try {
       await exportTimelineDialog(timeline);
     } catch (e) {
-      console.error("Export failed:", e);
+      console.error("Save Timeline failed:", e);
     }
   }, [timeline]);
 
-  const handleImport = useCallback(async () => {
+  const handleOpenTimeline = useCallback(async () => {
     try {
       const imported = await importTimelineDialog();
       if (imported) loadTimeline(imported);
     } catch (e) {
-      console.error("Import failed:", e);
+      console.error("Open Timeline failed:", e);
     }
   }, [loadTimeline]);
 
@@ -80,11 +80,11 @@ export function App() {
           </p>
         </div>
         <div className="header-actions">
-          <button type="button" className="link-button" onClick={handleImport}>
-            import…
+          <button type="button" className="link-button" onClick={handleOpenTimeline}>
+            Open Timeline…
           </button>
-          <button type="button" className="link-button" onClick={handleExport}>
-            export…
+          <button type="button" className="link-button" onClick={handleSaveTimeline}>
+            Save Timeline…
           </button>
           <button type="button" className="link-button" onClick={handleDiscard}>
             discard

@@ -615,6 +615,11 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+.boss-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .boss-panel .hint {
   margin: 0 0 0.75rem;
   color: #888;

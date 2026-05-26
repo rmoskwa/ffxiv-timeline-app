@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Job, MitigationInstance, Roster } from "@/domain/types";
+import type { BossTimelineFile, Job, MitigationInstance, Roster } from "@/domain/types";
+import { TIMELINE_SCHEMA_VERSION } from "@/domain/types";
 import { useTimelineStore } from "./timeline-store";
 
 const RAMPART = "drk.rampart"; // cooldown 90s, duration 20s
@@ -211,6 +212,112 @@ describe("timeline-store — cascade delete of gated children", () => {
     const seraphId = mitsOfType("sch.summon_seraph")[0].id;
     useTimelineStore.getState().removeMitigationInstance(seraphId);
     expect(mitsOfType("sch.consolation")).toHaveLength(0);
+  });
+});
+
+describe("timeline-store — replaceBossTimeline", () => {
+  function importPayload(overrides: Partial<BossTimelineFile> = {}): BossTimelineFile {
+    return {
+      schema_version: TIMELINE_SCHEMA_VERSION,
+      kind: "boss_timeline",
+      boss_name: "Lindwurm",
+      fight_duration_sec: 600,
+      boss_ability_types: [
+        {
+          id: "imp-type-1",
+          name: "Imported Sentence",
+          base_damage: 100_000,
+          damage_type: "magical",
+          target_pattern: "raidwide",
+        },
+      ],
+      boss_ability_instances: [
+        {
+          id: "imp-inst-1",
+          type_id: "imp-type-1",
+          effect_time: 30,
+          target_slot_ids: [],
+          observed_damage: [],
+        },
+        {
+          id: "imp-inst-2",
+          type_id: "imp-type-1",
+          effect_time: 90,
+          target_slot_ids: [],
+          observed_damage: [],
+        },
+      ],
+      ...overrides,
+    };
+  }
+
+  it("replaces boss types and instances", () => {
+    freshTimeline();
+    const bossTypeId = useTimelineStore.getState().addBossAbilityType({
+      name: "Old Hit",
+      base_damage: 50_000,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+    });
+    useTimelineStore
+      .getState()
+      .addBossAbilityInstance({ type_id: bossTypeId, effect_time: 10, target_slot_ids: [] });
+    useTimelineStore.getState().replaceBossTimeline(importPayload());
+    const tl = useTimelineStore.getState().timeline;
+    expect(tl?.boss_ability_types.map((t) => t.id)).toEqual(["imp-type-1"]);
+    expect(tl?.boss_ability_instances.map((i) => i.id).sort()).toEqual([
+      "imp-inst-1",
+      "imp-inst-2",
+    ]);
+  });
+
+  it("wipes mitigation instances", () => {
+    freshTimeline();
+    const slotId = rosterSlotId(0);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: RAMPART,
+      player_slot_id: slotId,
+      effect_time: 5,
+      target_slot_ids: [],
+    });
+    expect(useTimelineStore.getState().timeline?.mitigation_instances).toHaveLength(1);
+    useTimelineStore.getState().replaceBossTimeline(importPayload());
+    expect(useTimelineStore.getState().timeline?.mitigation_instances).toEqual([]);
+  });
+
+  it("extends fight_duration_sec upward, never shrinks", () => {
+    freshTimeline();
+    // Default fight length is 600s; the importPayload max effect_time is 90s,
+    // so duration should stay at 600.
+    useTimelineStore.getState().replaceBossTimeline(importPayload());
+    expect(useTimelineStore.getState().timeline?.metadata.fight_duration_sec).toBe(600);
+
+    // Now an import that exceeds the current duration → extends.
+    useTimelineStore.getState().setFightDuration(60);
+    useTimelineStore.getState().replaceBossTimeline(importPayload());
+    expect(useTimelineStore.getState().timeline?.metadata.fight_duration_sec).toBe(90);
+  });
+
+  it("clears selectedInstance", () => {
+    freshTimeline();
+    const slotId = rosterSlotId(0);
+    const mitId = useTimelineStore.getState().addMitigationInstance({
+      type_id: RAMPART,
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    useTimelineStore.getState().selectMitInstance(mitId);
+    expect(useTimelineStore.getState().selectedInstance).not.toBeNull();
+    useTimelineStore.getState().replaceBossTimeline(importPayload());
+    expect(useTimelineStore.getState().selectedInstance).toBeNull();
+  });
+
+  it("updates metadata.boss_name from the import", () => {
+    freshTimeline();
+    useTimelineStore.getState().setBossName("OriginalBoss");
+    useTimelineStore.getState().replaceBossTimeline(importPayload({ boss_name: "NewBoss" }));
+    expect(useTimelineStore.getState().timeline?.metadata.boss_name).toBe("NewBoss");
   });
 });
 

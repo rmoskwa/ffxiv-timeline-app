@@ -15,8 +15,13 @@ import {
   remove,
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
-import type { TimelineFile } from "@/domain/types";
-import { deserialize, serialize } from "./serialize";
+import type { BossTimelineFile, TimelineFile } from "@/domain/types";
+import {
+  deserialize,
+  deserializeBossTimeline,
+  serialize,
+  serializeBossTimeline,
+} from "./serialize";
 
 // Single working file. The app only edits one timeline at a time, so
 // per-file slots aren't needed in v0.1.
@@ -82,4 +87,33 @@ export async function importTimelineDialog(): Promise<TimelineFile | null> {
   if (!picked || typeof picked !== "string") return null;
   const text = await readTextFile(picked);
   return deserialize(text);
+}
+
+// Returns true if the user picked a path and the file was written; false if
+// the user cancelled. Default filename is "<boss_name>-boss-timeline.json",
+// falling back to "boss-timeline.json" when boss_name sanitizes to empty.
+export async function exportBossTimelineDialog(timeline: TimelineFile): Promise<boolean> {
+  const cleaned = timeline.metadata.boss_name.replace(/[^a-zA-Z0-9 _.-]+/g, "").trim();
+  const defaultName = cleaned === "" ? "boss-timeline.json" : `${cleaned}-boss-timeline.json`;
+  const path = await saveDialog({
+    title: "Export boss timeline",
+    defaultPath: defaultName,
+    filters: JSON_FILTER,
+  });
+  if (!path) return false;
+  await writeTextFile(path, serializeBossTimeline(timeline));
+  return true;
+}
+
+// Returns the parsed boss-timeline file, or null if the user cancelled.
+export async function importBossTimelineDialog(): Promise<BossTimelineFile | null> {
+  const picked = await openDialog({
+    title: "Import boss timeline",
+    multiple: false,
+    directory: false,
+    filters: JSON_FILTER,
+  });
+  if (!picked || typeof picked !== "string") return null;
+  const text = await readTextFile(picked);
+  return deserializeBossTimeline(text);
 }

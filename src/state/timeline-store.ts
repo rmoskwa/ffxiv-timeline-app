@@ -7,6 +7,7 @@ import { computeDamageTimeline, type MitInstanceState } from "@/domain/damage";
 import type {
   BossAbilityInstance,
   BossAbilityType,
+  BossTimelineFile,
   JobOrUnset,
   MitigationInstance,
   TimelineFile,
@@ -47,6 +48,12 @@ export interface TimelineStore {
   loadTimeline: (file: TimelineFile) => void;
   closeTimeline: () => void;
 
+  // Boss-timeline import: replaces the destination Timeline's boss types and
+  // instances with the imported payload, wipes mitigation instances (boss-
+  // anchored), bumps boss_name, and extends fight_duration_sec upward only.
+  // See docs/boss-timeline-import-export.md §5.2.
+  replaceBossTimeline: (imported: BossTimelineFile) => void;
+
   setBossName: (name: string) => void;
   setFightDuration: (sec: number) => void;
 
@@ -83,6 +90,30 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   newTimeline: (name) => set({ timeline: makeNewTimeline(name), selectedInstance: null }),
   loadTimeline: (file) => set({ timeline: file, selectedInstance: null }),
   closeTimeline: () => set({ timeline: null, selectedInstance: null }),
+
+  replaceBossTimeline: (imported) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      const maxEffect = imported.boss_ability_instances.reduce(
+        (m, i) => (i.effect_time > m ? i.effect_time : m),
+        0,
+      );
+      const nextDuration = Math.max(s.timeline.metadata.fight_duration_sec, maxEffect);
+      return {
+        timeline: touch({
+          ...s.timeline,
+          metadata: {
+            ...s.timeline.metadata,
+            boss_name: imported.boss_name,
+            fight_duration_sec: nextDuration,
+          },
+          boss_ability_types: imported.boss_ability_types,
+          boss_ability_instances: imported.boss_ability_instances,
+          mitigation_instances: [],
+        }),
+        selectedInstance: null,
+      };
+    }),
 
   setBossName: (name) =>
     set((s) => {

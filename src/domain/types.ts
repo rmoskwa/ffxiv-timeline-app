@@ -337,12 +337,13 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 9 as const;
+export const TIMELINE_SCHEMA_VERSION = 10 as const;
 
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 
 export interface TimelineFile {
   schema_version: typeof TIMELINE_SCHEMA_VERSION;
+  kind: "timeline";
   metadata: {
     name: string; // user-given fight name
     boss_name: string; // user-given boss name shown on the BOSS lane label
@@ -356,6 +357,18 @@ export interface TimelineFile {
   mitigation_instances: MitigationInstance[];
   phase_markers: PhaseMarker[]; // empty in v0.1 UI; populated in v0.2
   freeform_notes: FreeformNote[]; // empty in v0.1 UI; populated in v0.2
+}
+
+// Boss-timeline export file: a scoped slice of a TimelineFile carrying only the
+// boss timeline (types + instances) and the timeline-level fields needed to
+// interpret it. See docs/boss-timeline-import-export.md.
+export interface BossTimelineFile {
+  schema_version: typeof TIMELINE_SCHEMA_VERSION;
+  kind: "boss_timeline";
+  boss_name: string;
+  fight_duration_sec: number;
+  boss_ability_types: BossAbilityType[];
+  boss_ability_instances: BossAbilityInstance[];
 }
 
 // ─── Derivations ────────────────────────────────────────────────────────────
