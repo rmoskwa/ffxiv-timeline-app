@@ -1542,6 +1542,141 @@ describe("held abilities — instance-resolved active duration", () => {
     expect(outside[6]?.damage_taken_to_hp).toBe(100_000);
   });
 
+  it("truncates the active window when another caster mit is placed in the hold window", () => {
+    // Passage-shape held to 23 (hold = 18s) on s0 at t=0. Rampart on s0 at
+    // t=2 falls inside the hold window (0, 18) → hold ends at t=2, active
+    // truncates to (2 + 5) = 7. Hit at t=6 covered (15% party); hit at t=8
+    // past the truncated end, no longer covered.
+    const passage = mit({
+      id: "passage",
+      player_slot_id: "s0",
+      type_id: "synth.held_party_mit_15",
+      effect_time: 0,
+      held_duration_seconds: 23,
+    });
+    const rampart = mit({
+      id: "rampart",
+      player_slot_id: "s0",
+      type_id: "drk.rampart",
+      effect_time: 2,
+    });
+    const hit6 = computeDamageTimeline(
+      [bossInstance({ id: "h6", effect_time: 6 })],
+      [bossType({ base_damage: 100_000 })],
+      [passage, rampart],
+      lookup,
+      ROSTER,
+    );
+    expect(hit6.get("h6")?.[6]?.damage_taken_to_hp).toBe(85_000);
+    const hit8 = computeDamageTimeline(
+      [bossInstance({ id: "h8", effect_time: 8 })],
+      [bossType({ base_damage: 100_000 })],
+      [passage, rampart],
+      lookup,
+      ROSTER,
+    );
+    // Past the truncated end (2 + 5 = 7, exclusive). Passage gone; Rampart
+    // doesn't cover s6 (self-only on s0). Full damage to non-tank.
+    expect(hit8.get("h8")?.[6]?.damage_taken_to_hp).toBe(100_000);
+  });
+
+  it("earliest blocker wins when multiple mits land inside the hold window", () => {
+    // Passage held to 23 on s0. Rampart at t=5, Reprisal at t=3. Earlier
+    // (Reprisal at t=3) defines the hold end → truncated active = 3+5 = 8.
+    const passage = mit({
+      id: "passage",
+      player_slot_id: "s0",
+      type_id: "synth.held_party_mit_15",
+      effect_time: 0,
+      held_duration_seconds: 23,
+    });
+    const rampart = mit({
+      id: "rampart",
+      player_slot_id: "s0",
+      type_id: "drk.rampart",
+      effect_time: 5,
+    });
+    const reprisal = mit({
+      id: "reprisal",
+      player_slot_id: "s0",
+      type_id: "drk.reprisal",
+      effect_time: 3,
+    });
+    const states = new Map<string, MitInstanceState>();
+    computeDamageTimeline([], [], [passage, rampart, reprisal], lookup, ROSTER, states);
+    expect(states.get("passage")?.dispelled_at).toBe(8);
+  });
+
+  it("does not truncate when the other mit lands outside the hold window", () => {
+    // Passage held to 10 (hold = 5s) on s0. Rampart at t=7 is outside (0, 5].
+    // No truncation; full 10s active. Hit at t=9 still covered.
+    const passage = mit({
+      id: "passage",
+      player_slot_id: "s0",
+      type_id: "synth.held_party_mit_15",
+      effect_time: 0,
+      held_duration_seconds: 10,
+    });
+    const rampart = mit({
+      id: "rampart",
+      player_slot_id: "s0",
+      type_id: "drk.rampart",
+      effect_time: 7,
+    });
+    const states = new Map<string, MitInstanceState>();
+    const out = computeDamageTimeline(
+      [bossInstance({ id: "h", effect_time: 9 })],
+      [bossType({ base_damage: 100_000 })],
+      [passage, rampart],
+      lookup,
+      ROSTER,
+      states,
+    );
+    expect(states.get("passage")?.dispelled_at).toBeUndefined();
+    expect(out.get("h")?.[6]?.damage_taken_to_hp).toBe(85_000);
+  });
+
+  it("does not truncate when the held value equals the floor (no hold window)", () => {
+    // held = min_duration_seconds = 5 → hold time = 0. No blocking window;
+    // any caster mit placement is harmless.
+    const passage = mit({
+      id: "passage",
+      player_slot_id: "s0",
+      type_id: "synth.held_party_mit_15",
+      effect_time: 0,
+      // held_duration_seconds omitted → defaults to min_duration_seconds (5).
+    });
+    const rampart = mit({
+      id: "rampart",
+      player_slot_id: "s0",
+      type_id: "drk.rampart",
+      effect_time: 2,
+    });
+    const states = new Map<string, MitInstanceState>();
+    computeDamageTimeline([], [], [passage, rampart], lookup, ROSTER, states);
+    expect(states.get("passage")?.dispelled_at).toBeUndefined();
+  });
+
+  it("does not truncate when the other mit is on a different caster slot", () => {
+    // Passage on s0, Rampart on s1 — different caster. No interruption.
+    const passage = mit({
+      id: "passage",
+      player_slot_id: "s0",
+      type_id: "synth.held_party_mit_15",
+      effect_time: 0,
+      held_duration_seconds: 23,
+    });
+    const rampart = mit({
+      id: "rampart",
+      player_slot_id: "s1",
+      type_id: "drk.rampart",
+      effect_time: 5,
+    });
+    const states = new Map<string, MitInstanceState>();
+    computeDamageTimeline([], [], [passage, rampart], lookup, ROSTER, states);
+    expect(states.get("passage")?.dispelled_at).toBeUndefined();
+  });
+
   it("held value is ignored on non-held types (field is opt-in via min_duration_seconds)", () => {
     // Rampart has no min_duration_seconds. Setting held_duration_seconds on
     // its instance must not change anything — the helper returns

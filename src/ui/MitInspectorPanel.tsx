@@ -15,6 +15,7 @@ import { defaultChildPositions, useTimelineStore } from "@/state/timeline-store"
 import { JobIcon } from "./JobIcon";
 import { TargetPicker } from "./TargetPicker";
 import { secondsToTimecode } from "./timeline-constants";
+import { useMitInstanceStates } from "./use-derived";
 import { useZoom } from "./use-zoom";
 
 // Mirrors the constant in MitBar — multi-charge gated children keep this gap.
@@ -112,14 +113,27 @@ interface HeldDurationFieldProps {
 // `held_duration_seconds` is the TOTAL active window length (engine math is
 // coverage-based, not hold-based); the inspector translates to/from hold time
 // at the edges: hold = active − min_duration_seconds. So Passage's range here
-// is 0..18s even though active runs 5..23s.
+// is 0..18s even though active runs 5..23s. When the bar is truncated by
+// another caster mit, the displayed value reflects the truncated reality
+// (matching the bar); typing a value still commits user intent, and the
+// displayed value re-syncs after the next render — so values typed above the
+// truncation point visibly snap back, signalling "your hold is cut short."
 function HeldDurationField({ mit, type }: HeldDurationFieldProps) {
   const updateMit = useTimelineStore((s) => s.updateMitigationInstance);
+  const mitStates = useMitInstanceStates();
   const floor = type.min_duration_seconds ?? 0;
   const ceiling = type.duration_seconds;
   const maxHold = ceiling - floor;
-  const currentActive = instanceActiveDurationSeconds(type, mit);
-  const currentHold = currentActive - floor;
+  const storedActive = instanceActiveDurationSeconds(type, mit);
+  // Mirror MitBar.tsx: when truncated, the visible active = min(stored,
+  // dispelled_at − effect_time). Clamp at the floor so an extreme truncation
+  // never reports a negative hold.
+  const dispelledAt = mitStates.get(mit.id)?.dispelled_at;
+  const effectiveActive =
+    dispelledAt != null
+      ? Math.max(floor, Math.min(storedActive, dispelledAt - mit.effect_time))
+      : storedActive;
+  const effectiveHold = effectiveActive - floor;
   return (
     <div className="mit-inspector-held">
       <label className="mit-inspector-held-label" htmlFor={`held-${mit.id}`}>
@@ -131,13 +145,13 @@ function HeldDurationField({ mit, type }: HeldDurationFieldProps) {
         min={0}
         max={maxHold}
         step={1}
-        value={currentHold}
+        value={effectiveHold}
         onChange={(e) => {
           const parsed = Number.parseInt(e.target.value, 10);
           if (Number.isNaN(parsed)) return;
           const clampedHold = Math.max(0, Math.min(maxHold, parsed));
           const newActive = clampedHold + floor;
-          if (newActive !== currentActive) {
+          if (newActive !== storedActive) {
             updateMit(mit.id, { held_duration_seconds: newActive });
           }
         }}

@@ -416,7 +416,7 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
           title={`Drag the right edge to extend up to ${type.duration_seconds}s`}
         />
       )}
-      {isHeldAbility && durationPx > 0 && (
+      {isHeldAbility && durationPx > 0 && dispelledAt == null && (
         <div
           className="mit-bar-resize-handle"
           style={{ left: durationPx - 3 }}
