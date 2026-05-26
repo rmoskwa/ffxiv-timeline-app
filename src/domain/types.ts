@@ -133,6 +133,15 @@ export interface MitigationType {
   // mit-dispels-mit pairs like PCT Tempera Grassa → Tempera Coat.
   // ConflictsPanel flags placements where no active `consumes` instance exists.
   consumes?: string;
+  // Multi-target opportunistic dispel: at this entry's effect_time, every
+  // listed type's active instance on the **caster slot only** has its window
+  // truncated at the consumer's effect_time. % mit, tiers, max-HP buffs, and
+  // conditional-bonus gating stop contributing past that moment. Barrier
+  // pools seeded before the dispel survive (locked at seed-time, per the
+  // engine-wide convention). No conflict flag fires when nothing is up to
+  // dispel — the cast is valid standalone. Mutually exclusive with `consumes`.
+  // Used today for WAR Shake It Off → Thrill of Battle / Damnation / Bloodwhetting.
+  consumes_many?: string[];
   // Seconds shaved off a cooldown when *this entry's* shield is fully absorbed
   // by a boss hit. If the entry also has `consumes`, the reduction applies to
   // the consumed entry's instance (the "parent"), not self — PCT Tempera Grassa

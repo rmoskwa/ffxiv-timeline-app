@@ -133,11 +133,21 @@ export function computeDamageTimeline(
   const baseMaxHp: number[] = roster.map((s) => s.hp ?? PLAYER_MAX_HP);
   const pools: BarrierPool[][] = roster.map(() => []);
 
+  // Opportunistic multi-target dispel: precomputed earliest dispel time per
+  // instance id. A non-null value means "this instance's contribution to its
+  // caster slot ends at `dispelledEnds[instId]`" — % mit, tiers, max-HP buff,
+  // and conditional-bonus gating all stop past that instant on the caster.
+  // Barrier pools seeded before this time are not touched (locked at seed-time).
+  const dispelledEnds = computeDispelledEnds(allMits, lookupMitType);
+
   // Effective max HP at a given time for a given slot. Scales the base cap by
   // every max-HP buff mit whose window covers `t` and whose recipient
   // resolution includes the slot. Stacking is multiplicative. Window is
   // [effect_time, effect_time + duration_seconds] inclusive on both ends —
   // matches the seed-at-t-applies-before-hit-at-t convention used for shields.
+  // A `consumes_many` dispel ends the buff's contribution to its caster slot
+  // at the dispel time (half-open: still active *at* the dispel time, gone
+  // strictly after).
   const effectiveMaxHpAt = (slotIdx: number, t: number): number => {
     const base = baseMaxHp[slotIdx] ?? PLAYER_MAX_HP;
     const player = roster[slotIdx];
@@ -150,6 +160,8 @@ export function computeDamageTimeline(
       if (t < m.effect_time) continue;
       if (t > m.effect_time + mt.duration_seconds) continue;
       if (!recipientIncludes(mt.affects, m, player.id)) continue;
+      const dispelEnd = dispelledEnds.get(m.id);
+      if (dispelEnd != null && m.player_slot_id === player.id && t >= dispelEnd) continue;
       mult *= 1 + mt.max_hp_buff_pct / 100;
     }
     // HP is conceptually integer; round to avoid float drift like
@@ -160,8 +172,9 @@ export function computeDamageTimeline(
   // Charged-mit overwrite: precomputed exclusive upper bounds per
   // (mit.id, recipient_slot_id) when a later same-(type, recipient) instance
   // would otherwise double-stack. Lookups in the per-hit loop key on the
-  // player slot being evaluated.
-  const effectiveEnds = computeEffectiveEnds(allMits, lookupMitType, roster);
+  // player slot being evaluated. Dispel truncation from `consumes_many` is
+  // folded in for the caster-slot key only.
+  const effectiveEnds = computeEffectiveEnds(allMits, lookupMitType, roster, dispelledEnds);
 
   // Conditional-bonus satisfaction: for each mit instance whose type carries a
   // `conditional_bonus`, snapshot the gate at cast time. Gate passes if any
@@ -169,7 +182,11 @@ export function computeDamageTimeline(
   // `inst.effect_time` AND its recipient resolution includes the caster slot.
   // Drives the per-hit loop's bonus-application branch and surfaces on
   // MitInstanceState.conditional_bonus_applied for UI marker rendering.
-  const conditionalSatisfied = computeConditionalSatisfaction(allMits, lookupMitType);
+  const conditionalSatisfied = computeConditionalSatisfaction(
+    allMits,
+    lookupMitType,
+    dispelledEnds,
+  );
 
   // Internal per-instance state. Always tracked so cross-type consume can record
   // its parent association; copied to outInstanceStates at the end if provided.
@@ -427,12 +444,15 @@ function recipientIdsForOverwrite(
 
 // Per (mit instance, recipient) → exclusive upper bound for the mit's active
 // window when the next same-(type, recipient) instance starts inside its
-// natural duration. Absent entries → no overwrite; mitCovers uses the natural
-// inclusive window.
+// natural duration, or when a `consumes_many` consumer dispels this instance
+// on the caster slot. Absent entries → no overwrite or dispel; mitCovers uses
+// the natural inclusive window. Dispel truncation is folded in only for the
+// `(instId | casterId)` key — `consumes_many` dispels caster-only.
 function computeEffectiveEnds(
   allMits: readonly MitigationInstance[],
   lookupMitType: MitTypeLookup,
   roster: Roster,
+  dispelledEnds: ReadonlyMap<string, number>,
 ): Map<string, number> {
   interface Group {
     instances: MitigationInstance[];
@@ -469,7 +489,50 @@ function computeEffectiveEnds(
       }
     }
   }
+
+  // Fold in dispel truncation on the caster-slot key only. If the instance
+  // already has a tighter overwrite truncation, keep the tighter one.
+  for (const [instId, dispelEnd] of dispelledEnds) {
+    const m = allMits.find((x) => x.id === instId);
+    if (!m) continue;
+    const key = `${instId}|${m.player_slot_id}`;
+    const existing = ends.get(key);
+    ends.set(key, existing != null ? Math.min(existing, dispelEnd) : dispelEnd);
+  }
+
   return ends;
+}
+
+// Pre-compute the earliest dispel time for every instance whose contribution
+// to its caster slot is ended by a `consumes_many` consumer. Walks all mits
+// whose type carries `consumes_many`; for each listed target id, finds prior
+// same-caster instances of that id whose natural window covers the consumer's
+// effect_time, and records `dispelledEnds[targetInstId] = min(existing,
+// consumer.effect_time)`. Earliest-dispel-wins — a second consumer firing
+// later cannot un-end a buff already truncated by an earlier one.
+function computeDispelledEnds(
+  allMits: readonly MitigationInstance[],
+  lookupMitType: MitTypeLookup,
+): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const consumer of allMits) {
+    const consumerType = lookupMitType(consumer.type_id);
+    if (!consumerType?.consumes_many?.length) continue;
+    const casterId = consumer.player_slot_id;
+    const t = consumer.effect_time;
+    for (const target of allMits) {
+      if (target.id === consumer.id) continue;
+      if (target.player_slot_id !== casterId) continue;
+      if (!consumerType.consumes_many.includes(target.type_id)) continue;
+      const targetType = lookupMitType(target.type_id);
+      if (!targetType) continue;
+      if (t < target.effect_time) continue;
+      if (t > target.effect_time + targetType.duration_seconds) continue;
+      const existing = out.get(target.id);
+      if (existing == null || t < existing) out.set(target.id, t);
+    }
+  }
+  return out;
 }
 
 // Cast-time snapshot for every instance whose type carries a `conditional_bonus`.
@@ -482,6 +545,7 @@ function computeEffectiveEnds(
 function computeConditionalSatisfaction(
   allMits: readonly MitigationInstance[],
   lookupMitType: MitTypeLookup,
+  dispelledEnds: ReadonlyMap<string, number>,
 ): Map<string, boolean> {
   const out = new Map<string, boolean>();
   for (const m of allMits) {
@@ -497,6 +561,12 @@ function computeConditionalSatisfaction(
       if (!ot) continue;
       if (m.effect_time < other.effect_time) continue;
       if (m.effect_time > other.effect_time + ot.duration_seconds) continue;
+      // A gating entry dispelled on its caster slot before this instance's
+      // cast time no longer counts (exclusive at dispel time).
+      const dispelEnd = dispelledEnds.get(other.id);
+      if (dispelEnd != null && other.player_slot_id === casterId && m.effect_time >= dispelEnd) {
+        continue;
+      }
       if (!recipientIncludes(ot.affects, other, casterId)) continue;
       satisfied = true;
       break;

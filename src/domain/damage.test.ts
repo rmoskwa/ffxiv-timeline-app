@@ -366,6 +366,36 @@ const TYPES: Record<string, MitigationType> = {
     mechanic: "mit",
     wiki_url: "https://example.com/gate-b",
   },
+  // Damnation-shaped self mit: 40% all-types, 15s. Used as a dispel target.
+  dispellableMit40: {
+    id: "synth.dispellable_mit_40",
+    name: "Synth Dispellable Mit 40",
+    job: "WAR",
+    cooldown_seconds: 120,
+    duration_seconds: 15,
+    mitigation_per_type: { all: 40 },
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://example.com/dispellable-mit-40",
+  },
+  // Shake It Off-shaped multi-target consumer: party-wide 15% max-HP barrier,
+  // 30s duration, opportunistically dispels three self-only entries on the
+  // caster slot at cast time.
+  multiConsumer: {
+    id: "synth.multi_consumer",
+    name: "Synth Multi Consumer",
+    job: "WAR",
+    cooldown_seconds: 90,
+    duration_seconds: 30,
+    mitigation_per_type: {},
+    affects: "party",
+    max_charges: 1,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 15 },
+    consumes_many: ["synth.dispellable_mit_40", "synth.self_buff_20", "synth.tiered_self_15"],
+    wiki_url: "https://example.com/multi-consumer",
+  },
 };
 const lookup = (id: string): MitigationType | undefined =>
   Object.values(TYPES).find((t) => t.id === id);
@@ -899,6 +929,244 @@ describe("computeDamageTimeline — consumes drops the prior pool on caster", ()
     expect(out.get("h")?.[6]).toEqual({
       damage_taken_to_hp: 15_000,
       hp_after: 85_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+  });
+});
+
+// ─── Multi-target opportunistic dispel (consumes_many) ──────────────────────
+
+describe("computeDamageTimeline — consumes_many truncates dispelled instances on caster", () => {
+  it("ends a % mit on the caster slot at the consumer's effect_time", () => {
+    // Damnation-shape on s6 at t=50 (40% all, 15s window — covers t=58).
+    // Multi-consumer on s6 at t=55 dispels it.
+    const damnation = mit({
+      id: "damn",
+      player_slot_id: "s6",
+      type_id: "synth.dispellable_mit_40",
+      effect_time: 50,
+    });
+    const shake = mit({
+      id: "shake",
+      player_slot_id: "s6",
+      type_id: "synth.multi_consumer",
+      effect_time: 55,
+    });
+    // Hit at t=58: damnation should be dispelled; only shake's 15k barrier
+    // applies. 50_000 base → 50_000 post-mit → 15_000 absorbed → 35_000 to HP.
+    const hit = bossInstance({ id: "h", effect_time: 58 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 50_000 })],
+      [damnation, shake],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]).toEqual({
+      damage_taken_to_hp: 35_000,
+      hp_after: 65_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+  });
+
+  it("leaves the % mit intact for hits before the consumer fires", () => {
+    const damnation = mit({
+      id: "damn",
+      player_slot_id: "s6",
+      type_id: "synth.dispellable_mit_40",
+      effect_time: 50,
+    });
+    const shake = mit({
+      id: "shake",
+      player_slot_id: "s6",
+      type_id: "synth.multi_consumer",
+      effect_time: 55,
+    });
+    // Hit at t=52, before shake fires: damnation's 40% still applies. 50k
+    // base → 30k post-mit → no shield (shake hasn't seeded yet) → 30k to HP.
+    const hit = bossInstance({ id: "h", effect_time: 52 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 50_000 })],
+      [damnation, shake],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]).toEqual({
+      damage_taken_to_hp: 30_000,
+      hp_after: 70_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+  });
+
+  it("ends a max_hp_buff_pct contribution on the caster at the consumer's effect_time", () => {
+    // Thrill-shape on s6 at t=50 (+20% max HP, 10s window — covers t=58).
+    const thrill = mit({
+      id: "thrill",
+      player_slot_id: "s6",
+      type_id: "synth.self_buff_20",
+      effect_time: 50,
+    });
+    const shake = mit({
+      id: "shake",
+      player_slot_id: "s6",
+      type_id: "synth.multi_consumer",
+      effect_time: 55,
+    });
+    // Hit at t=58: thrill dispelled, caster's cap back to base 100_000.
+    // Shake's barrier sized off the post-dispel cap (exclusive-at-dispel
+    // semantics: at t=55 the buff is already gone) → 15_000. 50_000 base →
+    // 50_000 post-mit → 15_000 absorbed → 35_000 to HP.
+    const hit = bossInstance({ id: "h", effect_time: 58 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 50_000 })],
+      [thrill, shake],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]).toEqual({
+      damage_taken_to_hp: 35_000,
+      hp_after: 65_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+  });
+
+  it("dispels a tiered mit's outer and tier together when truncated past the tier window", () => {
+    // Bloodwhetting-shape on s6 at t=50 (15% outer / 8s, tier 15% 0–4s).
+    const blood = mit({
+      id: "blood",
+      player_slot_id: "s6",
+      type_id: "synth.tiered_self_15",
+      effect_time: 50,
+    });
+    const shake = mit({
+      id: "shake",
+      player_slot_id: "s6",
+      type_id: "synth.multi_consumer",
+      effect_time: 55,
+    });
+    // Hit at t=56: blood would normally apply outer 15% (tier expired at
+    // t=54). With dispel at t=55, blood is gone entirely. 50_000 base →
+    // 50_000 post-mit → 15_000 absorbed by shake → 35_000 to HP.
+    const hit = bossInstance({ id: "h", effect_time: 56 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 50_000 })],
+      [blood, shake],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]).toEqual({
+      damage_taken_to_hp: 35_000,
+      hp_after: 65_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+  });
+
+  it("is a no-op when no listed type is up at the consumer's effect_time", () => {
+    // Shake alone — its own 15k barrier should still seed and absorb cleanly.
+    const shake = mit({
+      id: "shake",
+      player_slot_id: "s6",
+      type_id: "synth.multi_consumer",
+      effect_time: 55,
+    });
+    const hit = bossInstance({ id: "h", effect_time: 58 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 20_000 })],
+      [shake],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]).toEqual({
+      damage_taken_to_hp: 5_000,
+      hp_after: 95_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+  });
+
+  it("does not dispel a type not listed in consumes_many", () => {
+    // Rampart-shape (drk.rampart, 20% all / 20s) is not in multi_consumer's
+    // consumes_many — it must remain active after shake fires.
+    const rampart = mit({
+      id: "ramp",
+      player_slot_id: "s6",
+      type_id: "drk.rampart",
+      effect_time: 50,
+    });
+    const shake = mit({
+      id: "shake",
+      player_slot_id: "s6",
+      type_id: "synth.multi_consumer",
+      effect_time: 55,
+    });
+    // Hit at t=58: rampart's 20% still applied. 50_000 → 40_000 post-mit
+    // → 15_000 absorbed → 25_000 to HP.
+    const hit = bossInstance({ id: "h", effect_time: 58 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 50_000 })],
+      [rampart, shake],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h")?.[6]).toEqual({
+      damage_taken_to_hp: 25_000,
+      hp_after: 75_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+  });
+
+  it("dispels only the caster's instance, not another slot's same-type instance", () => {
+    // Two Damnations: one on s5 (other slot), one on s6 (the shake caster).
+    // Shake on s6 should only dispel s6's instance.
+    const damnationS5 = mit({
+      id: "damn-s5",
+      player_slot_id: "s5",
+      type_id: "synth.dispellable_mit_40",
+      effect_time: 50,
+    });
+    const damnationS6 = mit({
+      id: "damn-s6",
+      player_slot_id: "s6",
+      type_id: "synth.dispellable_mit_40",
+      effect_time: 50,
+    });
+    const shake = mit({
+      id: "shake",
+      player_slot_id: "s6",
+      type_id: "synth.multi_consumer",
+      effect_time: 55,
+    });
+    const hit = bossInstance({ id: "h", effect_time: 58 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 50_000 })],
+      [damnationS5, damnationS6, shake],
+      lookup,
+      ROSTER,
+    );
+    // s5 still has its 40% damnation + shake's 15k barrier:
+    // 50_000 → 30_000 → 15_000 absorbed → 15_000 to HP.
+    expect(out.get("h")?.[5]).toEqual({
+      damage_taken_to_hp: 15_000,
+      hp_after: 85_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+    // s6 dispelled: 50_000 → 50_000 → 15_000 absorbed → 35_000 to HP.
+    expect(out.get("h")?.[6]).toEqual({
+      damage_taken_to_hp: 35_000,
+      hp_after: 65_000,
       active_shields_after: 0,
       max_hp: 100_000,
     });

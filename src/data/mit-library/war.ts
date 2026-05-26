@@ -8,6 +8,9 @@ import type { MitigationType } from "@/domain/types";
 // Stem the Tide barrier are deferred per shielded-mits policy. They also
 // share a single recast in-game (the "war.bloodwhetting_nf" group) — casting
 // one locks the other out for 25s.
+// Shake It Off dispels Thrill of Battle, Damnation, and Bloodwhetting on the
+// caster at cast time (via `consumes_many`); the 2%-per-dispelled-effect
+// self-absorb bonus is deferred.
 export const WAR_MITS: MitigationType[] = [
   {
     id: "war.rampart",
@@ -111,8 +114,12 @@ export const WAR_MITS: MitigationType[] = [
     affects: "party",
     max_charges: 1,
     mechanic: "mit",
-    // Dispel + upgrade behavior deferred per PRD.
     barrier: { kind: "max_hp_pct", value: 15 },
+    // Multi-target dispel: ends Thrill of Battle / Damnation / Bloodwhetting
+    // on the caster slot at this cast's effect_time. The 2%-per-dispelled-effect
+    // self-absorb bonus (in-game) is still deferred — the 15% max-HP barrier
+    // is the flat magnitude.
+    consumes_many: ["war.thrill_of_battle", "war.damnation", "war.bloodwhetting"],
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Shake_It_Off",
   },
 ];

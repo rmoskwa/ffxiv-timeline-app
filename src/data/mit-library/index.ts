@@ -82,6 +82,21 @@ for (const mit of MIT_LIBRARY) {
       }
     }
   }
+  if (mit.consumes_many) {
+    if (mit.consumes) {
+      throw new Error(`mit-library: ${mit.id} sets both consumes and consumes_many — pick one`);
+    }
+    if (mit.consumes_many.length === 0) {
+      throw new Error(`mit-library: ${mit.id} consumes_many must be non-empty if present`);
+    }
+    for (const ref of mit.consumes_many) {
+      if (!BY_ID.has(ref)) {
+        throw new Error(
+          `mit-library: ${mit.id} consumes_many references "${ref}" but no such entry exists`,
+        );
+      }
+    }
+  }
   if (mit.conditional_bonus) {
     const cb = mit.conditional_bonus;
     if (cb.requires_active.length === 0) {
