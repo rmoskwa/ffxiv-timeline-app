@@ -1571,6 +1571,97 @@ button {
   border-left: none;
   border-radius: 0 3px 3px 0;
 }
+/* Execution-zone extension past the parent's active end (Sun Sign case).
+   Same bar height as the active band, in the parent's color at lower opacity
+   so the user reads it as "extension of the active window for children only".
+   PRD §6.2. */
+.mit-bar-zone-extension {
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-left: none;
+}
+/* Inner execution-zone treatment for the "zone shorter than active" case
+   (Divine Caress). Thin top/bottom borders communicate "child icons can live
+   in this sub-range". Pointer-transparent — clicks fall through to the parent
+   active band beneath it. PRD §6.2. */
+.mit-bar-zone-inner {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.45);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.45);
+  box-sizing: border-box;
+  z-index: 1;
+}
+.lane-scroll.theme-light .mit-bar-zone-inner {
+  border-top-color: rgba(0, 0, 0, 0.35);
+  border-bottom-color: rgba(0, 0, 0, 0.35);
+}
+
+/* Gated-child duration band on the parent's bar. The inner segment (inside
+   the parent's active window) is pointer-transparent so clicks select the
+   parent; the extension segment past the parent's active end uses a 45°
+   hashed pattern and is clickable → selects the child. PRD §6.2 / §6.3. */
+.mit-child-band {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  z-index: 1;
+  border-radius: 2px;
+}
+.mit-child-band--inner {
+  pointer-events: none;
+}
+.mit-child-band--extension {
+  cursor: pointer;
+}
+
+/* Gated-child icon. Sits on top of the parent's bar; draggable along the
+   execution zone. The X-affordance appears when the child is selected. */
+.mit-child-icon {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  display: inline-flex;
+  cursor: grab;
+}
+.mit-child-icon.is-dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+}
+.mit-child-icon.is-selected {
+  outline: 2px solid #6cf;
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+.lane-scroll.theme-light .mit-child-icon.is-selected {
+  outline-color: #1565c0;
+}
+.mit-child-icon-x {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #e44;
+  color: #fff;
+  font-size: 12px;
+  line-height: 12px;
+  text-align: center;
+  cursor: pointer;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mit-child-icon-x:hover {
+  background: #ff5a5a;
+}
 /* The bar is the click-and-drag target for selecting/moving a mit. Cursor
    feedback differentiates the resting (move) state from an active drag. */
 .mit-bar {
@@ -1860,6 +1951,78 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+
+/* Children section — renders when the selected mit is a parent type with at
+   least one gated child in the library. PRD §6.7. */
+.mit-inspector-children {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-top: 1px solid #2a2a2a;
+  padding-top: 0.5rem;
+}
+.mit-inspector-children h4 {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.child-slot-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.child-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: #ddd;
+}
+.child-slot--empty {
+  color: #777;
+  font-style: italic;
+}
+.child-slot-time {
+  color: #aaa;
+  font-size: 0.72rem;
+}
+.child-slot-active {
+  color: #888;
+  font-size: 0.7rem;
+  font-style: italic;
+}
+.child-slot-action {
+  margin-left: auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #444;
+  border-radius: 3px;
+  background: transparent;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.child-slot-action:hover {
+  background: #2a2a2a;
+  color: #fff;
+}
+.child-slot-remove:hover {
+  background: rgba(228, 68, 68, 0.18);
+  border-color: #e44;
+  color: #ff8080;
+}
+.child-slot-add:hover {
+  background: rgba(102, 204, 255, 0.18);
+  border-color: #6cf;
+  color: #8fd8ff;
 }
 
 .conflicts-panel {

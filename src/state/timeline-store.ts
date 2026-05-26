@@ -2,6 +2,8 @@
 // No persistence wiring yet — that lands when the Tauri FS plugin is hooked up.
 
 import { create } from "zustand";
+import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
+import { computeDamageTimeline, type MitInstanceState } from "@/domain/damage";
 import type {
   BossAbilityInstance,
   BossAbilityType,
@@ -281,44 +283,140 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   // The UI gates placement (hover ghost hides over occupied space) and
   // clamps drag against neighbors, so the store trusts callers to supply a
   // legal effect_time.
+  // When the placed type has gated children in the library, this action also
+  // auto-spawns them at the middle of each child's execution zone (one-shot;
+  // never re-runs). PRD §6.5.
   addMitigationInstance: (input) => {
     const id = crypto.randomUUID();
     set((s) => {
       if (!s.timeline) return s;
-      const instance: MitigationInstance = { ...input, id, coverage_overrides: [] };
+      const parent: MitigationInstance = { ...input, id, coverage_overrides: [] };
+      const parentType = getMitById(parent.type_id);
+      const children = parentType ? autoSpawnChildren(parent, parentType, s.timeline) : [];
       return {
         timeline: touch({
           ...s.timeline,
-          mitigation_instances: [...s.timeline.mitigation_instances, instance],
+          mitigation_instances: [...s.timeline.mitigation_instances, parent, ...children],
         }),
       };
     });
     return id;
   },
 
+  // When a parent's effect_time changes, all attached children move by the
+  // same delta — they are offset-glued. PRD §6.4. Other patches do not cascade.
   updateMitigationInstance: (id, patch) =>
     set((s) => {
       if (!s.timeline) return s;
+      const existing = s.timeline.mitigation_instances.find((m) => m.id === id);
+      const delta =
+        existing != null && patch.effect_time != null && patch.effect_time !== existing.effect_time
+          ? patch.effect_time - existing.effect_time
+          : 0;
       return {
         timeline: touch({
           ...s.timeline,
-          mitigation_instances: s.timeline.mitigation_instances.map((m) =>
-            m.id === id ? { ...m, ...patch } : m,
-          ),
+          mitigation_instances: s.timeline.mitigation_instances.map((m) => {
+            if (m.id === id) return { ...m, ...patch };
+            if (delta !== 0 && m.parent_instance_id === id) {
+              return { ...m, effect_time: m.effect_time + delta };
+            }
+            return m;
+          }),
         }),
       };
     }),
 
+  // Removing a parent cascades to every instance with parent_instance_id === id
+  // (PRD §6.6). No tombstone — pure removal.
   removeMitigationInstance: (id) =>
     set((s) => {
       if (!s.timeline) return s;
+      const cascadedIds = new Set<string>([id]);
+      for (const m of s.timeline.mitigation_instances) {
+        if (m.parent_instance_id === id) cascadedIds.add(m.id);
+      }
       const sel = s.selectedInstance;
       return {
         timeline: touch({
           ...s.timeline,
-          mitigation_instances: s.timeline.mitigation_instances.filter((m) => m.id !== id),
+          mitigation_instances: s.timeline.mitigation_instances.filter(
+            (m) => !cascadedIds.has(m.id),
+          ),
         }),
-        ...(sel?.kind === "mit" && sel.id === id ? { selectedInstance: null } : {}),
+        ...(sel?.kind === "mit" && cascadedIds.has(sel.id) ? { selectedInstance: null } : {}),
       };
     }),
 }));
+
+// Default positions for a child's N charges, centered on `middle` with the 2s
+// gap PRD §6.5 calls for (representing the SCH GCD floor). For N=1: [middle].
+// For N=2: [middle-1, middle+1]. For N=3: [middle-2, middle, middle+2].
+// Exported for the inspector's re-add affordance (PRD §6.7).
+export function defaultChildPositions(middle: number, charges: number): number[] {
+  const positions: number[] = [];
+  for (let i = 0; i < charges; i++) {
+    positions.push(middle - (charges - 1) + 2 * i);
+  }
+  return positions;
+}
+
+// Build the child MitigationInstance records to materialize alongside a newly-
+// placed parent. PRD §6.5. PCT special case: when a gated child also `consumes`
+// its parent, run the gating pass with the new parent inserted; if the parent
+// would already be absorbed before the default child position, skip that child.
+function autoSpawnChildren(
+  parent: MitigationInstance,
+  parentType: import("@/domain/types").MitigationType,
+  timeline: TimelineFile,
+): MitigationInstance[] {
+  const gatedChildren = getGatedChildrenOf(parent.type_id);
+  if (gatedChildren.length === 0) return [];
+  // Only need to compute parent absorbed_at if any child has `consumes`.
+  let parentAbsorbedAt: number | null = null;
+  if (gatedChildren.some((ct) => ct.consumes === parent.type_id)) {
+    const probeMits = [
+      ...timeline.mitigation_instances.filter((m) => {
+        const mt = getMitById(m.type_id);
+        return mt != null && mt.consumes == null;
+      }),
+      parent,
+    ];
+    const states = new Map<string, MitInstanceState>();
+    computeDamageTimeline(
+      timeline.boss_ability_instances,
+      timeline.boss_ability_types,
+      probeMits,
+      getMitById,
+      timeline.roster,
+      states,
+    );
+    parentAbsorbedAt = states.get(parent.id)?.absorbed_at ?? null;
+  }
+  const children: MitigationInstance[] = [];
+  for (const childType of gatedChildren) {
+    const execZone = childType.execution_zone_seconds ?? parentType.duration_seconds;
+    const middle = parent.effect_time + execZone / 2;
+    if (
+      childType.consumes === parent.type_id &&
+      parentAbsorbedAt != null &&
+      parentAbsorbedAt < middle
+    ) {
+      continue;
+    }
+    const positions = defaultChildPositions(middle, childType.max_charges);
+    for (let i = 0; i < childType.max_charges; i++) {
+      children.push({
+        id: crypto.randomUUID(),
+        type_id: childType.id,
+        player_slot_id: parent.player_slot_id,
+        effect_time: positions[i],
+        target_slot_ids: [],
+        charge_row: i,
+        coverage_overrides: [],
+        parent_instance_id: parent.id,
+      });
+    }
+  }
+  return children;
+}

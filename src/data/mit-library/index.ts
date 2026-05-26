@@ -47,10 +47,28 @@ export const MIT_LIBRARY: readonly MitigationType[] = [
 
 const BY_ID: ReadonlyMap<string, MitigationType> = new Map(MIT_LIBRARY.map((m) => [m.id, m]));
 
+// Load-time validation: every `gated_by` reference must resolve to a real
+// library entry. Catches typos and the case where a parent entry is removed
+// without auditing its children. Throws synchronously at module import.
+for (const mit of MIT_LIBRARY) {
+  if (mit.gated_by != null && !BY_ID.has(mit.gated_by)) {
+    throw new Error(
+      `mit-library: ${mit.id} is gated_by "${mit.gated_by}" but no such entry exists`,
+    );
+  }
+}
+
 export function getMitById(id: string): MitigationType | undefined {
   return BY_ID.get(id);
 }
 
 export function getMitsForJob(job: Job): MitigationType[] {
   return MIT_LIBRARY.filter((m) => m.job === job);
+}
+
+// Library entries that gate `parentId` (i.e., declare `gated_by: parentId`).
+// Used by the store for auto-spawn and by the inspector to populate the
+// Children section. Returns [] when no entries are gated by `parentId`.
+export function getGatedChildrenOf(parentId: string): MitigationType[] {
+  return MIT_LIBRARY.filter((m) => m.gated_by === parentId);
 }

@@ -3,7 +3,7 @@ import type { MitigationType } from "@/domain/types";
 // SCH mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
 // Adloquium, Succor, Concitation, Recitation, Seraphic Veil excluded — rotational cure-potency.
 // Fey Illumination also grants +10% healing magic potency; only the mit component is modeled.
-// Utility entries (planner anchors, 0% mit): Deployment Tactics, Consolation.
+// Utility entries (planner anchors, 0% mit): Deployment Tactics, Summon Seraph, Consolation.
 export const SCH_MITS: MitigationType[] = [
   {
     id: "sch.sacred_soil",
@@ -54,15 +54,29 @@ export const SCH_MITS: MitigationType[] = [
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Deployment_Tactics",
   },
   {
+    id: "sch.summon_seraph",
+    name: "Summon Seraph",
+    job: "SCH",
+    cooldown_seconds: 120,
+    duration_seconds: 22,
+    mitigation_per_type: {},
+    affects: "party",
+    max_charges: 1,
+    mechanic: "utility",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Summon_Seraph",
+  },
+  {
     id: "sch.consolation",
     name: "Consolation",
     job: "SCH",
-    cooldown_seconds: 120, // stopgap: inherits Summon Seraph's CD (combo-chain gated), per sub-lane
+    // vestigial — `gated_by` handles placement; CD mirrors parent for legacy consumers.
+    cooldown_seconds: 120,
     duration_seconds: 30,
     mitigation_per_type: {},
     affects: "party",
     max_charges: 2,
     mechanic: "utility",
+    gated_by: "sch.summon_seraph",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Consolation",
   },
 ];

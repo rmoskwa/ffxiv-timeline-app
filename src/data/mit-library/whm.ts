@@ -44,12 +44,17 @@ export const WHM_MITS: MitigationType[] = [
     id: "whm.divine_caress",
     name: "Divine Caress",
     job: "WHM",
-    cooldown_seconds: 120, // stopgap: inherits Temperance's CD (combo-chain gated)
+    // vestigial — `gated_by` handles placement; CD mirrors parent for legacy consumers.
+    cooldown_seconds: 120,
     duration_seconds: 0,
     mitigation_per_type: {},
     affects: "party",
     max_charges: 1,
     mechanic: "utility",
+    gated_by: "whm.temperance",
+    // 10s execution zone — shorter than Temperance's 20s active. Divine Caress
+    // can only be cast in the first half of Temperance's window.
+    execution_zone_seconds: 10,
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Divine_Caress",
   },
 ];

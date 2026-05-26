@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Roster } from "@/domain/types";
+import type { Job, MitigationInstance, Roster } from "@/domain/types";
 import { useTimelineStore } from "./timeline-store";
 
 const RAMPART = "drk.rampart"; // cooldown 90s, duration 20s
@@ -9,9 +9,20 @@ function freshTimeline() {
   useTimelineStore.getState().setSlotJob(0, "DRK");
 }
 
+function freshTimelineForJob(job: Job) {
+  useTimelineStore.getState().newTimeline("test");
+  useTimelineStore.getState().setSlotJob(0, job);
+}
+
 function rosterSlotId(idx: number): string {
   const roster = useTimelineStore.getState().timeline?.roster as Roster;
   return roster[idx].id;
+}
+
+function mitsOfType(typeId: string): MitigationInstance[] {
+  return (useTimelineStore.getState().timeline?.mitigation_instances ?? []).filter(
+    (m) => m.type_id === typeId,
+  );
 }
 
 describe("timeline-store — setFightDuration cascade", () => {
@@ -70,5 +81,169 @@ describe("timeline-store — selection mutex", () => {
     useTimelineStore.getState().selectMitInstance("x");
     useTimelineStore.getState().deselectInstance();
     expect(useTimelineStore.getState().selectedInstance).toBeNull();
+  });
+});
+
+// ─── Gated-child behaviors ──────────────────────────────────────────────────
+// PRD §6.5 / §6.6 / §10. Parent-placement auto-spawns gated children at the
+// middle of each child's execution zone. Parent-delete cascades. Parent drag
+// carries children by offset. The PCT pair has a special-case skip for
+// pre-absorbed Tempera Coat.
+
+describe("timeline-store — auto-spawn gated children", () => {
+  it("Tempera Coat → spawns Grassa at the middle of Coat's active window", () => {
+    freshTimelineForJob("PCT");
+    const slotId = rosterSlotId(0);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "pct.tempera_coat",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    const grassa = mitsOfType("pct.tempera_grassa");
+    expect(grassa).toHaveLength(1);
+    // execution_zone defaults to parent duration (10s) → middle = 5.
+    expect(grassa[0].effect_time).toBe(5);
+    expect(grassa[0].parent_instance_id).toBe(mitsOfType("pct.tempera_coat")[0].id);
+  });
+
+  it("Summon Seraph → spawns Consolation #1 and #2 at +10 and +12", () => {
+    freshTimelineForJob("SCH");
+    const slotId = rosterSlotId(0);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "sch.summon_seraph",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    const consolations = mitsOfType("sch.consolation").sort(
+      (a, b) => a.effect_time - b.effect_time,
+    );
+    expect(consolations).toHaveLength(2);
+    // Middle of 22s exec zone = 11; with 2s gap centered: 10 and 12.
+    expect(consolations.map((c) => c.effect_time)).toEqual([10, 12]);
+    expect(consolations.map((c) => c.charge_row)).toEqual([0, 1]);
+  });
+
+  it("Neutral Sect → spawns Sun Sign at the middle of the 30s execution zone", () => {
+    freshTimelineForJob("AST");
+    const slotId = rosterSlotId(0);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "ast.neutral_sect",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    const sunSign = mitsOfType("ast.sun_sign");
+    expect(sunSign).toHaveLength(1);
+    // execution_zone 30s → middle = 15.
+    expect(sunSign[0].effect_time).toBe(15);
+  });
+
+  it("Temperance → spawns Divine Caress at the middle of the 10s execution zone", () => {
+    freshTimelineForJob("WHM");
+    const slotId = rosterSlotId(0);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "whm.temperance",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    const dc = mitsOfType("whm.divine_caress");
+    expect(dc).toHaveLength(1);
+    // execution_zone 10s → middle = 5.
+    expect(dc[0].effect_time).toBe(5);
+  });
+
+  it("PCT special case: Coat absorbed before default Grassa position skips auto-spawn", () => {
+    freshTimelineForJob("PCT");
+    const slotId = rosterSlotId(0);
+    // Boss hit big enough to fully drain Coat's 20% max-HP barrier (20k @ default
+    // PLAYER_MAX_HP=100k). Raidwide so the caster is targeted.
+    const bossTypeId = useTimelineStore.getState().addBossAbilityType({
+      name: "Big Hit",
+      base_damage: 50_000,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+    });
+    useTimelineStore.getState().addBossAbilityInstance({
+      type_id: bossTypeId,
+      effect_time: 2, // absorbs Coat at t=2, before default Grassa at t=5
+      target_slot_ids: [],
+    });
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "pct.tempera_coat",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    expect(mitsOfType("pct.tempera_grassa")).toHaveLength(0);
+  });
+});
+
+describe("timeline-store — cascade delete of gated children", () => {
+  it("removing Tempera Coat removes the auto-spawned Grassa", () => {
+    freshTimelineForJob("PCT");
+    const slotId = rosterSlotId(0);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "pct.tempera_coat",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    const coatId = mitsOfType("pct.tempera_coat")[0].id;
+    expect(mitsOfType("pct.tempera_grassa")).toHaveLength(1);
+    useTimelineStore.getState().removeMitigationInstance(coatId);
+    expect(mitsOfType("pct.tempera_coat")).toHaveLength(0);
+    expect(mitsOfType("pct.tempera_grassa")).toHaveLength(0);
+  });
+
+  it("removing Summon Seraph cascade-removes both Consolations", () => {
+    freshTimelineForJob("SCH");
+    const slotId = rosterSlotId(0);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "sch.summon_seraph",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    expect(mitsOfType("sch.consolation")).toHaveLength(2);
+    const seraphId = mitsOfType("sch.summon_seraph")[0].id;
+    useTimelineStore.getState().removeMitigationInstance(seraphId);
+    expect(mitsOfType("sch.consolation")).toHaveLength(0);
+  });
+});
+
+describe("timeline-store — offset-glued parent drag", () => {
+  it("dragging Coat by +10s shifts the attached Grassa by +10s", () => {
+    freshTimelineForJob("PCT");
+    const slotId = rosterSlotId(0);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "pct.tempera_coat",
+      player_slot_id: slotId,
+      effect_time: 10,
+      target_slot_ids: [],
+    });
+    const coatId = mitsOfType("pct.tempera_coat")[0].id;
+    expect(mitsOfType("pct.tempera_grassa")[0].effect_time).toBe(15); // 10 + 5
+    useTimelineStore.getState().updateMitigationInstance(coatId, { effect_time: 20 });
+    expect(mitsOfType("pct.tempera_coat")[0].effect_time).toBe(20);
+    expect(mitsOfType("pct.tempera_grassa")[0].effect_time).toBe(25); // shifted +10
+  });
+
+  it("non-effect_time patches do not cascade to children", () => {
+    freshTimelineForJob("SCH");
+    const slotId = rosterSlotId(0);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "sch.summon_seraph",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    const seraphId = mitsOfType("sch.summon_seraph")[0].id;
+    const before = mitsOfType("sch.consolation").map((c) => c.effect_time);
+    useTimelineStore.getState().updateMitigationInstance(seraphId, { target_slot_ids: [slotId] });
+    const after = mitsOfType("sch.consolation").map((c) => c.effect_time);
+    expect(after).toEqual(before);
   });
 });

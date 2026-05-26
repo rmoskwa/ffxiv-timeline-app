@@ -33,16 +33,19 @@ export const PCT_MITS: MitigationType[] = [
     id: "pct.tempera_grassa",
     name: "Tempera Grassa",
     job: "PCT",
-    cooldown_seconds: 120, // mirrored from Coat at render time via `consumes`
+    // vestigial for placement (gated_by handles that); kept for legacy consumers.
+    cooldown_seconds: 120,
     duration_seconds: 10,
     mitigation_per_type: {},
     affects: "party",
     max_charges: 1,
     mechanic: "mit",
     barrier: { kind: "max_hp_pct", value: 10 },
-    // Grassa is only castable while Coat is active and unabsorbed. Activation
-    // ends Coat on the caster (its barrier pool is dropped) and seeds the
-    // party-wide pool.
+    // Dual relationship with Tempera Coat:
+    //   gated_by — Grassa can only be cast inside Coat's execution zone (default = duration).
+    //   consumes — casting Grassa drops Coat's barrier pool on the caster.
+    // Both apply on every Grassa cast; they are independent constraints.
+    gated_by: "pct.tempera_coat",
     consumes: "pct.tempera_coat",
     // -30s to the consumed Coat instance's CD when Grassa's shield is fully
     // absorbed by a hit. Convention (see types.ts): when `consumes` is set,

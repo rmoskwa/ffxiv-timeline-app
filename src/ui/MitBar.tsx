@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { getMitById } from "@/data/mit-library";
+import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
 import { effectiveCooldownSeconds } from "@/domain/damage";
 import { targetingForMit } from "@/domain/targeting";
 import { formatMitMagnitude, type MitigationInstance, type MitigationType } from "@/domain/types";
@@ -27,6 +27,11 @@ interface MitBarProps {
 // the gesture as a drag. Below the threshold, pointerup fires a click.
 const DRAG_THRESHOLD_PX = 3;
 
+// Multi-charge gated children (today: SCH Consolation) must keep a 2s gap
+// between their casts — the SCH GCD floor. PRD §6.4 / §11. If a future child
+// adds itself with max_charges > 1, lift this into a type-level field.
+const GATED_CHILD_MIN_GAP_SECONDS = 2;
+
 // Solid segment for the active window (T → T+duration), faded segment for the
 // remaining cooldown (T+duration → T+cooldown).
 export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
@@ -42,10 +47,33 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
   const { mitBarHeight, mitIconSize } = useRowSize();
 
   // While dragging, `dragEffectTime` overrides `instance.effect_time` for
-  // rendering only; the store commits the new value on pointerup.
+  // rendering only; the store commits the new value on pointerup. Child
+  // instances follow the parent's drag in the store via offset-glue.
   const [dragEffectTime, setDragEffectTime] = useState<number | null>(null);
   const [dragging, setDragging] = useState(false);
   const renderEffectTime = dragEffectTime ?? instance.effect_time;
+  const dragDelta = renderEffectTime - instance.effect_time;
+
+  // Gated children attached to this parent. Resolves to actual instances on
+  // the timeline (one-shot auto-spawn populates these; the user can delete
+  // them via the X-affordance or re-add via the inspector).
+  const childInstances = (allMits ?? []).filter((m) => m.parent_instance_id === instance.id);
+  // Max execution zone across all gated child *types* (library-driven, not
+  // instance-driven — the zone visualization persists even when no child
+  // instance currently exists). Defaults to the parent's duration when no
+  // child overrides it.
+  const childTypes = getGatedChildrenOf(type.id);
+  const maxChildExecZone = childTypes.reduce(
+    (max, ct) => Math.max(max, ct.execution_zone_seconds ?? type.duration_seconds),
+    0,
+  );
+  // Execution-zone extension past the parent's active end (Sun Sign case).
+  // Positive only when some child's exec zone exceeds the parent's duration.
+  const zoneExtensionSec = Math.max(0, maxChildExecZone - type.duration_seconds);
+  // For the "shorter" case (Divine Caress), find the smallest exec zone < duration.
+  const childTypeWithShorterZone = childTypes.find(
+    (ct) => ct.execution_zone_seconds != null && ct.execution_zone_seconds < type.duration_seconds,
+  );
 
   const left = renderEffectTime * pxPerSec;
   // A mit placed near the end of the fight may legally extend past it (the
@@ -53,6 +81,10 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
   // at the timeline edge.
   const remainingSec = Math.max(0, laneDurationSec - renderEffectTime);
   const visibleDurationSec = Math.min(type.duration_seconds, remainingSec);
+  const visibleZoneExtensionSec = Math.max(
+    0,
+    Math.min(zoneExtensionSec, remainingSec - visibleDurationSec),
+  );
   // Effective cooldown after CD-reduce-on-absorb (Coat-on-Coat-absorb,
   // Coat-on-Grassa-absorb) and consumes-mirror (Grassa's bar always matches
   // the Coat instance it came from).
@@ -63,12 +95,17 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
     getMitById,
     mitStates,
   );
-  const cooldownTailSec = Math.max(0, effectiveCdSec - type.duration_seconds);
+  // The CD tail visually starts AFTER the execution zone when the zone extends
+  // past active (PRD §6.2 / Sun Sign case). The total off-to-off cooldown is
+  // unchanged — only the visual split between active and tail shifts.
+  const visualActivePlusZone = Math.max(type.duration_seconds, maxChildExecZone);
+  const cooldownTailSec = Math.max(0, effectiveCdSec - visualActivePlusZone);
   const visibleCooldownTailSec = Math.max(
     0,
-    Math.min(cooldownTailSec, remainingSec - visibleDurationSec),
+    Math.min(cooldownTailSec, remainingSec - visibleDurationSec - visibleZoneExtensionSec),
   );
   const durationPx = visibleDurationSec * pxPerSec;
+  const zoneExtensionPx = visibleZoneExtensionSec * pxPerSec;
   const cooldownTailPx = visibleCooldownTailSec * pxPerSec;
 
   const targeting = targetingForMit(instance, type);
@@ -232,12 +269,49 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
           </button>
         )}
       </div>
+      {zoneExtensionPx > 0 && (
+        <div
+          className="mit-bar-zone-extension"
+          style={{
+            width: zoneExtensionPx,
+            background: `color-mix(in srgb, ${jobColor(type.job)} 16%, transparent)`,
+          }}
+          aria-hidden
+          title="Execution zone (extends past active duration)"
+        />
+      )}
+      {childTypeWithShorterZone && (
+        <div
+          className="mit-bar-zone-inner"
+          style={{
+            left: 0,
+            width: (childTypeWithShorterZone.execution_zone_seconds ?? 0) * pxPerSec,
+          }}
+          aria-hidden
+        />
+      )}
       {cooldownTailPx > 0 && (
         <div className="mit-bar-cooldown" style={{ width: cooldownTailPx }} aria-hidden />
       )}
       <span className="mit-bar-icon-overlay" style={{ left: pxPerSec / 2 }}>
         <MitIcon name={type.name} size={mitIconSize} title={type.name} />
       </span>
+      {childInstances.map((child) => {
+        const childType = getMitById(child.type_id);
+        if (!childType) return null;
+        return (
+          <ChildOverlay
+            key={child.id}
+            child={child}
+            childType={childType}
+            parent={instance}
+            parentType={type}
+            parentDragDelta={dragDelta}
+            siblings={childInstances}
+            iconSize={mitIconSize}
+          />
+        );
+      })}
       {pickerOpen && needsTarget && roster && (
         <div className="mit-bar-popover" onPointerDown={(e) => e.stopPropagation()}>
           <TargetPicker
@@ -252,5 +326,216 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Child overlay ──────────────────────────────────────────────────────────
+// Renders one gated child instance on its parent's bar: optional duration band
+// (split into inner-of-parent-active and hashed extension-past-active),
+// draggable icon clamped to the execution zone, and an X-affordance when
+// selected. PRD §6.2-§6.4.
+
+interface ChildOverlayProps {
+  child: MitigationInstance;
+  childType: MitigationType;
+  parent: MitigationInstance;
+  parentType: MitigationType;
+  // While the parent is mid-drag, its render position is offset from
+  // instance.effect_time. The store hasn't committed yet, so the child's
+  // stored effect_time also reflects the un-dragged position. We apply the
+  // same delta on the render side so children visually follow the parent.
+  parentDragDelta: number;
+  // All children currently on this parent — used to clamp multi-charge gap.
+  siblings: readonly MitigationInstance[];
+  iconSize: number;
+}
+
+function ChildOverlay({
+  child,
+  childType,
+  parent,
+  parentType,
+  parentDragDelta,
+  siblings,
+  iconSize,
+}: ChildOverlayProps) {
+  const updateMit = useTimelineStore((s) => s.updateMitigationInstance);
+  const removeMit = useTimelineStore((s) => s.removeMitigationInstance);
+  const selectMitInstance = useTimelineStore((s) => s.selectMitInstance);
+  const selected = useTimelineStore(
+    (s) => s.selectedInstance?.kind === "mit" && s.selectedInstance.id === child.id,
+  );
+  const { pxPerSec, laneDurationSec } = useZoom();
+
+  const [dragChildT, setDragChildT] = useState<number | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  // While the parent drags, children follow by the same delta. While THIS
+  // child drags, its own override takes precedence (the parent isn't moving).
+  const renderChildT = dragChildT ?? child.effect_time + parentDragDelta;
+  const renderParentT = parent.effect_time + parentDragDelta;
+
+  const execZone = childType.execution_zone_seconds ?? parentType.duration_seconds;
+  const parentActiveEnd = renderParentT + parentType.duration_seconds;
+
+  // Icon position: offset from the parent's bar origin.
+  const iconLeftPx = (renderChildT - renderParentT) * pxPerSec + pxPerSec / 2;
+
+  // Duration band — non-utility children only. Split into inner (over parent
+  // active, pointer-events:none so clicks pass through to parent) and hashed
+  // extension (past parent active, pointer-events:auto → selects child).
+  const showBand = childType.mechanic !== "utility" && childType.duration_seconds > 0;
+  const bandStart = renderChildT;
+  const bandEnd = Math.min(renderChildT + childType.duration_seconds, laneDurationSec);
+  const innerEnd = Math.min(bandEnd, parentActiveEnd);
+  const innerStart = bandStart;
+  const innerWidthSec = Math.max(0, innerEnd - innerStart);
+  const extStart = Math.max(bandStart, parentActiveEnd);
+  const extEnd = bandEnd;
+  const extWidthSec = Math.max(0, extEnd - extStart);
+  const childColor = jobColor(childType.job);
+
+  const dragStartRef = useRef<{
+    pointerId: number;
+    clientX: number;
+    startT: number;
+    minT: number;
+    maxT: number;
+    dragging: boolean;
+  } | null>(null);
+
+  const beginDrag = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    // Clamp to the execution zone on this parent.
+    const baseMin = parent.effect_time;
+    const baseMax = parent.effect_time + execZone;
+    // Multi-charge gap clamp (today: SCH Consolation, 2s).
+    let gapMin = baseMin;
+    let gapMax = baseMax;
+    if (childType.max_charges > 1) {
+      for (const s of siblings) {
+        if (s.id === child.id) continue;
+        if (s.type_id !== child.type_id) continue;
+        if (s.effect_time < child.effect_time) {
+          gapMin = Math.max(gapMin, s.effect_time + GATED_CHILD_MIN_GAP_SECONDS);
+        } else {
+          gapMax = Math.min(gapMax, s.effect_time - GATED_CHILD_MIN_GAP_SECONDS);
+        }
+      }
+    }
+    dragStartRef.current = {
+      pointerId: e.pointerId,
+      clientX: e.clientX,
+      startT: child.effect_time,
+      minT: gapMin,
+      maxT: gapMax,
+      dragging: false,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const moveDrag = (e: React.PointerEvent<HTMLElement>) => {
+    const start = dragStartRef.current;
+    if (!start || e.pointerId !== start.pointerId) return;
+    const dx = e.clientX - start.clientX;
+    if (!start.dragging) {
+      if (Math.abs(dx) < DRAG_THRESHOLD_PX) return;
+      start.dragging = true;
+      setDragging(true);
+    }
+    const raw = start.startT + Math.round(dx / pxPerSec);
+    const clamped = Math.max(start.minT, Math.min(start.maxT, raw));
+    setDragChildT(clamped);
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLElement>) => {
+    const start = dragStartRef.current;
+    if (!start || e.pointerId !== start.pointerId) return;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    if (start.dragging) {
+      const finalT = dragChildT ?? child.effect_time;
+      if (finalT !== child.effect_time) {
+        updateMit(child.id, { effect_time: finalT });
+      }
+    } else {
+      selectMitInstance(child.id);
+    }
+    dragStartRef.current = null;
+    setDragging(false);
+    setDragChildT(null);
+  };
+
+  const cancelDrag = (e: React.PointerEvent<HTMLElement>) => {
+    const start = dragStartRef.current;
+    if (!start || e.pointerId !== start.pointerId) return;
+    dragStartRef.current = null;
+    setDragging(false);
+    setDragChildT(null);
+  };
+
+  const handleExtensionPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    selectMitInstance(child.id);
+  };
+
+  const iconTitle =
+    `${childType.name} @ ${secondsToTimecode(renderChildT)}\n` +
+    `${formatMitMagnitude(childType)} · gated by ${parentType.name}`;
+
+  return (
+    <>
+      {showBand && innerWidthSec > 0 && (
+        <div
+          className="mit-child-band mit-child-band--inner"
+          style={{
+            left: (innerStart - renderParentT) * pxPerSec,
+            width: innerWidthSec * pxPerSec,
+            background: `color-mix(in srgb, ${childColor} 55%, transparent)`,
+          }}
+          aria-hidden
+        />
+      )}
+      {showBand && extWidthSec > 0 && (
+        <div
+          className="mit-child-band mit-child-band--extension"
+          style={{
+            left: (extStart - renderParentT) * pxPerSec,
+            width: extWidthSec * pxPerSec,
+            // 45° hashed pattern in child's color. ~3px line spacing per PRD §6.2.
+            background: `repeating-linear-gradient(45deg, ${childColor} 0 3px, transparent 3px 6px)`,
+          }}
+          onPointerDown={handleExtensionPointerDown}
+          title={iconTitle}
+        />
+      )}
+      <span
+        className={`mit-child-icon${selected ? " is-selected" : ""}${dragging ? " is-dragging" : ""}`}
+        style={{ left: iconLeftPx, width: iconSize, height: iconSize }}
+        title={iconTitle}
+        data-mit-id={child.id}
+        onPointerDown={beginDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={cancelDrag}
+      >
+        <MitIcon name={childType.name} size={iconSize} title={childType.name} />
+        {selected && (
+          <button
+            type="button"
+            className="mit-child-icon-x"
+            title="Remove this child"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              removeMit(child.id);
+            }}
+          >
+            ×
+          </button>
+        )}
+      </span>
+    </>
   );
 }

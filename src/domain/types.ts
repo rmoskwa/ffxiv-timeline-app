@@ -121,6 +121,17 @@ export interface MitigationType {
   // FFXIV wiki page for this ability. Re-verify against this URL before
   // changing any numeric value — it is the source of truth.
   wiki_url: string;
+  // ID of the parent mit-library entry that gates this child. A gated child can
+  // only be cast inside its parent's **execution zone** on the same caster slot,
+  // has no sub-lane of its own, and renders as an icon on the parent's bar.
+  // See CONTEXT.md "Parent mit / Child mit".
+  gated_by?: string;
+  // Seconds after the parent's effect_time during which this child can be cast.
+  // Only meaningful when `gated_by` is set. When omitted, defaults to the
+  // parent's `duration_seconds`. Set only for AST Sun Sign (30s, exceeds
+  // Neutral Sect's 20s active by 10s — the Suntouched buff outlives its parent)
+  // and WHM Divine Caress (10s, shorter than Temperance's 20s active).
+  execution_zone_seconds?: number;
 }
 
 // Resolve the % mit an ability applies to a given damage type.
@@ -174,6 +185,10 @@ export interface MitigationInstance {
   // chronologically by domain/charges.ts. Always 0 for 1-charge mits.
   charge_row?: number;
   coverage_overrides: CoverageOverride[]; // deferred to v0.2; empty in v0.1
+  // Link to the specific parent MitigationInstance this child belongs to.
+  // Set when a gated child is auto-spawned or re-added via the inspector.
+  // Null/undefined for non-children.
+  parent_instance_id?: string;
 }
 
 // ─── Roster ─────────────────────────────────────────────────────────────────

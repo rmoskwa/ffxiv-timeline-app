@@ -37,7 +37,10 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
   const { pxPerSec, laneWidthPx } = useZoom();
 
   const label = slot.name_label ?? (slot.job === "unset" ? "Unset" : slot.job);
-  const mits = slot.job === "unset" ? [] : getMitsForJob(slot.job);
+  // Gated children render on their parent's bar (see MitBar) and do not get
+  // their own sub-lane. PRD §6.1.
+  const mits =
+    slot.job === "unset" ? [] : getMitsForJob(slot.job).filter((mt) => mt.gated_by == null);
 
   // Per-player damage marks: one entry per boss instance that targets this
   // player. Drives both the chip bar and the vertical guide lines.

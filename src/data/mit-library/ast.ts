@@ -33,12 +33,17 @@ export const AST_MITS: MitigationType[] = [
     id: "ast.sun_sign",
     name: "Sun Sign",
     job: "AST",
-    cooldown_seconds: 120, // stopgap: inherits Neutral Sect's CD (combo-chain gated)
+    // vestigial — `gated_by` handles placement; CD mirrors parent for legacy consumers.
+    cooldown_seconds: 120,
     duration_seconds: 15,
     mitigation_per_type: { all: 10 },
     affects: "party",
     max_charges: 1,
     mechanic: "mit",
+    gated_by: "ast.neutral_sect",
+    // 30s execution zone — exceeds Neutral Sect's 20s active by 10s. The
+    // Suntouched buff is what gates the cast and outlives its parent.
+    execution_zone_seconds: 30,
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Sun_Sign",
   },
   {
