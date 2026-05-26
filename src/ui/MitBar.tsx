@@ -343,6 +343,15 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
       {cooldownTailPx > 0 && (
         <div className="mit-bar-cooldown" style={{ width: cooldownTailPx }} aria-hidden />
       )}
+      {type.conditional_bonus && mitStates.get(instance.id)?.conditional_bonus_applied && (
+        <span
+          className="mit-bar-conditional-marker"
+          aria-hidden
+          title="Conditional bonus active — gate satisfied at cast time"
+        >
+          +
+        </span>
+      )}
       <span className="mit-bar-icon-overlay" style={{ left: pxPerSec / 2 }}>
         <MitIcon name={type.name} size={mitIconSize} title={type.name} />
       </span>

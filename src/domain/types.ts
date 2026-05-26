@@ -95,6 +95,17 @@ export type Tier = {
   mitigation_per_type: Partial<Record<DamageType | "all", number>>;
 };
 
+// Cast-time-gated bonus reduction. If at least one entry in `requires_active`
+// has an active window covering this instance's `effect_time` on the same
+// caster slot, the bonus applies multiplicatively on top of the outer mit (and
+// any tiers) for every hit this instance covers — for the full active
+// duration, even if the gating entry falls off mid-window. Models PLD
+// Intervention's +10% when cast under Rampart or Guardian.
+export type ConditionalBonus = {
+  requires_active: string[]; // mit-library entry IDs; at least one must gate
+  mitigation_per_type: Partial<Record<DamageType | "all", number>>;
+};
+
 export interface MitigationType {
   id: string; // "{job_short}.{ability_short}" — stable forever
   name: string;
@@ -163,6 +174,13 @@ export interface MitigationType {
   // barriers seeded during the window (locked at seed-time). See
   // docs/mit-library.md "First-class max-HP buffs".
   max_hp_buff_pct?: number;
+  // Cast-time-gated bonus reduction. Evaluated once at `inst.effect_time`
+  // against the caster slot's other in-window mits; if satisfied, applies
+  // multiplicatively on top of the outer mit (and any tiers) for every hit
+  // this instance covers. Models PLD Intervention's +10% when cast under
+  // Rampart or Guardian. See docs/mit-library.md "First-class conditional
+  // bonuses".
+  conditional_bonus?: ConditionalBonus;
 }
 
 // Resolve the % mit an ability applies to a given damage type.

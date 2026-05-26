@@ -322,6 +322,50 @@ const TYPES: Record<string, MitigationType> = {
     max_hp_buff_pct: 20,
     wiki_url: "https://example.com/combo-mit-buff",
   },
+  // PLD Intervention-shaped target mit with a conditional bonus. 10% all / 8s
+  // outer, +10% bonus if either of two self-targeted gates is active at cast.
+  conditionalTarget10: {
+    id: "synth.conditional_target_10",
+    name: "Synth Conditional Target 10",
+    job: "PLD",
+    cooldown_seconds: 10,
+    duration_seconds: 8,
+    mitigation_per_type: { all: 10 },
+    affects: "target",
+    max_charges: 1,
+    mechanic: "mit",
+    conditional_bonus: {
+      requires_active: ["synth.gate_a", "synth.gate_b"],
+      mitigation_per_type: { all: 10 },
+    },
+    wiki_url: "https://example.com/conditional-target-10",
+  },
+  // Two self-targeted gating entries (Rampart/Guardian shape). The conditional
+  // bonus snapshots whichever one covers the bonus mit's effect_time.
+  gateA: {
+    id: "synth.gate_a",
+    name: "Synth Gate A",
+    job: "PLD",
+    cooldown_seconds: 90,
+    duration_seconds: 20,
+    mitigation_per_type: { all: 20 },
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://example.com/gate-a",
+  },
+  gateB: {
+    id: "synth.gate_b",
+    name: "Synth Gate B",
+    job: "PLD",
+    cooldown_seconds: 120,
+    duration_seconds: 15,
+    mitigation_per_type: { all: 40 },
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://example.com/gate-b",
+  },
 };
 const lookup = (id: string): MitigationType | undefined =>
   Object.values(TYPES).find((t) => t.id === id);
@@ -1131,6 +1175,191 @@ describe("computeDamagePerPlayer — tiered mits", () => {
       ROSTER,
     );
     expect(result[6]?.damage_taken_to_hp).toBeCloseTo(58_522.5, 4);
+  });
+});
+
+// ─── Conditional bonus ──────────────────────────────────────────────────────
+
+describe("computeDamagePerPlayer — conditional bonuses", () => {
+  it("no gate active at cast → outer only", () => {
+    // conditionalTarget10 cast by s0 (PLD), target s6 (non-tank). No gate
+    // placed. 100k × 0.90 (outer 10%) = 90k.
+    const bonus = mit({
+      id: "bonus-1",
+      player_slot_id: "s0",
+      type_id: "synth.conditional_target_10",
+      effect_time: 55,
+      target_slot_ids: ["s6"],
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 58 }),
+      bossType({ base_damage: 100_000 }),
+      [bonus],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(90_000);
+  });
+
+  it("gate active on caster at cast → outer × bonus", () => {
+    // gateA on s0 [50,70] covers bonus.effect_time=55 on same caster.
+    // 100k × 0.90 × 0.90 = 81k.
+    const gate = mit({
+      id: "gate-1",
+      player_slot_id: "s0",
+      type_id: "synth.gate_a",
+      effect_time: 50,
+    });
+    const bonus = mit({
+      id: "bonus-1",
+      player_slot_id: "s0",
+      type_id: "synth.conditional_target_10",
+      effect_time: 55,
+      target_slot_ids: ["s6"],
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 58 }),
+      bossType({ base_damage: 100_000 }),
+      [gate, bonus],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(81_000);
+  });
+
+  it("either required gate satisfies the condition (OR semantics)", () => {
+    // Only gateB cast; bonus still satisfied because requires_active is a
+    // disjunction. 100k × 0.90 × 0.90 = 81k.
+    const gate = mit({
+      id: "gate-1",
+      player_slot_id: "s0",
+      type_id: "synth.gate_b",
+      effect_time: 50,
+    });
+    const bonus = mit({
+      id: "bonus-1",
+      player_slot_id: "s0",
+      type_id: "synth.conditional_target_10",
+      effect_time: 55,
+      target_slot_ids: ["s6"],
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 58 }),
+      bossType({ base_damage: 100_000 }),
+      [gate, bonus],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(81_000);
+  });
+
+  it("gate cast by a different slot does not satisfy", () => {
+    // gateA on s1 (different PLD). recipientIncludes for affects="self" only
+    // returns true for the gate's own caster, so the s0 bonus sees no gate.
+    // Outer only: 100k × 0.90 = 90k.
+    const gate = mit({
+      id: "gate-1",
+      player_slot_id: "s1",
+      type_id: "synth.gate_a",
+      effect_time: 50,
+    });
+    const bonus = mit({
+      id: "bonus-1",
+      player_slot_id: "s0",
+      type_id: "synth.conditional_target_10",
+      effect_time: 55,
+      target_slot_ids: ["s6"],
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 58 }),
+      bossType({ base_damage: 100_000 }),
+      [gate, bonus],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(90_000);
+  });
+
+  it("gate active in past but window does not cover cast time", () => {
+    // gateA on s0 [10,30]; bonus.effect_time=55 outside gate window. Outer only.
+    const gate = mit({
+      id: "gate-1",
+      player_slot_id: "s0",
+      type_id: "synth.gate_a",
+      effect_time: 10,
+    });
+    const bonus = mit({
+      id: "bonus-1",
+      player_slot_id: "s0",
+      type_id: "synth.conditional_target_10",
+      effect_time: 55,
+      target_slot_ids: ["s6"],
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 58 }),
+      bossType({ base_damage: 100_000 }),
+      [gate, bonus],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(90_000);
+  });
+
+  it("cast-time snapshot: gate falls off mid-window, bonus still applies", () => {
+    // gateA truncated by overlap (no — gateA is alone). Use a short-window
+    // shape: place gateA at t=50 with its natural 20s duration, but place the
+    // bonus near the end of the gate window so the hit lands AFTER the gate
+    // expires. gate [50,70], bonus cast at 65 ⇒ snapshot satisfied. Hit at 72
+    // is past gate's [50,70] but inside bonus [65,73]. Bonus applies:
+    // 100k × 0.90 × 0.90 = 81k. (Per-hit eval would yield 90k.)
+    const gate = mit({
+      id: "gate-1",
+      player_slot_id: "s0",
+      type_id: "synth.gate_a",
+      effect_time: 50,
+    });
+    const bonus = mit({
+      id: "bonus-1",
+      player_slot_id: "s0",
+      type_id: "synth.conditional_target_10",
+      effect_time: 65,
+      target_slot_ids: ["s6"],
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 72 }),
+      bossType({ base_damage: 100_000 }),
+      [gate, bonus],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(81_000);
+  });
+
+  it("bonus does not apply outside the bonus mit's own active window", () => {
+    // Bonus cast at 55 with 8s duration ⇒ window [55,63]. Hit at 65 is past
+    // the bonus window — even with the gate, the bonus mit no longer covers
+    // the hit at all. Full damage.
+    const gate = mit({
+      id: "gate-1",
+      player_slot_id: "s0",
+      type_id: "synth.gate_a",
+      effect_time: 50,
+    });
+    const bonus = mit({
+      id: "bonus-1",
+      player_slot_id: "s0",
+      type_id: "synth.conditional_target_10",
+      effect_time: 55,
+      target_slot_ids: ["s6"],
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 65 }),
+      bossType({ base_damage: 100_000 }),
+      [gate, bonus],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(100_000);
   });
 });
 

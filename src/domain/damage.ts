@@ -74,6 +74,11 @@ export interface MitInstanceState {
   // found at fire time. Used to tie a Grassa back to the Coat instance it
   // came from for mirrored cooldown rendering.
   consumed_from_instance_id?: string;
+  // Cast-time snapshot result for entries whose type carries a
+  // `conditional_bonus`. `true` ⇒ the gate was satisfied at this instance's
+  // effect_time. Drives the bar's static-marker render; the damage chip
+  // already reflects the actual reduction applied.
+  conditional_bonus_applied?: boolean;
 }
 
 // In-flight barrier pool tracked while walking hits chronologically.
@@ -158,6 +163,14 @@ export function computeDamageTimeline(
   // player slot being evaluated.
   const effectiveEnds = computeEffectiveEnds(allMits, lookupMitType, roster);
 
+  // Conditional-bonus satisfaction: for each mit instance whose type carries a
+  // `conditional_bonus`, snapshot the gate at cast time. Gate passes if any
+  // entry whose id is in `requires_active` has its active window covering
+  // `inst.effect_time` AND its recipient resolution includes the caster slot.
+  // Drives the per-hit loop's bonus-application branch and surfaces on
+  // MitInstanceState.conditional_bonus_applied for UI marker rendering.
+  const conditionalSatisfied = computeConditionalSatisfaction(allMits, lookupMitType);
+
   // Internal per-instance state. Always tracked so cross-type consume can record
   // its parent association; copied to outInstanceStates at the end if provided.
   const instanceStates = new Map<string, MitInstanceState>();
@@ -169,6 +182,10 @@ export function computeDamageTimeline(
     }
     return s;
   };
+
+  for (const [id, satisfied] of conditionalSatisfied) {
+    if (satisfied) ensureState(id).conditional_bonus_applied = true;
+  }
 
   // Pre-compute barrier-seeding events; each fires at a mit's effect_time.
   // We don't gate seeding on coverage of any single hit — barriers apply
@@ -247,6 +264,16 @@ export function computeDamageTimeline(
                 0;
               if (tierPct > 0) postMit *= 1 - tierPct / 100;
             }
+          }
+          // Conditional bonus: cast-time gate snapshot; if satisfied, applies
+          // for every hit this instance covers (full duration, even if the
+          // gating entry falls off mid-window).
+          if (mt.conditional_bonus && conditionalSatisfied.get(m.id)) {
+            const bonusPct =
+              mt.conditional_bonus.mitigation_per_type[resolvedHit.damage_type] ??
+              mt.conditional_bonus.mitigation_per_type.all ??
+              0;
+            if (bonusPct > 0) postMit *= 1 - bonusPct / 100;
           }
         }
       }
@@ -443,6 +470,40 @@ function computeEffectiveEnds(
     }
   }
   return ends;
+}
+
+// Cast-time snapshot for every instance whose type carries a `conditional_bonus`.
+// Returns a Map keyed by instance id; value `true` ⇒ the bonus applies for the
+// entire active window. Gate passes when at least one entry whose id is in
+// `requires_active` (a) has its active window covering `inst.effect_time` and
+// (b) resolves to a recipient set that includes the caster of `inst`. The
+// gating window is the natural `[effect_time, effect_time + duration]`; no
+// re-evaluation happens during the per-hit walk.
+function computeConditionalSatisfaction(
+  allMits: readonly MitigationInstance[],
+  lookupMitType: MitTypeLookup,
+): Map<string, boolean> {
+  const out = new Map<string, boolean>();
+  for (const m of allMits) {
+    const mt = lookupMitType(m.type_id);
+    if (!mt?.conditional_bonus) continue;
+    const required = mt.conditional_bonus.requires_active;
+    const casterId = m.player_slot_id;
+    let satisfied = false;
+    for (const other of allMits) {
+      if (other.id === m.id) continue;
+      if (!required.includes(other.type_id)) continue;
+      const ot = lookupMitType(other.type_id);
+      if (!ot) continue;
+      if (m.effect_time < other.effect_time) continue;
+      if (m.effect_time > other.effect_time + ot.duration_seconds) continue;
+      if (!recipientIncludes(ot.affects, other, casterId)) continue;
+      satisfied = true;
+      break;
+    }
+    out.set(m.id, satisfied);
+  }
+  return out;
 }
 
 // Effective cooldown (in seconds) for a single mit instance — the length from

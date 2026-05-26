@@ -5,8 +5,9 @@ import type { MitigationType } from "@/domain/types";
 // Sheltron is omitted — it upgrades to Holy Sheltron via trait at L82.
 // Holy Sheltron and Intervention carry tiered % mit (15% / 15% and 10% / 10%
 // respectively, with the inner tier covering the first 4s); their cure-potency
-// Knight's Benediction regen is deferred per shielded-mits policy. Intervention's
-// conditional +10% bonus while Rampart/Guardian is active is also deferred.
+// Knight's Benediction regen is deferred per shielded-mits policy.
+// Intervention also carries a conditional +10% bonus when cast under Rampart
+// or Guardian (cast-time snapshot, applies for the full active window).
 export const PLD_MITS: MitigationType[] = [
   {
     id: "pld.rampart",
@@ -83,9 +84,12 @@ export const PLD_MITS: MitigationType[] = [
     affects: "target",
     max_charges: 1,
     mechanic: "mit",
-    // Knight's Benediction regen + conditional +10% during Rampart/Guardian deferred
-    // per shielded-mits policy / Trust the timeline.
+    // Knight's Benediction regen deferred per shielded-mits policy.
     tiers: [{ offset_seconds: 0, duration_seconds: 4, mitigation_per_type: { all: 10 } }],
+    conditional_bonus: {
+      requires_active: ["pld.rampart", "pld.guardian"],
+      mitigation_per_type: { all: 10 },
+    },
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Intervention",
   },
   {

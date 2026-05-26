@@ -1633,6 +1633,28 @@ button {
   z-index: 1;
 }
 
+/* Conditional bonus marker: a small "+" glyph near the top-right of the
+   active band, indicating that the entry carries a cast-time-gated bonus
+   (e.g. PLD Intervention's +10% under Rampart/Guardian). Static — the marker
+   does NOT reflect whether the gate was satisfied; the damage chip is the
+   source of truth for the actual reduction applied. */
+.mit-bar-conditional-marker {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 10px;
+  line-height: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: 2;
+}
+.lane-scroll.theme-light .mit-bar-conditional-marker {
+  color: rgba(0, 0, 0, 0.75);
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.6);
+}
+
 /* Gated-child duration band on the parent's bar. The inner segment (inside
    the parent's active window) is pointer-transparent so clicks select the
    parent; the extension segment past the parent's active end uses a 45°

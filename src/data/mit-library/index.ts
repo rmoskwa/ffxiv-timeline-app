@@ -82,6 +82,25 @@ for (const mit of MIT_LIBRARY) {
       }
     }
   }
+  if (mit.conditional_bonus) {
+    const cb = mit.conditional_bonus;
+    if (cb.requires_active.length === 0) {
+      throw new Error(`mit-library: ${mit.id} conditional_bonus.requires_active must be non-empty`);
+    }
+    for (const ref of cb.requires_active) {
+      if (!BY_ID.has(ref)) {
+        throw new Error(
+          `mit-library: ${mit.id} conditional_bonus.requires_active references "${ref}" but no such entry exists`,
+        );
+      }
+    }
+    const hasMagnitude = Object.values(cb.mitigation_per_type).some((v) => v != null && v !== 0);
+    if (!hasMagnitude) {
+      throw new Error(
+        `mit-library: ${mit.id} conditional_bonus.mitigation_per_type must declare a non-zero reduction`,
+      );
+    }
+  }
 }
 
 export function getMitById(id: string): MitigationType | undefined {
