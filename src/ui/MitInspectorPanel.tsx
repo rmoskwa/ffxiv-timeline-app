@@ -107,14 +107,19 @@ interface HeldDurationFieldProps {
   type: MitigationType;
 }
 
-// Numeric editor for held-ability active duration. Mirrors the right-edge
-// resize handle on the bar — useful when the user wants a precise value or
-// when the bar is too small at the current zoom for fine drag control.
+// Numeric editor for held-ability hold time — the seconds the player keeps
+// the ability channeled before releasing. The stored field
+// `held_duration_seconds` is the TOTAL active window length (engine math is
+// coverage-based, not hold-based); the inspector translates to/from hold time
+// at the edges: hold = active − min_duration_seconds. So Passage's range here
+// is 0..18s even though active runs 5..23s.
 function HeldDurationField({ mit, type }: HeldDurationFieldProps) {
   const updateMit = useTimelineStore((s) => s.updateMitigationInstance);
-  const min = type.min_duration_seconds ?? 0;
-  const max = type.duration_seconds;
-  const current = instanceActiveDurationSeconds(type, mit);
+  const floor = type.min_duration_seconds ?? 0;
+  const ceiling = type.duration_seconds;
+  const maxHold = ceiling - floor;
+  const currentActive = instanceActiveDurationSeconds(type, mit);
+  const currentHold = currentActive - floor;
   return (
     <div className="mit-inspector-held">
       <label className="mit-inspector-held-label" htmlFor={`held-${mit.id}`}>
@@ -123,22 +128,21 @@ function HeldDurationField({ mit, type }: HeldDurationFieldProps) {
       <input
         id={`held-${mit.id}`}
         type="number"
-        min={min}
-        max={max}
+        min={0}
+        max={maxHold}
         step={1}
-        value={current}
+        value={currentHold}
         onChange={(e) => {
           const parsed = Number.parseInt(e.target.value, 10);
           if (Number.isNaN(parsed)) return;
-          const clamped = Math.max(min, Math.min(max, parsed));
-          if (clamped !== current) {
-            updateMit(mit.id, { held_duration_seconds: clamped });
+          const clampedHold = Math.max(0, Math.min(maxHold, parsed));
+          const newActive = clampedHold + floor;
+          if (newActive !== currentActive) {
+            updateMit(mit.id, { held_duration_seconds: newActive });
           }
         }}
       />
-      <span className="mit-inspector-held-range">
-        {min}–{max}s
-      </span>
+      <span className="mit-inspector-held-range">0–{maxHold}s</span>
     </div>
   );
 }
