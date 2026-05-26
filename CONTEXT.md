@@ -120,6 +120,10 @@ _Avoid_: gate window, casting window, parent window
 The behavior of materializing **child mit** instances at the moment a parent is placed. Each gated child auto-creates at the middle of its **execution zone**. Auto-spawn is one-shot — it runs at parent-placement time, consults the gating pass (PCT Tempera Grassa is skipped if Tempera Coat is known to be absorbed before the middle position), and from then on the child is a normal user-controlled `MitigationInstance` — drag to move, X-affordance to delete, **MitInspectorPanel** to re-add. For SCH Consolation (two charges per Summon Seraph window), both charges auto-spawn at packed-middle positions (t=parent_middle and t=parent_middle+2) with a minimum 2s gap enforced on subsequent drags.
 _Avoid_: auto-add, auto-create
 
+**Shared recast**:
+A symmetric cooldown link between two or more `MitigationType`s, modeled by them carrying the same `shared_recast_group` string (e.g. `"war.bloodwhetting_nf"` for WAR Bloodwhetting ↔ Nascent Flash). Casting any group member locks every other member's sub-lane out for the caster's effective cooldown window: the partner sub-lane paints a stripes-only phantom cooldown band over that window — no icon, no active segment, fully inert — and **placement** / drag-clamp logic treats partner instances as blocking neighbors the same way they treat own-type **Bars**. Purely UI-side: no link between specific instances, no impact on **Coverage** or damage math. Distinct from **Parent mit / Child mit** (gated, asymmetric, one parent at a time) — shared-recast members are peers and any one of them may be cast first. The phantom band uses the cooldown-tail stripe pattern; it is *not* a **Bar** and does not show up as one in the **Selection** model.
+_Avoid_: linked cooldown, recast lock, recast share (use "shared recast" as the noun)
+
 **Tank Mastery**:
 A tank-only always-on 20% all-source damage reduction. Applied multiplicatively at the % mit step (not as a barrier). Derived from **Role** at math time — not stored on the slot.
 _Avoid_: tank passive, tank mit
