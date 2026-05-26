@@ -428,7 +428,8 @@ button {
 /* CSS opacity composites the whole subtree, which would bleed through the
    JobPicker popover. Restore full opacity while the picker is open so the
    popover reads as opaque. */
-.roster-list li.unset.has-picker-open {
+.roster-list li.unset.has-picker-open,
+.roster-list li.hidden.has-picker-open {
   opacity: 1;
 }
 .roster-list li.hidden {
