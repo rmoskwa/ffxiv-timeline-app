@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type Conflict, detectConflicts } from "./conflicts";
+import type { MitInstanceState } from "./damage";
 import type {
   BossAbilityInstance,
   BossAbilityType,
@@ -252,5 +253,37 @@ describe("detectConflicts — missing_consumed_mit", () => {
     const conflicts = detectConflicts([c, g], lk, otherRoster);
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.kind).toBe("missing_consumed_mit");
+  });
+
+  it("flags Grassa cast after Coat's shield was absorbed within its window", () => {
+    // Coat at t=10 (window [10,20]); Coat's shield absorbed by a hit at t=15;
+    // Grassa at t=18 — still inside Coat's natural window but Coat already
+    // drained → conflict.
+    const c = pctMit("c", COAT.id, 10);
+    const g = pctMit("g", GRASSA.id, 18);
+    const states = new Map<string, MitInstanceState>([["c", { absorbed_at: 15 }]]);
+    const conflicts = detectConflicts([c, g], lk, pctRoster, [], [], states);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.kind).toBe("missing_consumed_mit");
+  });
+
+  it("allows Grassa at the exact absorption tick (strict: > absorbed_at)", () => {
+    // Per the gating answer: Grassa at any time AFTER absorption is gated.
+    // Grassa at t == absorbed_at is allowed (the consumer fires alongside the
+    // absorbing hit and dispels the pool before the hit lands).
+    const c = pctMit("c", COAT.id, 10);
+    const g = pctMit("g", GRASSA.id, 15);
+    const states = new Map<string, MitInstanceState>([["c", { absorbed_at: 15 }]]);
+    const conflicts = detectConflicts([c, g], lk, pctRoster, [], [], states);
+    expect(conflicts).toHaveLength(0);
+  });
+
+  it("allows Grassa cast before Coat's shield is absorbed", () => {
+    // Coat at t=10, absorbed at t=15. Grassa at t=12 — before absorption,
+    // so Coat is alive at Grassa's effect_time.
+    const c = pctMit("c", COAT.id, 10);
+    const g = pctMit("g", GRASSA.id, 12);
+    const states = new Map<string, MitInstanceState>([["c", { absorbed_at: 15 }]]);
+    expect(detectConflicts([c, g], lk, pctRoster, [], [], states)).toHaveLength(0);
   });
 });

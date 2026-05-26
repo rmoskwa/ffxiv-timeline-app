@@ -1,5 +1,7 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { getMitById } from "@/data/mit-library";
+import { effectiveCooldownSeconds } from "@/domain/damage";
 import { targetingForMit } from "@/domain/targeting";
 import { formatMitMagnitude, type MitigationInstance, type MitigationType } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
@@ -7,7 +9,7 @@ import { MitIcon } from "./MitIcon";
 import { jobColor } from "./role-color";
 import { TargetPicker } from "./TargetPicker";
 import { secondsToTimecode } from "./timeline-constants";
-import { useConflictedMitIds } from "./use-derived";
+import { useConflictedMitIds, useMitInstanceStates } from "./use-derived";
 import { useRowSize } from "./use-row-size";
 import { useZoom } from "./use-zoom";
 
@@ -34,6 +36,8 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
     (s) => s.selectedInstance?.kind === "mit" && s.selectedInstance.id === instance.id,
   );
   const roster = useTimelineStore((s) => s.timeline?.roster);
+  const allMits = useTimelineStore((s) => s.timeline?.mitigation_instances);
+  const mitStates = useMitInstanceStates();
   const { pxPerSec, laneDurationSec } = useZoom();
   const { mitBarHeight, mitIconSize } = useRowSize();
 
@@ -49,7 +53,17 @@ export function MitBar({ instance, type, rowSiblings }: MitBarProps) {
   // at the timeline edge.
   const remainingSec = Math.max(0, laneDurationSec - renderEffectTime);
   const visibleDurationSec = Math.min(type.duration_seconds, remainingSec);
-  const cooldownTailSec = Math.max(0, type.cooldown_seconds - type.duration_seconds);
+  // Effective cooldown after CD-reduce-on-absorb (Coat-on-Coat-absorb,
+  // Coat-on-Grassa-absorb) and consumes-mirror (Grassa's bar always matches
+  // the Coat instance it came from).
+  const effectiveCdSec = effectiveCooldownSeconds(
+    instance,
+    type,
+    allMits ?? [],
+    getMitById,
+    mitStates,
+  );
+  const cooldownTailSec = Math.max(0, effectiveCdSec - type.duration_seconds);
   const visibleCooldownTailSec = Math.max(
     0,
     Math.min(cooldownTailSec, remainingSec - visibleDurationSec),

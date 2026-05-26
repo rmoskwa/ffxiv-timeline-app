@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   computeDamagePerPlayer,
   computeDamageTimeline,
+  effectiveCooldownSeconds,
+  type MitInstanceState,
   type PerPlayerHitResult,
   PLAYER_MAX_HP,
 } from "./damage";
@@ -211,6 +213,39 @@ const TYPES: Record<string, MitigationType> = {
     barrier: { kind: "max_hp_pct", value: 10 },
     consumes: "synth.self_shield_20",
     wiki_url: "https://example.com/consumer-party-10",
+  },
+  // Tempera-shaped pair: Coat is 20% self with -60s on self-absorb.
+  // Grassa consumes Coat, 10% party shield, -30s applies to its consumed
+  // parent Coat (per types.ts convention: when `consumes` is set,
+  // cooldown_reduce_on_absorb targets the consumed instance).
+  temperaCoat: {
+    id: "synth.tempera_coat",
+    name: "Synth Tempera Coat",
+    job: "PCT",
+    cooldown_seconds: 120,
+    duration_seconds: 10,
+    mitigation_per_type: {},
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 20 },
+    cooldown_reduce_on_absorb: 60,
+    wiki_url: "https://example.com/tempera-coat",
+  },
+  temperaGrassa: {
+    id: "synth.tempera_grassa",
+    name: "Synth Tempera Grassa",
+    job: "PCT",
+    cooldown_seconds: 120,
+    duration_seconds: 10,
+    mitigation_per_type: {},
+    affects: "party",
+    max_charges: 1,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 10 },
+    consumes: "synth.tempera_coat",
+    cooldown_reduce_on_absorb: 30,
+    wiki_url: "https://example.com/tempera-grassa",
   },
 };
 const lookup = (id: string): MitigationType | undefined =>
@@ -733,6 +768,163 @@ describe("computeDamageTimeline — consumes drops the prior pool on caster", ()
       hp_after: 85_000,
       active_shields_after: 0,
     });
+  });
+});
+
+// ─── Absorbed-at tracking + effective cooldown ──────────────────────────────
+
+describe("computeDamageTimeline — instance state (absorbed_at, consumed_from)", () => {
+  it("records absorbed_at on a pool fully drained by a hit", () => {
+    // 30k pool on s6 at t=50; 50k hit at t=55 → pool fully drained → absorbed.
+    const shield = mit({
+      id: "shield",
+      player_slot_id: "s6",
+      type_id: "synth.self_shield_30",
+      effect_time: 50,
+    });
+    const hit = bossInstance({ id: "h", effect_time: 55 });
+    const states = new Map<string, MitInstanceState>();
+    computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 50_000 })],
+      [shield],
+      lookup,
+      ROSTER,
+      states,
+    );
+    expect(states.get("shield")?.absorbed_at).toBe(55);
+  });
+
+  it("leaves absorbed_at unset when the pool is only partially drained", () => {
+    const shield = mit({
+      id: "shield",
+      player_slot_id: "s6",
+      type_id: "synth.self_shield_30",
+      effect_time: 50,
+    });
+    const hit = bossInstance({ id: "h", effect_time: 55 });
+    const states = new Map<string, MitInstanceState>();
+    computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 10_000 })],
+      [shield],
+      lookup,
+      ROSTER,
+      states,
+    );
+    expect(states.get("shield")?.absorbed_at).toBeUndefined();
+  });
+
+  it("leaves absorbed_at unset when a consumer dispels the pool (no hit drained it)", () => {
+    // Coat at t=50 on s6. Grassa at t=55 consumes it. No hit absorbs anything.
+    const coat = mit({
+      id: "coat",
+      player_slot_id: "s6",
+      type_id: "synth.tempera_coat",
+      effect_time: 50,
+    });
+    const grassa = mit({
+      id: "grassa",
+      player_slot_id: "s6",
+      type_id: "synth.tempera_grassa",
+      effect_time: 55,
+    });
+    const states = new Map<string, MitInstanceState>();
+    computeDamageTimeline([], [], [coat, grassa], lookup, ROSTER, states);
+    expect(states.get("coat")?.absorbed_at).toBeUndefined();
+    expect(states.get("grassa")?.consumed_from_instance_id).toBe("coat");
+  });
+
+  it("records consumed_from_instance_id only when a live consumed pool was dispelled", () => {
+    // Grassa fired without an active Coat → no consumed pool to dispel.
+    const grassa = mit({
+      id: "grassa",
+      player_slot_id: "s6",
+      type_id: "synth.tempera_grassa",
+      effect_time: 55,
+    });
+    const states = new Map<string, MitInstanceState>();
+    computeDamageTimeline([], [], [grassa], lookup, ROSTER, states);
+    expect(states.get("grassa")?.consumed_from_instance_id).toBeUndefined();
+  });
+});
+
+describe("effectiveCooldownSeconds", () => {
+  const TEMPERA_COAT = TYPES.temperaCoat;
+  const TEMPERA_GRASSA = TYPES.temperaGrassa;
+  if (!TEMPERA_COAT || !TEMPERA_GRASSA) throw new Error("Tempera fixtures missing");
+  const allMits = (
+    pieces: { id: string; type_id: string; effect_time: number }[],
+  ): MitigationInstance[] => pieces.map((p) => mit({ ...p, player_slot_id: "s6" }));
+
+  it("returns base cooldown when no absorption recorded", () => {
+    const m = mit({ id: "coat", player_slot_id: "s6", type_id: "synth.tempera_coat" });
+    const states = new Map<string, MitInstanceState>();
+    expect(effectiveCooldownSeconds(m, TEMPERA_COAT, [m], lookup, states)).toBe(120);
+  });
+
+  it("Coat self-absorbed → -60s on Coat", () => {
+    const m = mit({ id: "coat", player_slot_id: "s6", type_id: "synth.tempera_coat" });
+    const states = new Map<string, MitInstanceState>([["coat", { absorbed_at: 55 }]]);
+    expect(effectiveCooldownSeconds(m, TEMPERA_COAT, [m], lookup, states)).toBe(60);
+  });
+
+  it("Grassa absorbed → -30s on the parent Coat instance", () => {
+    const mits = allMits([
+      { id: "coat", type_id: "synth.tempera_coat", effect_time: 50 },
+      { id: "grassa", type_id: "synth.tempera_grassa", effect_time: 55 },
+    ]);
+    const states = new Map<string, MitInstanceState>([
+      ["grassa", { absorbed_at: 60, consumed_from_instance_id: "coat" }],
+    ]);
+    const coat = mits[0];
+    if (!coat) throw new Error("fixture missing");
+    expect(effectiveCooldownSeconds(coat, TEMPERA_COAT, mits, lookup, states)).toBe(90);
+  });
+
+  it("both Coat absorbed AND Grassa absorbed → -60 -30 = -90 on Coat", () => {
+    const mits = allMits([
+      { id: "coat", type_id: "synth.tempera_coat", effect_time: 50 },
+      { id: "grassa", type_id: "synth.tempera_grassa", effect_time: 55 },
+    ]);
+    const states = new Map<string, MitInstanceState>([
+      ["coat", { absorbed_at: 53 }],
+      ["grassa", { absorbed_at: 60, consumed_from_instance_id: "coat" }],
+    ]);
+    const coat = mits[0];
+    if (!coat) throw new Error("fixture missing");
+    expect(effectiveCooldownSeconds(coat, TEMPERA_COAT, mits, lookup, states)).toBe(30);
+  });
+
+  it("Grassa mirrors its parent Coat's effective CD", () => {
+    const mits = allMits([
+      { id: "coat", type_id: "synth.tempera_coat", effect_time: 50 },
+      { id: "grassa", type_id: "synth.tempera_grassa", effect_time: 55 },
+    ]);
+    // Coat self-absorbed → Coat effective CD = 60 → Grassa mirrors that.
+    const states = new Map<string, MitInstanceState>([
+      ["coat", { absorbed_at: 53 }],
+      ["grassa", { consumed_from_instance_id: "coat" }],
+    ]);
+    const grassa = mits[1];
+    if (!grassa) throw new Error("fixture missing");
+    expect(effectiveCooldownSeconds(grassa, TEMPERA_GRASSA, mits, lookup, states)).toBe(60);
+  });
+
+  it("Grassa without a recorded parent → falls back to its own data CD", () => {
+    const m = mit({ id: "grassa", player_slot_id: "s6", type_id: "synth.tempera_grassa" });
+    const states = new Map<string, MitInstanceState>();
+    expect(effectiveCooldownSeconds(m, TEMPERA_GRASSA, [m], lookup, states)).toBe(120);
+  });
+
+  it("never goes below zero", () => {
+    // Pathological: reduction > base cooldown.
+    const m = mit({ id: "coat", player_slot_id: "s6", type_id: "synth.tempera_coat" });
+    const tinyCoat: MitigationType = { ...TEMPERA_COAT, cooldown_seconds: 30 };
+    const tinyLookup = (id: string): MitigationType | undefined =>
+      id === tinyCoat.id ? tinyCoat : lookup(id);
+    const states = new Map<string, MitInstanceState>([["coat", { absorbed_at: 5 }]]);
+    expect(effectiveCooldownSeconds(m, tinyCoat, [m], tinyLookup, states)).toBe(0);
   });
 });
 

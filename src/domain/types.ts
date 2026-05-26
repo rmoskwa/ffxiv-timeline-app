@@ -110,6 +110,14 @@ export interface MitigationType {
   // mit-dispels-mit pairs like PCT Tempera Grassa → Tempera Coat.
   // ConflictsPanel flags placements where no active `consumes` instance exists.
   consumes?: string;
+  // Seconds shaved off a cooldown when *this entry's* shield is fully absorbed
+  // by a boss hit. If the entry also has `consumes`, the reduction applies to
+  // the consumed entry's instance (the "parent"), not self — PCT Tempera Grassa
+  // absorbing reduces Tempera Coat's cooldown, not Grassa's. Otherwise the
+  // reduction applies to self (PCT Tempera Coat). Absorption attribution
+  // follows the engine's consumption order: soonest-to-expire-first,
+  // oldest-applied-first tiebreak — see CONTEXT.md "Barrier pool".
+  cooldown_reduce_on_absorb?: number;
   // FFXIV wiki page for this ability. Re-verify against this URL before
   // changing any numeric value — it is the source of truth.
   wiki_url: string;

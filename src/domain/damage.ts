@@ -50,6 +50,23 @@ export interface PerPlayerHitResult {
   active_shields_after: number;
 }
 
+// Per-mit-instance state produced by the damage walk. Optional out-parameter
+// on computeDamageTimeline — callers that want CD-reduce-on-absorb display or
+// absorbed-state-aware conflict detection populate the map; callers that just
+// need per-hit damage can ignore it.
+export interface MitInstanceState {
+  // Time (boss-hit effect_time) at which this mit's barrier pool was fully
+  // drained by a hit. Only set if drained by a hit during the active window —
+  // pools dropped by cross-type consume (e.g. Grassa dispelling Coat) or by
+  // duration expiry do NOT set this.
+  absorbed_at?: number;
+  // For consumer mits with a `consumes` field: the source_instance_id of the
+  // consumed pool that this mit dispelled. Empty if no live consumed pool was
+  // found at fire time. Used to tie a Grassa back to the Coat instance it
+  // came from for mirrored cooldown rendering.
+  consumed_from_instance_id?: string;
+}
+
 // In-flight barrier pool tracked while walking hits chronologically.
 interface BarrierPool {
   // Unique per (mit instance, recipient slot) — multi-charge casts of the same
@@ -92,6 +109,7 @@ export function computeDamageTimeline(
   allMits: readonly MitigationInstance[],
   lookupMitType: MitTypeLookup,
   roster: Roster,
+  outInstanceStates?: Map<string, MitInstanceState>,
 ): Map<string, (PerPlayerHitResult | null)[]> {
   const typeById = new Map(hitTypes.map((t) => [t.id, t]));
   const out = new Map<string, (PerPlayerHitResult | null)[]>();
@@ -107,9 +125,24 @@ export function computeDamageTimeline(
   // player slot being evaluated.
   const effectiveEnds = computeEffectiveEnds(allMits, lookupMitType, roster);
 
+  // Internal per-instance state. Always tracked so cross-type consume can record
+  // its parent association; copied to outInstanceStates at the end if provided.
+  const instanceStates = new Map<string, MitInstanceState>();
+  const ensureState = (id: string): MitInstanceState => {
+    let s = instanceStates.get(id);
+    if (!s) {
+      s = {};
+      instanceStates.set(id, s);
+    }
+    return s;
+  };
+
   // Pre-compute barrier-seeding events; each fires at a mit's effect_time.
   // We don't gate seeding on coverage of any single hit — barriers apply
   // independently of any given hit (they wait for any hit during their window).
+  // Consumer mits (those with `consumes`) emit a seed even if they have no
+  // barrier themselves — the seed handles the dispel side-effect on the
+  // consumed pool.
   interface BarrierEvent {
     at: number; // mit.effect_time
     mit: MitigationInstance;
@@ -118,7 +151,8 @@ export function computeDamageTimeline(
   const barrierEvents: BarrierEvent[] = [];
   for (const m of allMits) {
     const mt = lookupMitType(m.type_id);
-    if (!mt?.barrier) continue;
+    if (!mt) continue;
+    if (!mt.barrier && !mt.consumes) continue;
     barrierEvents.push({ at: m.effect_time, mit: m, type: mt });
   }
 
@@ -135,7 +169,7 @@ export function computeDamageTimeline(
       const seed = sortedSeeds[seedIdx];
       if (!seed) break;
       if (seed.at > uptoT) break;
-      seedBarrier(seed.mit, seed.type, roster, pools, maxHp);
+      seedBarrier(seed.mit, seed.type, roster, pools, maxHp, ensureState);
       seedIdx++;
     }
   };
@@ -181,6 +215,15 @@ export function computeDamageTimeline(
           const absorbed = Math.min(p.hp_remaining, toHp);
           p.hp_remaining -= absorbed;
           toHp -= absorbed;
+          // Record absorption attribution exactly once, at the hit that drains
+          // this pool to zero. Pool-drop by duration expiry or by cross-type
+          // consume does not run through this path, so absorbed_at stays unset
+          // in those cases — matching CD-reduce-on-absorb's "absorbed by a
+          // boss hit" semantics.
+          if (p.hp_remaining <= 0) {
+            const s = ensureState(p.source_instance_id);
+            if (s.absorbed_at == null) s.absorbed_at = inst.effect_time;
+          }
         }
         pools[i] = playerPools.filter((p) => p.hp_remaining > 0);
       }
@@ -198,6 +241,15 @@ export function computeDamageTimeline(
     out.set(inst.id, result);
   }
 
+  // Drain seeds past the last hit so cross-type consume records its parent
+  // association even for placements that occur after every boss hit (or on
+  // timelines with no hits at all). No barrier/HP math depends on this; only
+  // state tracking does.
+  applySeeds(Number.POSITIVE_INFINITY);
+
+  if (outInstanceStates) {
+    for (const [id, s] of instanceStates) outInstanceStates.set(id, s);
+  }
   return out;
 }
 
@@ -207,17 +259,23 @@ function seedBarrier(
   roster: Roster,
   pools: BarrierPool[][],
   maxHp: readonly number[],
+  ensureState: (id: string) => MitInstanceState,
 ) {
   // Cross-type consume: dispel the consumed mit's barrier pool on the caster
   // slot before seeding this mit's own pool. Independent of whether this mit
   // itself carries a barrier (a future utility-only consumer still ends the
-  // prior pool).
+  // prior pool). The dispelled pool's source instance id is recorded on the
+  // consumer for downstream cooldown-mirror / CD-reduce attribution.
   if (type.consumes) {
     const casterIdx = roster.findIndex((s) => s.id === mit.player_slot_id);
     const consumedId = type.consumes;
     if (casterIdx >= 0) {
       const prior = pools[casterIdx];
       if (prior && prior.length > 0) {
+        const dispelled = prior.find((p) => p.type_id === consumedId);
+        if (dispelled) {
+          ensureState(mit.id).consumed_from_instance_id = dispelled.source_instance_id;
+        }
         pools[casterIdx] = prior.filter((p) => p.type_id !== consumedId);
       }
     }
@@ -335,6 +393,59 @@ function computeEffectiveEnds(
     }
   }
   return ends;
+}
+
+// Effective cooldown (in seconds) for a single mit instance, after applying
+// CD-reduce-on-absorb. Two cases:
+//   1. The instance itself has `cooldown_reduce_on_absorb` and no `consumes`
+//      (e.g. PCT Tempera Coat): self-absorb reduces self's CD; additionally,
+//      any consumer instance that dispelled THIS instance and was itself
+//      absorbed contributes its own reduction (Grassa-absorbed → -30 to Coat).
+//   2. The instance has `consumes` (e.g. PCT Tempera Grassa): its bar mirrors
+//      the consumed parent's effective CD (Grassa's bar is always as long as
+//      the Coat it came from). If no parent is recorded (consumer placed
+//      without a live consumed pool — i.e. conflicted), falls back to the
+//      mit's own data CD.
+export function effectiveCooldownSeconds(
+  inst: MitigationInstance,
+  type: MitigationType,
+  allMits: readonly MitigationInstance[],
+  lookupMitType: MitTypeLookup,
+  perInstanceState: ReadonlyMap<string, MitInstanceState>,
+): number {
+  if (type.consumes) {
+    const parentId = perInstanceState.get(inst.id)?.consumed_from_instance_id;
+    if (parentId) {
+      const parent = allMits.find((m) => m.id === parentId);
+      const parentType = parent ? lookupMitType(parent.type_id) : undefined;
+      if (parent && parentType) {
+        return effectiveCooldownSeconds(
+          parent,
+          parentType,
+          allMits,
+          lookupMitType,
+          perInstanceState,
+        );
+      }
+    }
+    return type.cooldown_seconds;
+  }
+  let reduction = 0;
+  const selfState = perInstanceState.get(inst.id);
+  if (selfState?.absorbed_at != null && type.cooldown_reduce_on_absorb) {
+    reduction += type.cooldown_reduce_on_absorb;
+  }
+  for (const other of allMits) {
+    if (other.id === inst.id) continue;
+    const otherState = perInstanceState.get(other.id);
+    if (otherState?.consumed_from_instance_id !== inst.id) continue;
+    if (otherState.absorbed_at == null) continue;
+    const otherType = lookupMitType(other.type_id);
+    if (otherType?.cooldown_reduce_on_absorb) {
+      reduction += otherType.cooldown_reduce_on_absorb;
+    }
+  }
+  return Math.max(0, type.cooldown_seconds - reduction);
 }
 
 // Soonest-to-expire-first; equal-expiry tiebroken oldest-applied-first.
