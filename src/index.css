@@ -2077,6 +2077,15 @@ button {
   background: transparent;
   border-right-color: transparent;
 }
+/* Phantom gutters on the ruler / boss rows blend into their row's label
+   background so the new column reads as an extension of the existing label
+   strip, not as an awkward gap to its left. */
+.lane-row--ruler .job-gutter--phantom {
+  background: #1f1f1f;
+}
+.lane-row--boss .job-gutter--phantom {
+  background: #2a1f15;
+}
 
 /* Shift the sticky lane-label / sub-lane-label one gutter-width right so it
    sits flush against the gutter when horizontally scrolled (instead of
@@ -2120,12 +2129,15 @@ button {
 /* Mit canvas: single flex column wrapping every slot's mit group. Leftover
    vertical space distributes proportionally to each slot's sub-lane count
    (via flexGrow set inline on .slot-mit-group), so the per-sub-lane height
-   stays uniform across the whole canvas instead of being equal per slot. */
+   stays uniform across the whole canvas instead of being equal per slot.
+   `flex-basis: auto` (not 0) so the canvas's own size includes its content
+   — otherwise mit-canvas reports 0 natural height and, when icon size grows
+   past the available leftover, its children overflow downward and paint
+   right over the chip-section that sits below it in Bottom mode. */
 .mit-canvas {
   display: flex;
   flex-direction: column;
-  flex: 1 0 0;
-  min-height: 0;
+  flex: 1 1 auto;
 }
 .slot-mit-group {
   display: flex;
@@ -2145,6 +2157,12 @@ button {
 }
 .lane-scroll.theme-light .job-gutter--phantom {
   border-right-color: transparent;
+}
+.lane-scroll.theme-light .lane-row--ruler .job-gutter--phantom {
+  background: #ececec;
+}
+.lane-scroll.theme-light .lane-row--boss .job-gutter--phantom {
+  background: #fff1e0;
 }
 .lane-scroll.theme-light .chip-section-row {
   border-bottom-color: #ececec;
