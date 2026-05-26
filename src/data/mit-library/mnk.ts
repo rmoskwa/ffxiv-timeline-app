@@ -13,6 +13,7 @@ export const MNK_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Feint",
+    non_stacking_group: "feint",
   },
   {
     id: "mnk.riddle_of_earth",

@@ -206,6 +206,15 @@ export interface MitigationType {
   // Rampart or Guardian. See docs/mit-library.md "First-class conditional
   // bonuses".
   conditional_bonus?: ConditionalBonus;
+  // Cross-type non-stacking slot. Library entries that share this string apply
+  // a single in-game effect (e.g. all four tank Reprisals share the "reprisal"
+  // debuff slot; BRD Troubadour / MCH Tactician / DNC Shield Samba share one
+  // party-buff slot). The damage engine treats instances within a group on the
+  // same recipient as overwriting each other — soonest-start truncates at the
+  // next instance's effect_time, matching FFXIV's buff-refresh semantics. When
+  // omitted the entry stacks freely with other entries but still non-stacks
+  // with other instances of its own id (the implicit group is the type id).
+  non_stacking_group?: string;
 }
 
 // Resolve the % mit an ability applies to a given damage type.

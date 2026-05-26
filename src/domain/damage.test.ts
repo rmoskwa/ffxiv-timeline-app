@@ -88,6 +88,53 @@ const TYPES: Record<string, MitigationType> = {
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Reprisal",
+    non_stacking_group: "reprisal",
+  },
+  // Second-job Reprisal for cross-type non-stacking tests. Distinct type_id
+  // from `reprisal` but the same `non_stacking_group` → the engine treats them
+  // as one slot per recipient.
+  reprisalWar: {
+    id: "war.reprisal",
+    name: "Reprisal",
+    job: "WAR",
+    cooldown_seconds: 60,
+    duration_seconds: 15,
+    mitigation_per_type: { all: 10 },
+    affects: "boss_debuff",
+    max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Reprisal",
+    non_stacking_group: "reprisal",
+  },
+  // Two different-type-id party barriers sharing a non-stacking group. Used to
+  // verify that the seed-time overwrite coalesces by group rather than by id.
+  groupedBarrierA: {
+    id: "synth.grouped_barrier_a",
+    name: "Synth Grouped Barrier A",
+    job: "BRD",
+    cooldown_seconds: 90,
+    duration_seconds: 20,
+    mitigation_per_type: {},
+    affects: "party",
+    max_charges: 1,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 20 },
+    non_stacking_group: "synth.grouped_barrier",
+    wiki_url: "https://example.com/grouped-barrier-a",
+  },
+  groupedBarrierB: {
+    id: "synth.grouped_barrier_b",
+    name: "Synth Grouped Barrier B",
+    job: "MCH",
+    cooldown_seconds: 90,
+    duration_seconds: 20,
+    mitigation_per_type: {},
+    affects: "party",
+    max_charges: 1,
+    mechanic: "mit",
+    barrier: { kind: "max_hp_pct", value: 10 },
+    non_stacking_group: "synth.grouped_barrier",
+    wiki_url: "https://example.com/grouped-barrier-b",
   },
   darkMissionary: {
     id: "drk.dark_missionary",
@@ -2267,5 +2314,148 @@ describe("computeDamageTimeline — max_hp_buff_pct scales effective HP", () => 
       active_shields_after: 0,
       max_hp: 120_000,
     });
+  });
+});
+
+describe("non_stacking_group — cross-type non-stacking", () => {
+  it("two Reprisals from different jobs overlapping: later truncates earlier (10% total, not 19%)", () => {
+    // DRK Reprisal at t=0, WAR Reprisal at t=10. At a hit during the overlap
+    // window (t=12), only the later instance covers — non-tank takes
+    // 100k × 0.9 = 90k, not 100k × 0.9 × 0.9 = 81k.
+    const a = mit({
+      id: "rp-drk",
+      player_slot_id: "s0",
+      type_id: "drk.reprisal",
+      effect_time: 0,
+    });
+    const b = mit({
+      id: "rp-war",
+      player_slot_id: "s1",
+      type_id: "war.reprisal",
+      effect_time: 10,
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 12 }),
+      bossType({ base_damage: 100_000 }),
+      [a, b],
+      lookup,
+      ROSTER,
+    );
+    // Non-tank players: 90k (single 10% Reprisal). Tanks: 72k (Reprisal × TM).
+    for (let i = 2; i < 8; i++) expect(result[i]?.damage_taken_to_hp).toBe(90_000);
+    expect(result[0]?.damage_taken_to_hp).toBe(72_000);
+    expect(result[1]?.damage_taken_to_hp).toBe(72_000);
+  });
+
+  it("two Reprisals from different jobs no overlap: each covers its own window independently", () => {
+    // DRK Reprisal 0–15, WAR Reprisal 20–35. A hit at t=10 is covered only by
+    // DRK's; a hit at t=25 only by WAR's. Each contributes 10% on its own.
+    const a = mit({
+      id: "rp-drk",
+      player_slot_id: "s0",
+      type_id: "drk.reprisal",
+      effect_time: 0,
+    });
+    const b = mit({
+      id: "rp-war",
+      player_slot_id: "s1",
+      type_id: "war.reprisal",
+      effect_time: 20,
+    });
+    const out = computeDamageTimeline(
+      [bossInstance({ id: "h1", effect_time: 10 }), bossInstance({ id: "h2", effect_time: 25 })],
+      [bossType({ base_damage: 100_000 })],
+      [a, b],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h1")?.[6]?.damage_taken_to_hp).toBe(90_000);
+    expect(out.get("h2")?.[6]?.damage_taken_to_hp).toBe(90_000);
+  });
+
+  it("same-type-id non-stacking still works (no behavior change for existing single-job case)", () => {
+    // Sanity: two DRK Reprisals overlapping behave the same way they did
+    // before the group field was added — they fold via implicit type-id group.
+    const a = mit({
+      id: "rp-1",
+      player_slot_id: "s0",
+      type_id: "drk.reprisal",
+      effect_time: 0,
+    });
+    const b = mit({
+      id: "rp-2",
+      player_slot_id: "s0",
+      type_id: "drk.reprisal",
+      effect_time: 10,
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 12 }),
+      bossType({ base_damage: 100_000 }),
+      [a, b],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(90_000);
+  });
+
+  it("grouped barriers from different jobs overlapping: later overwrites earlier's pool", () => {
+    // Two party barriers sharing a non-stacking group, seeded at t=0 (20% pool)
+    // and t=5 (10% pool). The later seed drops the prior pool on every
+    // recipient — at a hit during overlap, only the 10% (10k) pool absorbs.
+    const a = mit({
+      id: "ba",
+      player_slot_id: "s0",
+      type_id: "synth.grouped_barrier_a",
+      effect_time: 0,
+    });
+    const b = mit({
+      id: "bb",
+      player_slot_id: "s0",
+      type_id: "synth.grouped_barrier_b",
+      effect_time: 5,
+    });
+    // 30k hit on non-tank s6 at t=10: 10k absorbed by remaining pool, 20k to HP.
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 10 }),
+      bossType({ base_damage: 30_000 }),
+      [a, b],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]).toEqual({
+      damage_taken_to_hp: 20_000,
+      hp_after: 80_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+  });
+
+  it("ungrouped different-type-id barriers stack additively (control case)", () => {
+    // Two party barriers with no non_stacking_group between them: they live in
+    // separate implicit groups (their own ids) and both pools survive on each
+    // recipient. partyShield15 (15k) + selfShield20 stand-in via different
+    // shapes: use the existing partyShield15 (15%) alongside groupedBarrierA
+    // (20%, "synth.grouped_barrier" group) — different ids, different groups.
+    const a = mit({
+      id: "p1",
+      player_slot_id: "s0",
+      type_id: "synth.party_shield_15",
+      effect_time: 0,
+    });
+    const b = mit({
+      id: "p2",
+      player_slot_id: "s1",
+      type_id: "synth.grouped_barrier_a",
+      effect_time: 5,
+    });
+    // 60k hit at t=10: both pools absorb (15k + 20k = 35k); 25k to HP.
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 10 }),
+      bossType({ base_damage: 60_000 }),
+      [a, b],
+      lookup,
+      ROSTER,
+    );
+    expect(result[6]?.damage_taken_to_hp).toBe(25_000);
   });
 });

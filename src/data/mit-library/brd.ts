@@ -14,5 +14,6 @@ export const BRD_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Troubadour",
+    non_stacking_group: "phys_range_mit",
   },
 ];

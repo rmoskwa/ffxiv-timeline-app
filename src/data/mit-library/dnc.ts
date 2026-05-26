@@ -15,5 +15,6 @@ export const DNC_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Shield_Samba",
+    non_stacking_group: "phys_range_mit",
   },
 ];

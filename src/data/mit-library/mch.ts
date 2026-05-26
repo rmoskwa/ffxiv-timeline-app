@@ -14,6 +14,7 @@ export const MCH_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Tactician",
+    non_stacking_group: "phys_range_mit",
   },
   {
     id: "mch.dismantle",

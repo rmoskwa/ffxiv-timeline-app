@@ -30,6 +30,7 @@ export const GNB_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Reprisal",
+    non_stacking_group: "reprisal",
   },
   {
     id: "gnb.camouflage",

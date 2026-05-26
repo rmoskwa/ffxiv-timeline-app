@@ -97,14 +97,23 @@ export interface MitInstanceState {
 interface BarrierPool {
   // Unique per (mit instance, recipient slot) — multi-charge casts of the same
   // ability produce separate instances and therefore separate pools, except
-  // when overwriting: the (type_id, recipient) pair has at most one pool at
-  // any time (per FFXIV ability semantics — re-applying the same buff refreshes
-  // it, not double-stacks).
+  // when overwriting: the (group, recipient) pair has at most one pool at any
+  // time, where `group` is `type.non_stacking_group ?? type.id` (per FFXIV
+  // ability semantics — re-applying the same buff refreshes it, not double-
+  // stacks; and across-job equivalents share the same slot).
   source_instance_id: string;
   type_id: string;
+  group: string;
   applied_at: number; // mit.effect_time
   expires_at: number; // applied_at + duration
   hp_remaining: number;
+}
+
+// Resolve the non-stacking grouping key for a mit type. Entries that share a
+// `non_stacking_group` string fold into one slot for both % mit truncation and
+// barrier-pool overwrite; entries without one act as their own implicit group.
+function nonStackingGroup(type: MitigationType): string {
+  return type.non_stacking_group ?? type.id;
 }
 
 // Returns an 8-length array of per-player results. `null` continues to mean
@@ -412,16 +421,19 @@ function seedBarrier(
   // to every recipient — the bonus is a property of the cast, not per-slot.
   const bonusPct = (type.barrier_bonus_per_dispelled_pct ?? 0) * dispelCount;
   const effectiveValue = barrier.value + bonusPct;
+  const group = nonStackingGroup(type);
   for (let i = 0; i < 8; i++) {
     const player = roster[i];
     if (!player) continue;
     if (!recipientIncludes(type.affects, mit, player.id)) continue;
-    // Overwrite per (type_id, recipient): drop any in-flight pool of the same
-    // ability on this recipient before seeding the new one. Any leftover hp
-    // on the prior pool is discarded; the new pool starts fresh at full size.
+    // Overwrite per (group, recipient): drop any in-flight pool that shares
+    // this mit's non-stacking group on this recipient before seeding the new
+    // one. Any leftover hp on the prior pool is discarded; the new pool starts
+    // fresh at full size. With no explicit group, this still overwrites per
+    // (type_id, recipient) via the implicit type-id-as-group fallback.
     const prior = pools[i];
     if (prior && prior.length > 0) {
-      pools[i] = prior.filter((p) => p.type_id !== type.id);
+      pools[i] = prior.filter((p) => p.group !== group);
     }
     const cap = effectiveMaxHpAt(i, mit.effect_time);
     const hpPool = (cap * effectiveValue) / 100;
@@ -429,6 +441,7 @@ function seedBarrier(
     pools[i]?.push({
       source_instance_id: mit.id,
       type_id: type.id,
+      group,
       applied_at: mit.effect_time,
       expires_at: mit.effect_time + instanceActiveDurationSeconds(type, mit),
       hp_remaining: hpPool,
@@ -479,11 +492,16 @@ function recipientIdsForOverwrite(
 }
 
 // Per (mit instance, recipient) → exclusive upper bound for the mit's active
-// window when the next same-(type, recipient) instance starts inside its
+// window when the next same-(group, recipient) instance starts inside its
 // natural duration, or when a `consumes_many` consumer dispels this instance
 // on the caster slot. Absent entries → no overwrite or dispel; mitCovers uses
 // the natural inclusive window. Dispel truncation is folded in only for the
 // `(instId | casterId)` key — `consumes_many` dispels caster-only.
+//
+// "Group" here is `type.non_stacking_group ?? type.id`: same-type-id instances
+// fold into the implicit group (two SCH Expedients refresh each other) and
+// cross-type entries sharing a `non_stacking_group` also coalesce (PLD Reprisal
+// + WAR Reprisal share the "reprisal" debuff slot).
 function computeEffectiveEnds(
   allMits: readonly MitigationInstance[],
   lookupMitType: MitTypeLookup,
@@ -497,8 +515,9 @@ function computeEffectiveEnds(
   for (const m of allMits) {
     const mt = lookupMitType(m.type_id);
     if (!mt) continue;
+    const groupKey = nonStackingGroup(mt);
     for (const rid of recipientIdsForOverwrite(mt, m, roster)) {
-      const key = `${m.type_id}|${rid}`;
+      const key = `${groupKey}|${rid}`;
       let g = groups.get(key);
       if (!g) {
         g = { instances: [] };

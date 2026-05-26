@@ -13,6 +13,7 @@ export const PCT_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Addle",
+    non_stacking_group: "addle",
   },
   {
     id: "pct.tempera_coat",

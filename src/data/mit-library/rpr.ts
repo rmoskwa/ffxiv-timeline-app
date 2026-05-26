@@ -13,6 +13,7 @@ export const RPR_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Feint",
+    non_stacking_group: "feint",
   },
   {
     id: "rpr.arcane_crest",
