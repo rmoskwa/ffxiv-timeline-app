@@ -290,6 +290,37 @@ export interface MitigationInstance {
   held_duration_seconds?: number;
 }
 
+// Resolve the non-stacking grouping key for a mit type. Entries that share a
+// `non_stacking_group` string fold into one slot for both % mit truncation and
+// barrier-pool overwrite; entries without one act as their own implicit group.
+export function nonStackingGroup(type: MitigationType): string {
+  return type.non_stacking_group ?? type.id;
+}
+
+// Whether a mit instance's recipient resolution includes a given player slot.
+// Branches on the type's `affects` mode:
+//   - self / target / target_or_self: literal slot match
+//   - party: every slot
+//   - boss_debuff / none: never (no per-player recipient)
+export function recipientIncludes(
+  affects: MitAffects,
+  mit: MitigationInstance,
+  playerId: string,
+): boolean {
+  switch (affects) {
+    case "self":
+      return mit.player_slot_id === playerId;
+    case "party":
+      return true;
+    case "target":
+    case "target_or_self":
+      return mit.target_slot_ids.includes(playerId);
+    case "boss_debuff":
+    case "none":
+      return false;
+  }
+}
+
 // Effective active duration for a single placement. Held-ability semantics:
 //   - If the type opts in via `min_duration_seconds`, the instance's
 //     `held_duration_seconds` wins (the user's chosen hold time); absent →
