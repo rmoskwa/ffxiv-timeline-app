@@ -9,6 +9,7 @@ import {
   SchemaVersionError,
   serialize,
   serializeBossTimeline,
+  TimelineValidationError,
 } from "./serialize";
 
 describe("deserialize — version gate", () => {
@@ -146,5 +147,136 @@ describe("deserializeBossTimeline — gates", () => {
 
   it("rejects non-object JSON", () => {
     expect(() => deserializeBossTimeline("null")).toThrow(SchemaVersionError);
+  });
+});
+
+// ─── Field-level validation ────────────────────────────────────────────────
+
+describe("deserialize — field validation", () => {
+  function timelineWith(overrides: Record<string, unknown>): string {
+    return JSON.stringify({ ...newTimeline("fixture"), ...overrides });
+  }
+
+  it("rejects missing metadata", () => {
+    const json = timelineWith({ metadata: undefined });
+    expect(() => deserialize(json)).toThrow(TimelineValidationError);
+  });
+
+  it("rejects metadata.fight_duration_sec below 1", () => {
+    const tl = newTimeline("fixture");
+    const json = JSON.stringify({ ...tl, metadata: { ...tl.metadata, fight_duration_sec: 0 } });
+    expect(() => deserialize(json)).toThrowError(/fight_duration_sec/);
+  });
+
+  it("rejects a roster with the wrong length", () => {
+    const json = timelineWith({ roster: [] });
+    expect(() => deserialize(json)).toThrowError(/roster/);
+  });
+
+  it("rejects a roster slot with an unknown job", () => {
+    const tl = newTimeline("fixture");
+    const badRoster = tl.roster.map((s, i) => (i === 0 ? { ...s, job: "NONESUCH" } : s));
+    const json = JSON.stringify({ ...tl, roster: badRoster });
+    expect(() => deserialize(json)).toThrowError(/roster\[0\]\.job/);
+  });
+
+  it("rejects a boss-ability type with a negative base_damage", () => {
+    const tl = newTimeline("fixture");
+    const badType = {
+      id: "t1",
+      name: "Bad",
+      base_damage: -5,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_types: [badType] });
+    expect(() => deserialize(json)).toThrowError(/base_damage/);
+  });
+
+  it("rejects a boss-ability instance with a negative effect_time", () => {
+    const tl = newTimeline("fixture");
+    const badInst = {
+      id: "i1",
+      type_id: "t1",
+      effect_time: -10,
+      target_slot_ids: [],
+      observed_damage: [],
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_instances: [badInst] });
+    expect(() => deserialize(json)).toThrowError(/effect_time/);
+  });
+
+  it("rejects a boss-ability type with an invalid damage_type", () => {
+    const tl = newTimeline("fixture");
+    const badType = {
+      id: "t1",
+      name: "Bad",
+      base_damage: 0,
+      damage_type: "holy",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_types: [badType] });
+    expect(() => deserialize(json)).toThrowError(/damage_type/);
+  });
+
+  it("rejects a mitigation instance missing player_slot_id", () => {
+    const tl = newTimeline("fixture");
+    const badMit = {
+      id: "m1",
+      type_id: "x",
+      effect_time: 0,
+      target_slot_ids: [],
+      coverage_overrides: [],
+    };
+    const json = JSON.stringify({ ...tl, mitigation_instances: [badMit] });
+    expect(() => deserialize(json)).toThrowError(/player_slot_id/);
+  });
+
+  it("round-trips a freshly-created timeline through the validator", () => {
+    const tl = newTimeline("fixture");
+    expect(deserialize(serialize(tl))).toEqual(tl);
+  });
+});
+
+describe("deserializeBossTimeline — field validation", () => {
+  function bossTimelineWith(overrides: Record<string, unknown>): string {
+    const base = {
+      schema_version: TIMELINE_SCHEMA_VERSION,
+      kind: "boss_timeline",
+      boss_name: "Lindwurm",
+      fight_duration_sec: 600,
+      boss_ability_types: [],
+      boss_ability_instances: [],
+      phases: [],
+    };
+    return JSON.stringify({ ...base, ...overrides });
+  }
+
+  it("rejects missing boss_name", () => {
+    const json = bossTimelineWith({ boss_name: undefined });
+    expect(() => deserializeBossTimeline(json)).toThrowError(/boss_name/);
+  });
+
+  it("rejects fight_duration_sec below 1", () => {
+    const json = bossTimelineWith({ fight_duration_sec: 0 });
+    expect(() => deserializeBossTimeline(json)).toThrowError(/fight_duration_sec/);
+  });
+
+  it("rejects a phase with a non-numeric start_time", () => {
+    const json = bossTimelineWith({
+      phases: [{ id: "p1", start_time: "soon", name: "Start" }],
+    });
+    expect(() => deserializeBossTimeline(json)).toThrowError(/start_time/);
+  });
+
+  it("rejects an instance with a non-string target_slot_ids entry", () => {
+    const json = bossTimelineWith({
+      boss_ability_instances: [
+        { id: "i1", type_id: "t1", effect_time: 0, target_slot_ids: [42], observed_damage: [] },
+      ],
+    });
+    expect(() => deserializeBossTimeline(json)).toThrowError(/target_slot_ids/);
   });
 });

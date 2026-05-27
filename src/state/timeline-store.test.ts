@@ -323,6 +323,56 @@ describe("timeline-store — replaceBossTimeline", () => {
     useTimelineStore.getState().replaceBossTimeline(importPayload({ boss_name: "NewBoss" }));
     expect(useTimelineStore.getState().timeline?.metadata.boss_name).toBe("NewBoss");
   });
+
+  it("caps fight_duration_sec at MAX_FIGHT_DURATION_SEC and drops out-of-bounds instances", () => {
+    freshTimeline();
+    useTimelineStore.getState().replaceBossTimeline(
+      importPayload({
+        fight_duration_sec: 99_999,
+        boss_ability_instances: [
+          {
+            id: "in-range",
+            type_id: "imp-type-1",
+            effect_time: 1000,
+            target_slot_ids: [],
+            observed_damage: [],
+          },
+          {
+            id: "at-cap",
+            type_id: "imp-type-1",
+            effect_time: 1800,
+            target_slot_ids: [],
+            observed_damage: [],
+          },
+          {
+            id: "past-cap",
+            type_id: "imp-type-1",
+            effect_time: 5000,
+            target_slot_ids: [],
+            observed_damage: [],
+          },
+        ],
+      }),
+    );
+    const tl = useTimelineStore.getState().timeline;
+    expect(tl?.metadata.fight_duration_sec).toBe(1800);
+    expect(tl?.boss_ability_instances.map((i) => i.id).sort()).toEqual(["at-cap", "in-range"]);
+  });
+
+  it("collapses imported phases to [] when culling leaves fewer than 2 inside the cap", () => {
+    freshTimeline();
+    useTimelineStore.getState().replaceBossTimeline(
+      importPayload({
+        fight_duration_sec: 99_999,
+        boss_ability_instances: [],
+        phases: [
+          { id: "p1", start_time: 0, name: "Imported 1" },
+          { id: "p2", start_time: 5000, name: "Past cap" },
+        ],
+      }),
+    );
+    expect(useTimelineStore.getState().timeline?.phases).toEqual([]);
+  });
 });
 
 describe("timeline-store — offset-glued parent drag", () => {
