@@ -2538,3 +2538,209 @@ describe("non_stacking_group — cross-type non-stacking", () => {
     expect(result[6]?.damage_taken_to_hp).toBe(25_000);
   });
 });
+
+// ─── Stress-test plan §9: Conflict / lethality edge cases ──────────────────
+
+describe("§9.1 hit at effect_time = 0", () => {
+  it("baseline: hit at t=0 with no mits computes per-player damage normally", () => {
+    // Tank Mastery still applies — tanks take 80k, non-tanks 100k. Coverage
+    // logic uses `hit.effect_time < mitStart` so t=0 is a valid boundary.
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 0 }),
+      bossType(),
+      [],
+      lookup,
+      ROSTER,
+    );
+    expect(dmg(result)).toEqual([80_000, 80_000, ...new Array(6).fill(100_000)]);
+  });
+
+  it("mit at t=0 covers a hit at t=0 (inclusive lower boundary)", () => {
+    // Rampart on s0 at t=0; raidwide hit at t=0. Coverage temporal check is
+    // hit.effect_time >= mit.effect_time, so the boundary is inclusive.
+    // s0 (tank): 100k × 0.8 (Rampart) × 0.8 (TM) = 64k.
+    const m = mit({ player_slot_id: "s0", type_id: "drk.rampart", effect_time: 0 });
+    const result = computeDamagePerPlayer(
+      bossInstance({ effect_time: 0 }),
+      bossType(),
+      [m],
+      lookup,
+      ROSTER,
+    );
+    expect(result[0]?.damage_taken_to_hp).toBe(64_000);
+  });
+
+  it("barrier seeded at t=0 absorbs a hit at t=0 (seed-before-hit tie-break)", () => {
+    // Engine's seed-then-hit ordering for ties at the same t: barrier seeds
+    // apply before the hit at the same effect_time, so a 30k self-shield on s6
+    // at t=0 absorbs a 30k hit at t=0 in full.
+    const shield = mit({
+      player_slot_id: "s6",
+      type_id: "synth.self_shield_30",
+      effect_time: 0,
+    });
+    const hit = bossInstance({ id: "h0", effect_time: 0 });
+    const out = computeDamageTimeline(
+      [hit],
+      [bossType({ base_damage: 30_000 })],
+      [shield],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h0")?.[6]).toEqual({
+      damage_taken_to_hp: 0,
+      hp_after: 100_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+  });
+});
+
+describe("§9.2 stack with 0 picked targets", () => {
+  it("damage engine returns null for every player when target list is empty", () => {
+    // Per CONTEXT.md: stack with 0 picked targets is the same `unset_target`
+    // shape as targeted with no pick. hitLandsOn returns false for every
+    // player → no result. Divisor-by-zero is guarded in the engine (the loop
+    // skips when target_slot_ids is empty).
+    const result = computeDamagePerPlayer(
+      bossInstance({ target_slot_ids: [] }),
+      bossType({ target_pattern: "stack", base_damage: 200_000 }),
+      [],
+      lookup,
+      ROSTER,
+    );
+    for (let i = 0; i < 8; i++) expect(result[i]).toBeNull();
+  });
+});
+
+describe("§9.4 Tank Mastery on unset-role slot", () => {
+  it("does not apply Tank Mastery to an unset-job slot, even on a raidwide hit", () => {
+    // Roster with s0 set to "unset" — deriveRole returns "unset" (not "tank"),
+    // so the 0.8 multiplier is skipped. The slot takes full 100k of a raidwide.
+    const unsetRoster: Roster = [
+      { id: "s0", job: "unset" },
+      { id: "s1", job: "WAR" },
+      { id: "s2", job: "SCH" },
+      { id: "s3", job: "WHM" },
+      { id: "s4", job: "MNK" },
+      { id: "s5", job: "DRG" },
+      { id: "s6", job: "BLM" },
+      { id: "s7", job: "RDM" },
+    ] as unknown as Roster;
+    const result = computeDamagePerPlayer(bossInstance(), bossType(), [], lookup, unsetRoster);
+    expect(result[0]?.damage_taken_to_hp).toBe(100_000); // unset → no TM
+    expect(result[1]?.damage_taken_to_hp).toBe(80_000); // WAR → TM
+  });
+});
+
+describe("§9.5 Grassa consumes Coat with no hit absorbing", () => {
+  it("dispel-only consume leaves Coat's absorbed_at unset and CD reduction does not fire", () => {
+    // Coat at t=50 on s6. Grassa at t=55 consumes it (dispels the pool). No
+    // boss hit drains the pool. Coat's absorbed_at must stay undefined, and
+    // effectiveCooldownSeconds(Coat) must return the base 120s — the -60s
+    // self-absorb refund only fires when a hit drained the pool, not when a
+    // cross-type consumer dispelled it.
+    const coat = mit({
+      id: "coat",
+      player_slot_id: "s6",
+      type_id: "synth.tempera_coat",
+      effect_time: 50,
+    });
+    const grassa = mit({
+      id: "grassa",
+      player_slot_id: "s6",
+      type_id: "synth.tempera_grassa",
+      effect_time: 55,
+    });
+    const states = new Map<string, MitInstanceState>();
+    computeDamageTimeline([], [], [coat, grassa], lookup, ROSTER, states);
+    expect(states.get("coat")?.absorbed_at).toBeUndefined();
+    expect(states.get("grassa")?.absorbed_at).toBeUndefined();
+    const coatType = TYPES.temperaCoat;
+    if (!coatType) throw new Error("fixture missing");
+    expect(effectiveCooldownSeconds(coat, coatType, [coat, grassa], lookup, states)).toBe(120);
+  });
+});
+
+describe("§9.6 multi-hit at identical effect_time", () => {
+  it("two raidwide hits at the same t compute independently against full HP", () => {
+    // Per CONTEXT.md "Mixed-distribution casts (e.g. a raidwide AoE *plus* a
+    // tankbuster from the same boss action) are modeled as two instances at
+    // the same effect_time". Per-hit HP isolation: each hit reads against full
+    // max HP. No shields here; each non-tank takes 50k and reads 50k hp_after
+    // independently — neither chip carries HP state from the other.
+    const hit1 = bossInstance({ id: "h1", effect_time: 60 });
+    const hit2 = bossInstance({ id: "h2", effect_time: 60 });
+    const out = computeDamageTimeline(
+      [hit1, hit2],
+      [bossType({ base_damage: 50_000 })],
+      [],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h1")?.[6]?.damage_taken_to_hp).toBe(50_000);
+    expect(out.get("h1")?.[6]?.hp_after).toBe(50_000);
+    expect(out.get("h2")?.[6]?.damage_taken_to_hp).toBe(50_000);
+    expect(out.get("h2")?.[6]?.hp_after).toBe(50_000);
+  });
+
+  it("barrier state carries between same-t hits in input order", () => {
+    // 30k self-shield on s6 (non-tank). Two 20k hits at t=60. The engine sorts
+    // by effect_time and preserves input order on ties — hit1 drains 20k from
+    // the 30k pool first; hit2 sees the 10k remainder.
+    const shield = mit({
+      player_slot_id: "s6",
+      type_id: "synth.self_shield_30",
+      effect_time: 50,
+    });
+    const hit1 = bossInstance({ id: "h1", effect_time: 60 });
+    const hit2 = bossInstance({ id: "h2", effect_time: 60 });
+    const out = computeDamageTimeline(
+      [hit1, hit2],
+      [bossType({ base_damage: 20_000 })],
+      [shield],
+      lookup,
+      ROSTER,
+    );
+    expect(out.get("h1")?.[6]).toEqual({
+      damage_taken_to_hp: 0,
+      hp_after: 100_000,
+      active_shields_after: 10_000,
+      max_hp: 100_000,
+    });
+    expect(out.get("h2")?.[6]).toEqual({
+      damage_taken_to_hp: 10_000, // 20k incoming, 10k remaining shield absorbs, 10k to HP
+      hp_after: 90_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+  });
+
+  it("raidwide + tankbuster at the same t — tank result merges both reductions correctly", () => {
+    // Mixed-distribution cast: raidwide AoE (100k) plus a tankbuster (200k)
+    // both at t=60 targeting s0. s0 (DRK tank) is hit by both; non-tanks see
+    // only the raidwide. Tank Mastery applies once per hit (each hit reads
+    // post-mit-then-TM). Per-hit HP isolation: each chip reads against full
+    // max HP, the second hit doesn't see HP lost by the first.
+    const raidwide = bossInstance({ id: "rw", effect_time: 60 });
+    const tankbuster = bossInstance({
+      id: "tb",
+      type_id: "boss.tankbuster",
+      effect_time: 60,
+      target_slot_ids: ["s0"],
+    });
+    const rwType = bossType({ id: "boss.replication-i", base_damage: 100_000 });
+    const tbType = bossType({
+      id: "boss.tankbuster",
+      base_damage: 200_000,
+      target_pattern: "targeted",
+    });
+    const out = computeDamageTimeline([raidwide, tankbuster], [rwType, tbType], [], lookup, ROSTER);
+    // s0 raidwide: 100k × 0.8 (TM) = 80k. Tankbuster: 200k × 0.8 (TM) = 160k.
+    expect(out.get("rw")?.[0]?.damage_taken_to_hp).toBe(80_000);
+    expect(out.get("tb")?.[0]?.damage_taken_to_hp).toBe(160_000);
+    // s6 (non-tank) only sees the raidwide.
+    expect(out.get("rw")?.[6]?.damage_taken_to_hp).toBe(100_000);
+    expect(out.get("tb")?.[6]).toBeNull();
+  });
+});
