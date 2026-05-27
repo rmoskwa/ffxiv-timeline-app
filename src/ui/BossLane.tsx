@@ -14,7 +14,6 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { BossPlacementPicker } from "./BossPlacementPicker";
 import { clampLabelCenter, packLabelRows } from "./boss-label-packing";
 import { PhaseDividers } from "./PhaseDividers";
-import { PhantomGutter } from "./PlayerLane";
 import { TargetPicker } from "./TargetPicker";
 import {
   BOSS_PIN_HEIGHT,
@@ -121,8 +120,7 @@ export function BossLane() {
 
   return (
     <div className="lane-row lane-row--boss" style={{ height: contentHeight }}>
-      {chipPosition !== "interleaved" && <PhantomGutter />}
-      <BossLaneLabel />
+      <BossLaneLabel mergedGutter={chipPosition !== "interleaved"} />
       <div className="boss-lane-content" style={{ width: laneWidthPx, height: contentHeight }}>
         <div
           className="boss-label-strip"
@@ -327,7 +325,7 @@ function BossMarker({
 // boss_name commits per keystroke; fight_duration commits on blur / Enter
 // (reverts on Escape or invalid input). Shrinking the duration past existing
 // instances cascades them out — see timeline-store.setFightDuration.
-function BossLaneLabel() {
+function BossLaneLabel({ mergedGutter }: { mergedGutter: boolean }) {
   const bossName = useTimelineStore((s) => s.timeline?.metadata.boss_name ?? "");
   const fightDurationSec = useTimelineStore(
     (s) => s.timeline?.metadata.fight_duration_sec ?? DEFAULT_FIGHT_DURATION_SEC,
@@ -355,13 +353,15 @@ function BossLaneLabel() {
   };
 
   return (
-    <div className="lane-label lane-label--boss">
-      <input
-        type="text"
+    <div className={`lane-label lane-label--boss${mergedGutter ? " lane-label--boss-merged" : ""}`}>
+      <textarea
         className="boss-name-input"
         placeholder="Boss name"
         value={bossName}
-        onChange={(e) => setBossName(e.target.value)}
+        maxLength={40}
+        rows={1}
+        // Wrapping is purely visual — strip any newlines from typing or paste.
+        onChange={(e) => setBossName(e.target.value.replace(/\n/g, ""))}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();

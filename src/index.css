@@ -1410,12 +1410,16 @@ button {
   border-radius: 3px;
   padding: 0.15rem 0.3rem;
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 700;
+  line-height: 1.2;
   letter-spacing: 0;
   width: 100%;
   min-width: 0;
   text-align: center;
+  resize: none;
+  overflow: hidden;
+  field-sizing: content;
 }
 .lane-label--boss .boss-name-input::placeholder {
   color: rgba(255, 136, 0, 0.45);
@@ -1432,7 +1436,7 @@ button {
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  font-size: 0.7rem;
+  font-size: 0.9rem;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
@@ -1448,7 +1452,7 @@ button {
   border-radius: 3px;
   padding: 0.1rem 0.25rem;
   font: inherit;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
   width: 3.5rem;
   min-width: 0;
@@ -1463,6 +1467,12 @@ button {
 .lane-label--boss .boss-length-input.is-invalid {
   border-color: #e44;
   color: #ff8a8a;
+}
+/* Top/Bottom chip layouts add a job-icon gutter on other rows; the boss row
+   absorbs that gutter into this label cell so "Boss name" / "Length:" stay
+   visually centered across the combined width instead of being shoved right. */
+.lane-label--boss-merged {
+  width: 168px;
 }
 .lane-label--player {
   background: #1c1c1c;
@@ -2194,6 +2204,11 @@ button {
 .lane-scroll.chip-position-bottom .lane-label,
 .lane-scroll.chip-position-bottom .sub-lane-label {
   left: 28px;
+}
+/* Boss label absorbs the gutter column itself, so it has nothing to dodge. */
+.lane-scroll.chip-position-top .lane-label--boss-merged,
+.lane-scroll.chip-position-bottom .lane-label--boss-merged {
+  left: 0;
 }
 
 .chip-section {
