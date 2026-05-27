@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { BossAbilityInstance, BossAbilityType, Phase } from "@/domain/types";
 import {
+  MAX_BASE_DAMAGE,
   MAX_BOSS_ABILITY_INSTANCES,
   MAX_BOSS_ABILITY_TYPES,
   MAX_DESC_LEN,
+  MAX_FIGHT_DURATION_SEC,
   MAX_MITIGATION_INSTANCES,
   MAX_NAME_LEN,
   MAX_PHASES,
@@ -552,5 +554,392 @@ describe("deserialize — quantity caps", () => {
       phases: [],
     };
     expect(() => deserializeBossTimeline(JSON.stringify(file))).toThrow(TimelineValidationError);
+  });
+});
+
+// ─── import-path gaps ────────────────────────────────
+
+describe("deserialize — schema_version edges", () => {
+  it("rejects schema_version: 0 with the same SchemaVersionError", () => {
+    const json = JSON.stringify({ schema_version: 0, kind: "timeline" });
+    expect(() => deserialize(json)).toThrow(SchemaVersionError);
+  });
+
+  it("schema_version error message names the file version and the expected version", () => {
+    const json = JSON.stringify({ schema_version: 99, kind: "timeline" });
+    try {
+      deserialize(json);
+      expect.fail("expected SchemaVersionError");
+    } catch (e) {
+      expect((e as Error).message).toContain("99");
+      expect((e as Error).message).toContain(String(TIMELINE_SCHEMA_VERSION));
+    }
+  });
+});
+
+describe("deserialize — base_damage clamp", () => {
+  it("silently clamps base_damage > MAX_BASE_DAMAGE on the full Timeline path", () => {
+    const tl = newTimeline("fixture");
+    const huge: BossAbilityType = {
+      id: "t1",
+      name: "OverflowingHit",
+      base_damage: MAX_BASE_DAMAGE * 10,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_types: [huge] });
+    expect(deserialize(json).boss_ability_types[0].base_damage).toBe(MAX_BASE_DAMAGE);
+  });
+
+  it("silently clamps base_damage > MAX_BASE_DAMAGE on the boss-timeline path", () => {
+    const file = {
+      schema_version: TIMELINE_SCHEMA_VERSION,
+      kind: "boss_timeline",
+      boss_name: "Boss",
+      fight_duration_sec: 600,
+      boss_ability_types: [
+        {
+          id: "t1",
+          name: "OverflowingHit",
+          base_damage: MAX_BASE_DAMAGE + 1,
+          damage_type: "magical",
+          target_pattern: "raidwide",
+          boss_targetable: true,
+        },
+      ],
+      boss_ability_instances: [],
+      phases: [],
+    };
+    const back = deserializeBossTimeline(JSON.stringify(file));
+    expect(back.boss_ability_types[0].base_damage).toBe(MAX_BASE_DAMAGE);
+  });
+});
+
+describe("deserialize — duplicate type names", () => {
+  function typeWith(id: string, name: string): BossAbilityType {
+    return {
+      id,
+      name,
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    };
+  }
+
+  it("rejects two types with the same name", () => {
+    const tl = newTimeline("fixture");
+    const json = JSON.stringify({
+      ...tl,
+      boss_ability_types: [typeWith("t1", "Death Sentence"), typeWith("t2", "Death Sentence")],
+    });
+    expect(() => deserialize(json)).toThrowError(/boss_ability_types\[1\]\.name/);
+  });
+
+  it("rejects names that differ only in case", () => {
+    const tl = newTimeline("fixture");
+    const json = JSON.stringify({
+      ...tl,
+      boss_ability_types: [typeWith("t1", "Death Sentence"), typeWith("t2", "death sentence")],
+    });
+    expect(() => deserialize(json)).toThrow(TimelineValidationError);
+  });
+
+  it("rejects names that collide only after sanitization (NBSP)", () => {
+    const tl = newTimeline("fixture");
+    // Same word with a non-breaking space vs. a normal space.
+    const json = JSON.stringify({
+      ...tl,
+      boss_ability_types: [typeWith("t1", "Death Sentence"), typeWith("t2", "Death Sentence")],
+    });
+    expect(() => deserialize(json)).toThrow(TimelineValidationError);
+  });
+
+  it("boss-timeline import path also rejects duplicate names", () => {
+    const file = {
+      schema_version: TIMELINE_SCHEMA_VERSION,
+      kind: "boss_timeline",
+      boss_name: "Boss",
+      fight_duration_sec: 600,
+      boss_ability_types: [typeWith("t1", "X"), typeWith("t2", "X")],
+      boss_ability_instances: [],
+      phases: [],
+    };
+    expect(() => deserializeBossTimeline(JSON.stringify(file))).toThrow(TimelineValidationError);
+  });
+});
+
+describe("deserialize — fight_duration_sec clamp", () => {
+  it("silently clamps fight_duration_sec > MAX_FIGHT_DURATION_SEC", () => {
+    const tl = newTimeline("fixture");
+    const json = JSON.stringify({
+      ...tl,
+      metadata: { ...tl.metadata, fight_duration_sec: MAX_FIGHT_DURATION_SEC + 5000 },
+    });
+    expect(deserialize(json).metadata.fight_duration_sec).toBe(MAX_FIGHT_DURATION_SEC);
+  });
+
+  it("culls boss_ability_instances past the clamped fight_duration_sec", () => {
+    const tl = newTimeline("fixture");
+    const t1: BossAbilityType = {
+      id: "t1",
+      name: "X",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    };
+    const surviving: BossAbilityInstance = {
+      id: "i1",
+      type_id: "t1",
+      effect_time: 100,
+      target_slot_ids: [],
+      observed_damage: [],
+    };
+    const past: BossAbilityInstance = {
+      id: "i2",
+      type_id: "t1",
+      effect_time: MAX_FIGHT_DURATION_SEC + 100,
+      target_slot_ids: [],
+      observed_damage: [],
+    };
+    const json = JSON.stringify({
+      ...tl,
+      metadata: { ...tl.metadata, fight_duration_sec: MAX_FIGHT_DURATION_SEC + 1000 },
+      boss_ability_types: [t1],
+      boss_ability_instances: [surviving, past],
+    });
+    const out = deserialize(json);
+    expect(out.metadata.fight_duration_sec).toBe(MAX_FIGHT_DURATION_SEC);
+    expect(out.boss_ability_instances.map((i) => i.id)).toEqual(["i1"]);
+  });
+
+  it("boss-timeline import path also clamps and culls", () => {
+    const file = {
+      schema_version: TIMELINE_SCHEMA_VERSION,
+      kind: "boss_timeline",
+      boss_name: "Boss",
+      fight_duration_sec: MAX_FIGHT_DURATION_SEC + 500,
+      boss_ability_types: [
+        {
+          id: "t1",
+          name: "X",
+          base_damage: 0,
+          damage_type: "magical" as const,
+          target_pattern: "raidwide" as const,
+          boss_targetable: true,
+        },
+      ],
+      boss_ability_instances: [
+        {
+          id: "i1",
+          type_id: "t1",
+          effect_time: MAX_FIGHT_DURATION_SEC + 100,
+          target_slot_ids: [],
+          observed_damage: [],
+        },
+      ],
+      phases: [],
+    };
+    const back = deserializeBossTimeline(JSON.stringify(file));
+    expect(back.fight_duration_sec).toBe(MAX_FIGHT_DURATION_SEC);
+    expect(back.boss_ability_instances).toEqual([]);
+  });
+});
+
+describe("deserialize — missing required fields", () => {
+  it("rejects a missing metadata.fight_duration_sec with a precise path", () => {
+    const tl = newTimeline("fixture");
+    const { fight_duration_sec: _drop, ...rest } = tl.metadata;
+    const json = JSON.stringify({ ...tl, metadata: rest });
+    try {
+      deserialize(json);
+      expect.fail("expected TimelineValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TimelineValidationError);
+      expect((e as TimelineValidationError).path).toBe("$.metadata.fight_duration_sec");
+    }
+  });
+
+  it("rejects a missing roster with a precise path", () => {
+    const tl = newTimeline("fixture");
+    const { roster: _drop, ...rest } = tl;
+    const json = JSON.stringify(rest);
+    try {
+      deserialize(json);
+      expect.fail("expected TimelineValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TimelineValidationError);
+      expect((e as TimelineValidationError).path).toBe("$.roster");
+    }
+  });
+
+  it("rejects a 7-slot roster with a precise path", () => {
+    const tl = newTimeline("fixture");
+    const short = tl.roster.slice(0, 7);
+    const json = JSON.stringify({ ...tl, roster: short });
+    try {
+      deserialize(json);
+      expect.fail("expected TimelineValidationError");
+    } catch (e) {
+      expect((e as TimelineValidationError).path).toBe("$.roster");
+      expect((e as Error).message).toContain("8 slots");
+    }
+  });
+});
+
+describe("deserialize — wrong types", () => {
+  it("rejects fight_duration_sec as a string", () => {
+    const tl = newTimeline("fixture");
+    const json = JSON.stringify({
+      ...tl,
+      metadata: { ...tl.metadata, fight_duration_sec: "600" },
+    });
+    expect(() => deserialize(json)).toThrowError(/fight_duration_sec/);
+  });
+
+  it("rejects hp as null on a roster slot", () => {
+    const tl = newTimeline("fixture");
+    const labeledRoster = tl.roster.map((s, i) => (i === 0 ? { ...s, hp: null } : s));
+    const json = JSON.stringify({ ...tl, roster: labeledRoster });
+    expect(() => deserialize(json)).toThrowError(/roster\[0\]\.hp/);
+  });
+
+  it("rejects boss_ability_types as an object (not array)", () => {
+    const tl = newTimeline("fixture");
+    const json = JSON.stringify({ ...tl, boss_ability_types: {} });
+    expect(() => deserialize(json)).toThrowError(/boss_ability_types/);
+  });
+});
+
+describe("deserialize — extra unknown fields", () => {
+  it("silently drops extra top-level fields on round-trip", () => {
+    const tl = newTimeline("fixture");
+    const dirty = { ...tl, _my_app_metadata: { tag: "foo" }, future_field: 42 };
+    const json = JSON.stringify(dirty);
+    const back = deserialize(json);
+    // The deserialized object has only the known TimelineFile keys.
+    expect(Object.keys(back).sort()).toEqual(
+      [
+        "boss_ability_instances",
+        "boss_ability_types",
+        "freeform_notes",
+        "kind",
+        "metadata",
+        "mitigation_instances",
+        "phases",
+        "roster",
+        "schema_version",
+      ].sort(),
+    );
+  });
+
+  it("re-serializing a sanitized file does not carry unknown fields back out", () => {
+    const tl = newTimeline("fixture");
+    const dirty = { ...tl, _my_app_metadata: { tag: "foo" } };
+    const back = deserialize(JSON.stringify(dirty));
+    const reExported = JSON.parse(serialize(back));
+    expect(reExported._my_app_metadata).toBeUndefined();
+  });
+});
+
+describe("deserialize — cross-reference integrity", () => {
+  it("rejects a boss_ability_instance with a dangling type_id", () => {
+    const tl = newTimeline("fixture");
+    const t1: BossAbilityType = {
+      id: "t1",
+      name: "X",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    };
+    const bad: BossAbilityInstance = {
+      id: "i1",
+      type_id: "GHOST", // not in boss_ability_types
+      effect_time: 10,
+      target_slot_ids: [],
+      observed_damage: [],
+    };
+    const json = JSON.stringify({
+      ...tl,
+      boss_ability_types: [t1],
+      boss_ability_instances: [bad],
+    });
+    try {
+      deserialize(json);
+      expect.fail("expected TimelineValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TimelineValidationError);
+      expect((e as TimelineValidationError).path).toBe("$.boss_ability_instances[0].type_id");
+    }
+  });
+
+  it("boss-timeline import rejects dangling type_id with a precise path", () => {
+    const file = {
+      schema_version: TIMELINE_SCHEMA_VERSION,
+      kind: "boss_timeline",
+      boss_name: "Boss",
+      fight_duration_sec: 600,
+      boss_ability_types: [
+        {
+          id: "t1",
+          name: "X",
+          base_damage: 0,
+          damage_type: "magical" as const,
+          target_pattern: "raidwide" as const,
+          boss_targetable: true,
+        },
+      ],
+      boss_ability_instances: [
+        {
+          id: "i1",
+          type_id: "GHOST",
+          effect_time: 10,
+          target_slot_ids: [],
+          observed_damage: [],
+        },
+      ],
+      phases: [],
+    };
+    try {
+      deserializeBossTimeline(JSON.stringify(file));
+      expect.fail("expected TimelineValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TimelineValidationError);
+      expect((e as TimelineValidationError).path).toBe("$.boss_ability_instances[0].type_id");
+    }
+  });
+
+  it("accepts boss instances with target_slot_ids pointing at unknown slot ids (engine handles)", () => {
+    // Cross-reference integrity for target_slot_ids is *not* enforced at
+    // import — the damage engine's hitLandsOn returns false for any unknown
+    // slot id, so the instance still renders, it just lands on no one. This
+    // matches the legitimate intermediate state where a planner has not yet
+    // picked targets.
+    const tl = newTimeline("fixture");
+    const t1: BossAbilityType = {
+      id: "t1",
+      name: "X",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "targeted",
+      boss_targetable: true,
+    };
+    const inst: BossAbilityInstance = {
+      id: "i1",
+      type_id: "t1",
+      effect_time: 10,
+      target_slot_ids: ["nonexistent-slot-id"],
+      observed_damage: [],
+    };
+    const json = JSON.stringify({
+      ...tl,
+      boss_ability_types: [t1],
+      boss_ability_instances: [inst],
+    });
+    const out = deserialize(json);
+    expect(out.boss_ability_instances[0].target_slot_ids).toEqual(["nonexistent-slot-id"]);
   });
 });
