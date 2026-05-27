@@ -497,7 +497,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       const incoming: Phase = {
         id: crypto.randomUUID(),
         start_time: start,
-        name: input.name,
+        name: input.name.slice(0, MAX_NAME_LEN),
       };
       const seed: Phase[] =
         s.timeline.phases.length === 0
@@ -511,10 +511,11 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   renamePhase: (id, name) =>
     set((s) => {
       if (!s.timeline) return s;
+      const clipped = name.slice(0, MAX_NAME_LEN);
       return {
         timeline: touch({
           ...s.timeline,
-          phases: s.timeline.phases.map((p) => (p.id === id ? { ...p, name } : p)),
+          phases: s.timeline.phases.map((p) => (p.id === id ? { ...p, name: clipped } : p)),
         }),
       };
     }),

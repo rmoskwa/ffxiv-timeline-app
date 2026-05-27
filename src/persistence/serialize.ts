@@ -372,7 +372,7 @@ function validatePhase(v: unknown, path: string): Phase {
   return {
     id: asString(o.id, `${path}.id`),
     start_time: asNonNegativeNumber(o.start_time, `${path}.start_time`),
-    name: asString(o.name, `${path}.name`),
+    name: asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN),
   };
 }
 

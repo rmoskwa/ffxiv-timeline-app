@@ -4,6 +4,7 @@
 
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { MAX_NAME_LEN } from "@/domain/types";
 import { PhaseRejectedError, useTimelineStore } from "@/state/timeline-store";
 import { parseTimecode, secondsToTimecode } from "./timeline-constants";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
@@ -99,6 +100,7 @@ export function AddPhaseModal() {
           <input
             type="text"
             value={nameDraft}
+            maxLength={MAX_NAME_LEN}
             aria-label="Phase name"
             onChange={(e) => setNameDraft(e.target.value)}
             onKeyDown={(e) => {

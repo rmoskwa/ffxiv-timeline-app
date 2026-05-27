@@ -2,7 +2,7 @@
 // once phases.length >= 2 it renders one row per phase. See docs/phases.md §7.3.
 
 import { useEffect, useState } from "react";
-import type { Phase } from "@/domain/types";
+import { MAX_NAME_LEN, type Phase } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { TimecodeField } from "./primitives/TimecodeField";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
@@ -86,6 +86,7 @@ function PhaseNameInput({ phase, onCommit }: { phase: Phase; onCommit: (name: st
       type="text"
       className="phase-row-name"
       value={draft}
+      maxLength={MAX_NAME_LEN}
       aria-label={`Phase ${phase.name} name`}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
