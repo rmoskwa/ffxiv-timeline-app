@@ -183,8 +183,12 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   setBossName: (name) =>
     set((s) => {
       if (!s.timeline) return s;
+      const clipped = name.slice(0, MAX_NAME_LEN);
       return {
-        timeline: touch({ ...s.timeline, metadata: { ...s.timeline.metadata, boss_name: name } }),
+        timeline: touch({
+          ...s.timeline,
+          metadata: { ...s.timeline.metadata, boss_name: clipped },
+        }),
       };
     }),
 

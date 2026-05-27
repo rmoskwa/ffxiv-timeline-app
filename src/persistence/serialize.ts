@@ -395,7 +395,7 @@ function validateMetadata(v: unknown, path: string): TimelineFile["metadata"] {
   }
   return {
     name: asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN),
-    boss_name: asString(o.boss_name, `${path}.boss_name`),
+    boss_name: asString(o.boss_name, `${path}.boss_name`).slice(0, MAX_NAME_LEN),
     fight_duration_sec,
     created_at: asString(o.created_at, `${path}.created_at`),
     updated_at: asString(o.updated_at, `${path}.updated_at`),
@@ -434,7 +434,7 @@ export function validateBossTimelineFile(parsed: unknown): BossTimelineFile {
   return {
     schema_version: TIMELINE_SCHEMA_VERSION,
     kind: "boss_timeline",
-    boss_name: asString(o.boss_name, "$.boss_name"),
+    boss_name: asString(o.boss_name, "$.boss_name").slice(0, MAX_NAME_LEN),
     fight_duration_sec,
     boss_ability_types: asArray(o.boss_ability_types, "$.boss_ability_types").map((el, i) =>
       validateBossAbilityType(el, `$.boss_ability_types[${i}]`),

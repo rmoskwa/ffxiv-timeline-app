@@ -7,6 +7,7 @@ import {
   type BossAbilityType,
   DEFAULT_FIGHT_DURATION_SEC,
   MAX_FIGHT_DURATION_SEC,
+  MAX_NAME_LEN,
   type Phase,
   type Roster,
 } from "@/domain/types";
@@ -339,7 +340,7 @@ function BossLaneLabel({ mergedGutter }: { mergedGutter: boolean }) {
         className="boss-name-input"
         placeholder="Boss name"
         value={bossName}
-        maxLength={40}
+        maxLength={MAX_NAME_LEN}
         rows={1}
         // Wrapping is purely visual — strip any newlines from typing or paste.
         onChange={(e) => setBossName(e.target.value.replace(/\n/g, ""))}
