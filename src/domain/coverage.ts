@@ -51,6 +51,7 @@ function hitLandsOnPlayer(hit: ResolvedHit, player: PlayerSlot): boolean {
     case "raidwide":
       return true;
     case "targeted":
+    case "stack":
       return hit.target_slot_ids.includes(player.id);
   }
 }

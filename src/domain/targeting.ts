@@ -32,6 +32,7 @@ export function targetingCountsForPattern(pattern: TargetPattern): {
 } {
   switch (pattern) {
     case "targeted":
+    case "stack":
       return { minCount: 1, maxCount: 8 };
     case "raidwide":
       return { minCount: 0, maxCount: 0 };

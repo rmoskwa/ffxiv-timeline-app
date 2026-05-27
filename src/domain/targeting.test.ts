@@ -68,6 +68,11 @@ describe("targetingForBoss — min/max counts by pattern", () => {
     expect(t.minCount).toBe(1);
     expect(t.maxCount).toBe(8);
   });
+  it("stack → 1 min, 8 max (same shape as targeted)", () => {
+    const t = targetingForBoss(bossInstance(), bossType("stack"));
+    expect(t.minCount).toBe(1);
+    expect(t.maxCount).toBe(8);
+  });
 });
 
 describe("targetingForBoss — isComplete", () => {
@@ -84,6 +89,13 @@ describe("targetingForBoss — isComplete", () => {
   it("targeted remains complete with multiple slots (under the 8 cap)", () => {
     const inst = bossInstance({ target_slot_ids: ["s0", "s3", "s7"] });
     expect(targetingForBoss(inst, bossType("targeted")).isComplete).toBe(true);
+  });
+  it("stack is incomplete when empty", () => {
+    expect(targetingForBoss(bossInstance(), bossType("stack")).isComplete).toBe(false);
+  });
+  it("stack is complete with at least one slot", () => {
+    const inst = bossInstance({ target_slot_ids: ["s2"] });
+    expect(targetingForBoss(inst, bossType("stack")).isComplete).toBe(true);
   });
 });
 

@@ -16,7 +16,7 @@ import { TargetPicker } from "./TargetPicker";
 import { parseTimecode, secondsToTimecode } from "./timeline-constants";
 
 const DAMAGE_TYPES: DamageType[] = ["magical", "physical", "unaspected"];
-const TARGET_PATTERNS: TargetPattern[] = ["raidwide", "targeted"];
+const TARGET_PATTERNS: TargetPattern[] = ["raidwide", "targeted", "stack"];
 
 export function BossAbilityPanel() {
   const timeline = useTimelineStore((s) => s.timeline);

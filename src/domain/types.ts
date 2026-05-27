@@ -5,7 +5,7 @@
 
 export type DamageType = "magical" | "physical" | "unaspected";
 
-export type TargetPattern = "raidwide" | "targeted";
+export type TargetPattern = "raidwide" | "targeted" | "stack";
 
 export type MitAffects =
   | "self"
@@ -346,7 +346,7 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 10 as const;
+export const TIMELINE_SCHEMA_VERSION = 11 as const;
 
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 

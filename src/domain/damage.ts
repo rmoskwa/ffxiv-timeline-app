@@ -291,7 +291,15 @@ export function computeDamageTimeline(
     }
 
     const resolvedHit = resolveHit(inst, type);
-    const baseDamage = resolveBossAbility(inst, type).damage;
+    // Stack splits the type's base damage evenly across the picked targets;
+    // each player then applies their own mits to their share. Guarded against
+    // zero targets (conflict-flagged as `unset_target`) — the per-player loop
+    // skips when no slots are picked, but the divisor stays safe regardless.
+    const targetCount = resolvedHit.target_slot_ids.length;
+    const baseDamage =
+      resolvedHit.target_pattern === "stack" && targetCount > 0
+        ? resolveBossAbility(inst, type).damage / targetCount
+        : resolveBossAbility(inst, type).damage;
     const result: (PerPlayerHitResult | null)[] = new Array(8).fill(null);
 
     for (let i = 0; i < 8; i++) {

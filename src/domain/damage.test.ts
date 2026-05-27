@@ -542,6 +542,67 @@ describe("computeDamagePerPlayer — % mit behavior", () => {
   });
 });
 
+// ─── Stack damage split ─────────────────────────────────────────────────────
+
+describe("computeDamagePerPlayer — stack", () => {
+  it("splits base damage evenly across picked targets", () => {
+    // 150k total ÷ 3 picked = 50k each pre-mit. s0 tank → ×0.8 = 40k;
+    // s4 and s5 non-tanks → 50k. Untargeted slots return null.
+    const result = computeDamagePerPlayer(
+      bossInstance({ target_slot_ids: ["s0", "s4", "s5"] }),
+      bossType({ target_pattern: "stack", base_damage: 150_000 }),
+      [],
+      lookup,
+      ROSTER,
+    );
+    expect(result[0]?.damage_taken_to_hp).toBe(40_000);
+    expect(result[4]?.damage_taken_to_hp).toBe(50_000);
+    expect(result[5]?.damage_taken_to_hp).toBe(50_000);
+    for (const i of [1, 2, 3, 6, 7]) {
+      expect(result[i]).toBeNull();
+    }
+  });
+
+  it("applies each player's mits to their share, not the pre-split total", () => {
+    // 200k ÷ 4 non-tank targets = 50k each. Self-shield 30% on s6 (BLM,
+    // 100k cap) seeds a 30k pool against a 50k share → 20k bleeds to HP.
+    const shield = mit({
+      player_slot_id: "s6",
+      type_id: "synth.self_shield_30",
+      effect_time: 55,
+    });
+    const result = computeDamagePerPlayer(
+      bossInstance({ target_slot_ids: ["s4", "s5", "s6", "s7"] }),
+      bossType({ target_pattern: "stack", base_damage: 200_000 }),
+      [shield],
+      lookup,
+      ROSTER,
+    );
+    expect(result[4]?.damage_taken_to_hp).toBe(50_000);
+    expect(result[5]?.damage_taken_to_hp).toBe(50_000);
+    expect(result[6]?.damage_taken_to_hp).toBe(20_000);
+    expect(result[7]?.damage_taken_to_hp).toBe(50_000);
+  });
+
+  it("1-target stack matches a targeted hit at the same slot", () => {
+    const stack = computeDamagePerPlayer(
+      bossInstance({ target_slot_ids: ["s0"] }),
+      bossType({ target_pattern: "stack" }),
+      [],
+      lookup,
+      ROSTER,
+    );
+    const targeted = computeDamagePerPlayer(
+      bossInstance({ target_slot_ids: ["s0"] }),
+      bossType({ target_pattern: "targeted" }),
+      [],
+      lookup,
+      ROSTER,
+    );
+    expect(stack[0]?.damage_taken_to_hp).toBe(targeted[0]?.damage_taken_to_hp);
+  });
+});
+
 // ─── Shielded mitigations ───────────────────────────────────────────────────
 
 describe("computeDamagePerPlayer — barriers", () => {

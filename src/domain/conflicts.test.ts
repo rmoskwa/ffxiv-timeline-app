@@ -93,7 +93,14 @@ describe("detectConflicts — unset_target", () => {
     damage_type: "magical",
     target_pattern: "raidwide",
   };
-  const bossLookup = [TARGETED, RAIDWIDE];
+  const STACK: BossAbilityType = {
+    id: "type-stack",
+    name: "Stack Marker",
+    base_damage: 200_000,
+    damage_type: "magical",
+    target_pattern: "stack",
+  };
+  const bossLookup = [TARGETED, RAIDWIDE, STACK];
 
   function bi(
     id: string,
@@ -122,6 +129,22 @@ describe("detectConflicts — unset_target", () => {
 
   it("does not flag raidwide regardless of target_slot_ids", () => {
     const inst = bi("b2", RAIDWIDE.id, 60);
+    expect(detectConflicts([], lookup, ROSTER, [inst], bossLookup)).toHaveLength(0);
+  });
+
+  it("flags a stack instance with no target picked", () => {
+    const inst = bi("b3", STACK.id, 45);
+    const conflicts = detectConflicts([], lookup, ROSTER, [inst], bossLookup);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject<Partial<Conflict>>({
+      kind: "unset_target",
+      target_kind: "boss_ability",
+      boss_instance_id: "b3",
+    });
+  });
+
+  it("does not flag a stack instance with at least one target picked", () => {
+    const inst = bi("b3", STACK.id, 45, ["s0", "s1"]);
     expect(detectConflicts([], lookup, ROSTER, [inst], bossLookup)).toHaveLength(0);
   });
 
