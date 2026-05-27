@@ -11,6 +11,7 @@ import {
 } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { MitIcon } from "./MitIcon";
+import { computeBarGeometry, computeChildGeometry } from "./mit-bar-geometry";
 import { jobColor } from "./role-color";
 import { TargetPicker } from "./TargetPicker";
 import { secondsToTimecode } from "./timeline-constants";
@@ -75,55 +76,9 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
   // the timeline (one-shot auto-spawn populates these; the user can delete
   // them via the X-affordance or re-add via the inspector).
   const childInstances = (allMits ?? []).filter((m) => m.parent_instance_id === instance.id);
-  // Max execution zone across all gated child *types* (library-driven, not
-  // instance-driven — the zone visualization persists even when no child
-  // instance currently exists). Defaults to the parent's duration when no
-  // child overrides it.
-  const childTypes = getGatedChildrenOf(type.id);
-  const maxChildExecZone = childTypes.reduce(
-    (max, ct) => Math.max(max, ct.execution_zone_seconds ?? type.duration_seconds),
-    0,
-  );
-  // Execution-zone extension past the parent's active end (Sun Sign case).
-  // Positive only when some child's exec zone exceeds the parent's duration.
-  const zoneExtensionSec = Math.max(0, maxChildExecZone - type.duration_seconds);
-  // For the "shorter" case (Divine Caress), find the smallest exec zone < duration.
-  const childTypeWithShorterZone = childTypes.find(
-    (ct) => ct.execution_zone_seconds != null && ct.execution_zone_seconds < type.duration_seconds,
-  );
-
-  const left = renderEffectTime * pxPerSec;
-  // A mit placed near the end of the fight may legally extend past it (the
-  // buff outlasts the encounter); clip the rendered widths so the bar stops
-  // at the timeline edge.
-  const remainingSec = Math.max(0, laneDurationSec - renderEffectTime);
-  // Dispel-clip: when a `consumes_many` consumer truncated this instance, the
-  // visible active band ends at the dispel time and the cooldown tail
-  // backfills the freed span. Total bar footprint (effective CD) is unchanged.
+  // Pre-resolve domain values at the React seam; geometry takes scalars.
+  // See docs/adr/0001-view-layer-pure-modules.md.
   const dispelledAt = mitStates.get(instance.id)?.dispelled_at;
-  const effectiveActiveSec =
-    dispelledAt != null
-      ? Math.max(0, Math.min(heldDurationSec, dispelledAt - renderEffectTime))
-      : heldDurationSec;
-  const visibleDurationSec = Math.min(effectiveActiveSec, remainingSec);
-  // Held-ability extension zone: the still-extensible headroom from the current
-  // held value out to the type's maximum. Faded fill signals "drag the right
-  // edge to here." Hidden once held == max, when dispelled, and for any
-  // non-held ability. Does not affect drag clamping or sub-lane stacking —
-  // footprint reservation already uses the max via effectiveBarFootprintSeconds.
-  const heldExtensionSec =
-    isHeldAbility && dispelledAt == null ? Math.max(0, type.duration_seconds - heldDurationSec) : 0;
-  const visibleHeldExtensionSec = Math.max(
-    0,
-    Math.min(heldExtensionSec, remainingSec - visibleDurationSec),
-  );
-  const visibleZoneExtensionSec = Math.max(
-    0,
-    Math.min(zoneExtensionSec, remainingSec - visibleDurationSec - visibleHeldExtensionSec),
-  );
-  // Effective cooldown after CD-reduce-on-absorb (Coat-on-Coat-absorb,
-  // Coat-on-Grassa-absorb) and consumes-mirror (Grassa's bar always matches
-  // the Coat instance it came from).
   const effectiveCdSec = effectiveCooldownSeconds(
     instance,
     type,
@@ -131,25 +86,16 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
     getMitById,
     mitStates,
   );
-  // The CD tail visually starts AFTER the execution zone when the zone extends
-  // past active (PRD §6.2 / Sun Sign case), or after the held extension when
-  // the ability is held (the extension visualizes part of the active window),
-  // or after the dispel time if this instance was truncated. The total
-  // off-to-off cooldown is unchanged — only the visual split between active
-  // and tail shifts.
-  const visualActivePlusZone = Math.max(effectiveActiveSec + heldExtensionSec, maxChildExecZone);
-  const cooldownTailSec = Math.max(0, effectiveCdSec - visualActivePlusZone);
-  const visibleCooldownTailSec = Math.max(
-    0,
-    Math.min(
-      cooldownTailSec,
-      remainingSec - visibleDurationSec - visibleHeldExtensionSec - visibleZoneExtensionSec,
-    ),
-  );
-  const durationPx = visibleDurationSec * pxPerSec;
-  const heldExtensionPx = visibleHeldExtensionSec * pxPerSec;
-  const zoneExtensionPx = visibleZoneExtensionSec * pxPerSec;
-  const cooldownTailPx = visibleCooldownTailSec * pxPerSec;
+  const geo = computeBarGeometry({
+    effectTime: renderEffectTime,
+    type,
+    pxPerSec,
+    laneDurationSec,
+    effectiveCdSec,
+    dispelledAt,
+    heldDurationSec,
+    childTypes: getGatedChildrenOf(type.id),
+  });
 
   const targeting = targetingForMit(instance, type);
   const needsTarget = targeting.maxCount > 0;
@@ -374,7 +320,7 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
         `${targetSlot ? " mit-bar--has-target" : ""}` +
         `${pickerOpen ? " has-picker-open" : ""}`
       }
-      style={{ left, height: mitBarHeight }}
+      style={{ left: geo.leftPx, height: mitBarHeight }}
       title={title}
       data-mit-id={instance.id}
       onPointerDown={handlePointerDown}
@@ -385,7 +331,7 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
       <div
         className="mit-bar-duration"
         style={{
-          width: durationPx,
+          width: geo.durationPx,
           background: `color-mix(in srgb, ${jobColor(type.job)} 33%, transparent)`,
           ...(targetSlot && { outlineColor: jobColor(targetSlot.job) }),
         }}
@@ -405,21 +351,21 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
           </button>
         )}
       </div>
-      {heldExtensionPx > 0 && (
+      {geo.heldExtensionPx > 0 && (
         <div
           className="mit-bar-held-extension"
           style={{
-            width: heldExtensionPx,
+            width: geo.heldExtensionPx,
             background: `color-mix(in srgb, ${jobColor(type.job)} 16%, transparent)`,
           }}
           aria-hidden
           title={`Drag the right edge to extend up to ${type.duration_seconds}s`}
         />
       )}
-      {isHeldAbility && durationPx > 0 && dispelledAt == null && (
+      {isHeldAbility && geo.durationPx > 0 && dispelledAt == null && (
         <div
           className="mit-bar-resize-handle"
-          style={{ left: durationPx - 3 }}
+          style={{ left: geo.durationPx - 3 }}
           title={`Hold duration: ${heldDurationSec}s (drag to ${type.min_duration_seconds}–${type.duration_seconds}s)`}
           onPointerDown={handleResizeDown}
           onPointerMove={handleResizeMove}
@@ -427,64 +373,48 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
           onPointerCancel={handleResizeCancel}
         />
       )}
-      {zoneExtensionPx > 0 && (
+      {geo.zoneExtensionPx > 0 && (
         <div
           className="mit-bar-zone-extension"
           style={{
-            width: zoneExtensionPx,
+            width: geo.zoneExtensionPx,
             background: `color-mix(in srgb, ${jobColor(type.job)} 16%, transparent)`,
           }}
           aria-hidden
           title="Execution zone (extends past active duration)"
         />
       )}
-      {childTypeWithShorterZone && (
+      {geo.zoneInnerPx !== undefined && (
         <div
           className="mit-bar-zone-inner"
-          style={{
-            left: 0,
-            width: (childTypeWithShorterZone.execution_zone_seconds ?? 0) * pxPerSec,
-          }}
+          style={{ left: 0, width: geo.zoneInnerPx }}
           aria-hidden
         />
       )}
-      {type.tiers?.map((tier) => {
-        // Darker overlay marking the boosted sub-window. Clipped to the
-        // visible portion of the active bar so a tier never bleeds into the
-        // cooldown tail.
-        const tierLeftPx = tier.offset_seconds * pxPerSec;
-        const tierWidthSec = Math.max(
-          0,
-          Math.min(tier.duration_seconds, visibleDurationSec - tier.offset_seconds),
-        );
-        if (tierWidthSec <= 0) return null;
-        return (
-          <div
-            key={`tier-${tier.offset_seconds}-${tier.duration_seconds}`}
-            className="mit-bar-tier"
-            style={{
-              left: tierLeftPx,
-              width: tierWidthSec * pxPerSec,
-              background: `color-mix(in srgb, ${jobColor(type.job)} 60%, transparent)`,
-            }}
-            aria-hidden
-          />
-        );
-      })}
-      {cooldownTailPx > 0 && (
-        <div className="mit-bar-cooldown" style={{ width: cooldownTailPx }} aria-hidden />
+      {geo.tiers.map((tier) => (
+        <div
+          key={`tier-${tier.offsetSec}`}
+          className="mit-bar-tier"
+          style={{
+            left: tier.leftPx,
+            width: tier.widthPx,
+            background: `color-mix(in srgb, ${jobColor(type.job)} 60%, transparent)`,
+          }}
+          aria-hidden
+        />
+      ))}
+      {geo.cooldownTailPx > 0 && (
+        <div className="mit-bar-cooldown" style={{ width: geo.cooldownTailPx }} aria-hidden />
       )}
       {(() => {
         const s = mitStates.get(instance.id);
         const conditional = type.conditional_bonus && s?.conditional_bonus_applied;
         const dispel = s?.dispel_bonus_applied;
         if (!conditional && !dispel) return null;
-        // Top-right of the final cell of the active band. Anchor by the bar's
-        // right edge with the cooldown tail + held-extension + zone-extension
-        // widths added back in, so the glyph sits flush against the active
-        // band's right edge regardless of dispel-clip, hold extension, or zone
-        // extension.
-        const rightOffsetPx = cooldownTailPx + heldExtensionPx + zoneExtensionPx + 2;
+        // Anchor flush against the active band's right edge regardless of
+        // dispel-clip, hold extension, or zone extension — geometry exposes
+        // the sum; the +2 is cosmetic breathing room.
+        const rightOffsetPx = geo.rightOfActivePx + 2;
         return (
           <span
             className="mit-bar-conditional-marker"
@@ -582,24 +512,18 @@ function ChildOverlay({
   const renderChildT = dragChildT ?? child.effect_time + parentDragDelta;
   const renderParentT = parent.effect_time + parentDragDelta;
 
+  // Drag clamp uses the library-default exec zone; geometry consumes it too
+  // (via parentDurationSec — see ChildGeometry rules).
   const execZone = childType.execution_zone_seconds ?? parentType.duration_seconds;
-  const parentActiveEnd = renderParentT + parentType.duration_seconds;
 
-  // Icon position: offset from the parent's bar origin.
-  const iconLeftPx = (renderChildT - renderParentT) * pxPerSec + pxPerSec / 2;
-
-  // Duration band — non-utility children only. Split into inner (over parent
-  // active, pointer-events:none so clicks pass through to parent) and hashed
-  // extension (past parent active, pointer-events:auto → selects child).
-  const showBand = childType.mechanic !== "utility" && childType.duration_seconds > 0;
-  const bandStart = renderChildT;
-  const bandEnd = Math.min(renderChildT + childType.duration_seconds, laneDurationSec);
-  const innerEnd = Math.min(bandEnd, parentActiveEnd);
-  const innerStart = bandStart;
-  const innerWidthSec = Math.max(0, innerEnd - innerStart);
-  const extStart = Math.max(bandStart, parentActiveEnd);
-  const extEnd = bandEnd;
-  const extWidthSec = Math.max(0, extEnd - extStart);
+  const geo = computeChildGeometry({
+    childEffectTime: renderChildT,
+    parentEffectTime: renderParentT,
+    childType,
+    parentDurationSec: parentType.duration_seconds,
+    pxPerSec,
+    laneDurationSec,
+  });
   const childColor = jobColor(childType.job);
 
   const dragStartRef = useRef<{
@@ -697,23 +621,23 @@ function ChildOverlay({
 
   return (
     <>
-      {showBand && innerWidthSec > 0 && (
+      {geo.innerBand && (
         <div
           className="mit-child-band mit-child-band--inner"
           style={{
-            left: (innerStart - renderParentT) * pxPerSec,
-            width: innerWidthSec * pxPerSec,
+            left: geo.innerBand.leftPx,
+            width: geo.innerBand.widthPx,
             background: `color-mix(in srgb, ${childColor} 55%, transparent)`,
           }}
           aria-hidden
         />
       )}
-      {showBand && extWidthSec > 0 && (
+      {geo.extensionBand && (
         <div
           className="mit-child-band mit-child-band--extension"
           style={{
-            left: (extStart - renderParentT) * pxPerSec,
-            width: extWidthSec * pxPerSec,
+            left: geo.extensionBand.leftPx,
+            width: geo.extensionBand.widthPx,
             // 45° hashed pattern in child's color. ~3px line spacing per PRD §6.2.
             background: `repeating-linear-gradient(45deg, ${childColor} 0 3px, transparent 3px 6px)`,
           }}
@@ -723,7 +647,7 @@ function ChildOverlay({
       )}
       <span
         className={`mit-child-icon${selected ? " is-selected" : ""}${dragging ? " is-dragging" : ""}`}
-        style={{ left: iconLeftPx, width: iconSize, height: iconSize }}
+        style={{ left: geo.iconLeftPx, width: iconSize, height: iconSize }}
         title={iconTitle}
         data-mit-id={child.id}
         onPointerDown={beginDrag}
