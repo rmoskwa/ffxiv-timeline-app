@@ -749,3 +749,89 @@ describe("timeline-store — setName length cap", () => {
     expect(type?.description).toBe("line 1\nline 2\nline 3");
   });
 });
+
+describe("timeline-store — dangerous unicode sanitization", () => {
+  beforeEach(freshTimeline);
+
+  it("strips an RLO inside a pasted boss_name", () => {
+    // U+202E RLO would flip rendering direction; must not survive into storage.
+    useTimelineStore.getState().setBossName("Boss‮Name");
+    expect(useTimelineStore.getState().timeline?.metadata.boss_name).toBe("BossName");
+  });
+
+  it("strips a BOM and zero-width space inside a fight name", () => {
+    useTimelineStore.getState().setName("﻿My​Fight");
+    expect(useTimelineStore.getState().timeline?.metadata.name).toBe("MyFight");
+  });
+
+  it("converts NBSP inside a type name to a regular space", () => {
+    const id = useTimelineStore.getState().addBossAbilityType({
+      name: "Death Sentence",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    const t = useTimelineStore.getState().timeline?.boss_ability_types.find((x) => x.id === id);
+    expect(t?.name).toBe("Death Sentence");
+  });
+
+  it("rejects an NBSP-padded duplicate of an existing type name", () => {
+    useTimelineStore.getState().addBossAbilityType({
+      name: "Death Sentence",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    // "Death Sentence" must collide with "Death Sentence"
+    expect(() =>
+      useTimelineStore.getState().addBossAbilityType({
+        name: "Death Sentence",
+        base_damage: 0,
+        damage_type: "magical",
+        target_pattern: "raidwide",
+        boss_targetable: true,
+      }),
+    ).toThrowError(/already exists/i);
+  });
+
+  it("rejects a ZWJ-padded duplicate of an existing type name", () => {
+    useTimelineStore.getState().addBossAbilityType({
+      name: "DeathSentence",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    expect(() =>
+      useTimelineStore.getState().addBossAbilityType({
+        name: "Death‍Sentence",
+        base_damage: 0,
+        damage_type: "magical",
+        target_pattern: "raidwide",
+        boss_targetable: true,
+      }),
+    ).toThrowError(/already exists/i);
+  });
+
+  it("strips C0 controls from a type name on add", () => {
+    const id = useTimelineStore.getState().addBossAbilityType({
+      name: "BossName",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    const t = useTimelineStore.getState().timeline?.boss_ability_types.find((x) => x.id === id);
+    expect(t?.name).toBe("BossName");
+  });
+
+  it("preserves a ZWJ inside an emoji family in a phase name", () => {
+    // Family emoji: 👨‍👩‍👧‍👦 — must survive intact
+    const family = "Phase \u{1F468}‍\u{1F469}‍\u{1F467}‍\u{1F466}";
+    useTimelineStore.getState().addPhase({ start_time: 100, name: family });
+    const phase = useTimelineStore.getState().timeline?.phases.find((p) => p.start_time === 100);
+    expect(phase?.name).toBe(family);
+  });
+});

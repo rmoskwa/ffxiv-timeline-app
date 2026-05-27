@@ -390,3 +390,63 @@ describe("deserializeBossTimeline — field validation", () => {
     expect(() => deserializeBossTimeline(json)).toThrowError(/target_slot_ids/);
   });
 });
+
+describe("deserialize — dangerous unicode sanitization", () => {
+  it("strips an RLO from boss_name on import", () => {
+    const tl = newTimeline("fixture");
+    const json = JSON.stringify({
+      ...tl,
+      metadata: { ...tl.metadata, boss_name: "Boss‮Name" },
+    });
+    expect(deserialize(json).metadata.boss_name).toBe("BossName");
+  });
+
+  it("strips a BOM from the fight name on import", () => {
+    const tl = newTimeline("fixture");
+    const json = JSON.stringify({
+      ...tl,
+      metadata: { ...tl.metadata, name: "﻿MyFight" },
+    });
+    expect(deserialize(json).metadata.name).toBe("MyFight");
+  });
+
+  it("converts NBSP inside a type name to a regular space on import", () => {
+    const tl = newTimeline("fixture");
+    const badType: BossAbilityType = {
+      id: "t1",
+      name: "Death Sentence",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_types: [badType] });
+    expect(deserialize(json).boss_ability_types[0].name).toBe("Death Sentence");
+  });
+
+  it("strips C0 control chars from a phase name on import", () => {
+    const tl = newTimeline("fixture");
+    const badPhase: Phase = {
+      id: "phase-x",
+      start_time: 60,
+      name: "Phase 2",
+    };
+    const json = JSON.stringify({ ...tl, phases: [badPhase] });
+    expect(deserialize(json).phases[0].name).toBe("Phase 2");
+  });
+
+  it("preserves newlines but strips bidi overrides in a description on import", () => {
+    const tl = newTimeline("fixture");
+    const badType: BossAbilityType = {
+      id: "t1",
+      name: "with-desc",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+      description: "intro\n‮bad text\nend",
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_types: [badType] });
+    expect(deserialize(json).boss_ability_types[0].description).toBe("intro\nbad text\nend");
+  });
+});

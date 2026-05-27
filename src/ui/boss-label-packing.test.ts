@@ -139,3 +139,37 @@ describe("packLabelRows — width sanity (sized for W1≈21 at AVG_CHAR_PX=7)", 
     expect(W1).toBeCloseTo(21, 0);
   });
 });
+
+describe("packLabelRows — emoji names", () => {
+  // Width estimation is by UTF-16 code-unit count, not grapheme count. Emoji are
+  // 2+ code units per visible glyph, so estimateLabelWidth over-counts for emoji
+  // (a single 🔥 reports as 2 chars wide). That's safe: labels never under-pack
+  // and never visually overlap due to emoji. Visual rendering still depends on
+  // the platform font — confirm in the Windows GUI before declaring victory.
+
+  it("never reports a width smaller than a plain ASCII char for a single emoji", () => {
+    // U+1F525 fire emoji (surrogate pair → length 2).
+    const fire = "\u{1F525}";
+    expect(estimateLabelWidth(fire)).toBeGreaterThanOrEqual(W1);
+  });
+
+  it("packs two emoji labels without throwing or producing NaN rows", () => {
+    const { rowByInstanceId, rowCount } = packLabelRows(
+      [
+        { id: "a", effect_time: 10, name: "\u{1F525}" },
+        { id: "b", effect_time: 30, name: "\u{1F4A5}" },
+      ],
+      10,
+    );
+    expect(rowByInstanceId.get("a")).toBe(0);
+    expect(rowByInstanceId.get("b")).toBe(0);
+    expect(rowCount).toBe(1);
+  });
+
+  it("treats a ZWJ-family emoji as a multi-codepoint label (safe over-estimation)", () => {
+    // 👨‍👩‍👧‍👦 — visually one glyph, but 11 code units (4 emoji * 2 + 3 ZWJ).
+    const family = "\u{1F468}‍\u{1F469}‍\u{1F467}‍\u{1F466}";
+    expect(family.length).toBe(11);
+    expect(estimateLabelWidth(family)).toBeGreaterThan(W1 * 4);
+  });
+});
