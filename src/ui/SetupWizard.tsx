@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { Job, JobOrUnset } from "@/domain/types";
 import { importTimelineDialog, saveWorkingTimeline } from "@/persistence/storage";
 import { useTimelineStore } from "@/state/timeline-store";
+import { importErrorMessage } from "./import-error-message";
 import { JobIcon } from "./JobIcon";
 import { JOBS_BY_ROLE } from "./jobs-by-role";
 import { jobColor } from "./role-color";
@@ -36,6 +37,7 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
   const [name, setName] = useState("Untitled Timeline");
   const [selected, setSelected] = useState<Set<Job>>(() => new Set());
   const [roster, setRoster] = useState<RosterSlot[]>(emptyRoster);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const filledCount = roster.filter((s) => s.job !== "unset").length;
   const remaining = ROSTER_SIZE - filledCount;
@@ -80,11 +82,13 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
   };
 
   const openTimeline = async () => {
+    setImportError(null);
     try {
       const imported = await importTimelineDialog();
       if (imported) loadTimeline(imported);
     } catch (err) {
       console.error("Open Timeline failed:", err);
+      setImportError(importErrorMessage(err));
     }
   };
 
@@ -113,6 +117,11 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
         {hydrateError && (
           <p className="wizard-error" role="alert">
             Couldn't load the previous auto-save ({hydrateError.message}). Starting fresh.
+          </p>
+        )}
+        {importError && (
+          <p className="wizard-error" role="alert">
+            {importError}
           </p>
         )}
         <p className="hint">

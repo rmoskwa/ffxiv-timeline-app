@@ -1,4 +1,4 @@
-import { confirm as confirmDialog } from "@tauri-apps/plugin-dialog";
+import { confirm as confirmDialog, message as messageDialog } from "@tauri-apps/plugin-dialog";
 import { useCallback } from "react";
 import { TIMELINE_SCHEMA_VERSION } from "@/domain/types";
 import {
@@ -10,6 +10,7 @@ import { useAutoSave } from "@/persistence/use-auto-save";
 import { useHydrate } from "@/persistence/use-hydrate";
 import { useTimelineStore } from "@/state/timeline-store";
 import { AddPhaseModal } from "./AddPhaseModal";
+import { importErrorMessage } from "./import-error-message";
 import { RosterPanel } from "./RosterPanel";
 import { SetupWizard } from "./SetupWizard";
 import { TimelineEditor } from "./TimelineEditor";
@@ -42,6 +43,10 @@ export function App() {
       if (imported) loadTimeline(imported);
     } catch (e) {
       console.error("Open Timeline failed:", e);
+      await messageDialog(importErrorMessage(e), {
+        title: "Open Timeline failed",
+        kind: "error",
+      });
     }
   }, [loadTimeline]);
 
