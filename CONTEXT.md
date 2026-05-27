@@ -69,7 +69,19 @@ The user-picked **player slots** an instance's effect is aimed at. Applies to bo
 _Avoid_: target assignment, target selection (use "Targeting" as the noun)
 
 **Target pattern**:
-A type-level enum on a boss ability with two values: `raidwide` (hits all 8 player slots; no **Targeting** needed) and `targeted` (hits a user-picked subset of 1–8 slots; requires **Targeting**). Finer-grained patterns such as `spread` and `stack` may be reintroduced as the UX matures.
+A type-level enum on a boss ability with three values:
+
+- `raidwide` — hits all 8 player slots; no **Targeting** needed.
+- `targeted` — hits a user-picked subset of 1–8 slots; each hit player takes the full `base_damage`. Requires **Targeting**. Covers tankbusters, spreads, line cleaves, towers, and any other "each picked player eats the full hit" mechanic.
+- `stack` — hits a user-picked subset of 1–8 slots; the type's `base_damage` is divided evenly across the picked targets, then each player applies their own mits to their share. Requires **Targeting**. Covers shared tankbusters, raid-wide stacks, and any other "total damage gets split N ways" mechanic.
+
+Edge cases:
+
+- A `stack` with 0 picked targets is invalid — same `unset_target` conflict as a `targeted` instance with no pick.
+- A `stack` with 1 picked target is mathematically identical to `targeted` with the same slot; both shapes are allowed and the user decides which framing to use.
+- Mixed-distribution casts (e.g. a raidwide AoE *plus* a tankbuster from the same boss action) are modeled as two instances at the same `effect_time`, not as a single pattern. Multi-hit sequences (e.g. 3-hit chain casts) are likewise one instance per hit.
+
+Finer-grained patterns such as `spread` are not currently in the enum — they collapse cleanly into `targeted`.
 _Avoid_: attack type, distribution, spread pattern
 
 **Affects**:
@@ -166,7 +178,7 @@ Cooldown overlap is *not* a conflict kind: two Bars on the same sub-lane (same s
 _Avoid_: error, warning, problem
 
 **Schema version**:
-The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `8` (bumped from `7` when `MitigationInstance.parent_instance_id` and `MitigationType.gated_by` / `execution_zone_seconds` were added for the **Parent mit / Child mit** redesign).
+The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `11` (bumped from `10` when `stack` was added to `TargetPattern`).
 _Avoid_: file version, format version
 
 ### Canvas
