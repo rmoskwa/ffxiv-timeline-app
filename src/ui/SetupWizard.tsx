@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import type { Job, JobOrUnset } from "@/domain/types";
-import { saveWorkingTimeline } from "@/persistence/storage";
+import { importTimelineDialog, saveWorkingTimeline } from "@/persistence/storage";
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { JOBS_BY_ROLE } from "./jobs-by-role";
@@ -31,6 +31,7 @@ interface SetupWizardProps {
 export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
   const newTimeline = useTimelineStore((s) => s.newTimeline);
   const setSlotJob = useTimelineStore((s) => s.setSlotJob);
+  const loadTimeline = useTimelineStore((s) => s.loadTimeline);
 
   const [name, setName] = useState("Untitled Timeline");
   const [selected, setSelected] = useState<Set<Job>>(() => new Set());
@@ -76,6 +77,15 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
       jobs.push("unset");
       return prev.map((s, i) => ({ ...s, job: jobs[i] }));
     });
+  };
+
+  const openTimeline = async () => {
+    try {
+      const imported = await importTimelineDialog();
+      if (imported) loadTimeline(imported);
+    } catch (err) {
+      console.error("Open Timeline failed:", err);
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -195,6 +205,9 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
         </div>
 
         <div className="wizard-actions">
+          <button type="button" onClick={openTimeline}>
+            Open Timeline
+          </button>
           <button type="submit">Create timeline</button>
         </div>
       </form>

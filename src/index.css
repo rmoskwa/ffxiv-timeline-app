@@ -199,6 +199,7 @@ button {
 .wizard-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 0.5rem;
 }
 .wizard-actions button {
   background: #4a8;
