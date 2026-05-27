@@ -268,6 +268,14 @@ describe("deserialize — field validation", () => {
     expect(deserialize(json).boss_ability_types[0].name.length).toBe(MAX_NAME_LEN);
   });
 
+  it("truncates roster[].name_label to MAX_NAME_LEN on deserialize", () => {
+    const tl = newTimeline("fixture");
+    const huge = "s".repeat(MAX_NAME_LEN + 500);
+    const labeledRoster = tl.roster.map((s, i) => (i === 0 ? { ...s, name_label: huge } : s));
+    const json = JSON.stringify({ ...tl, roster: labeledRoster });
+    expect(deserialize(json).roster[0].name_label?.length).toBe(MAX_NAME_LEN);
+  });
+
   it("truncates phases[].name to MAX_NAME_LEN on deserialize", () => {
     const tl = newTimeline("fixture");
     const huge = "p".repeat(MAX_NAME_LEN + 500);

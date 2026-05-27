@@ -670,6 +670,13 @@ describe("timeline-store — setName length cap", () => {
     expect(added?.name.length).toBe(MAX_NAME_LEN);
   });
 
+  it("truncates setSlotLabel to MAX_NAME_LEN", () => {
+    const huge = "s".repeat(MAX_NAME_LEN + 500);
+    useTimelineStore.getState().setSlotLabel(0, huge);
+    const slot = useTimelineStore.getState().timeline?.roster[0];
+    expect(slot?.name_label?.length).toBe(MAX_NAME_LEN);
+  });
+
   it("truncates renamePhase name to MAX_NAME_LEN", () => {
     useTimelineStore.getState().addPhase({ start_time: 100, name: "short" });
     const phaseId = useTimelineStore
