@@ -394,6 +394,8 @@ export const MAX_FIGHT_DURATION_SEC = 1800; // 30:00 hard cap on user-set length
 
 export const MAX_BASE_DAMAGE = 999_999; // 6-digit cap on boss-ability base damage — catches typo-zeros (1M+ is implausible)
 
+export const MAX_NAME_LEN = 80; // user-given name fields (fight name, boss name, type name, phase name, slot label) — prevents pasted-document overflow without constraining real names
+
 export interface TimelineFile {
   schema_version: typeof TIMELINE_SCHEMA_VERSION;
   kind: "timeline";

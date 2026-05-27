@@ -11,6 +11,7 @@ import {
   type JobOrUnset,
   MAX_BASE_DAMAGE,
   MAX_FIGHT_DURATION_SEC,
+  MAX_NAME_LEN,
   type MitigationInstance,
   type Phase,
   type TimelineFile,
@@ -173,8 +174,9 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   setName: (name) =>
     set((s) => {
       if (!s.timeline) return s;
+      const clipped = name.slice(0, MAX_NAME_LEN);
       return {
-        timeline: touch({ ...s.timeline, metadata: { ...s.timeline.metadata, name } }),
+        timeline: touch({ ...s.timeline, metadata: { ...s.timeline.metadata, name: clipped } }),
       };
     }),
 

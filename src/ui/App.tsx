@@ -2,7 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { confirm as confirmDialog, message as messageDialog } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useCallback, useMemo } from "react";
-import { TIMELINE_SCHEMA_VERSION } from "@/domain/types";
+import { MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
 import {
   deleteWorkingTimeline,
   exportTimelineDialog,
@@ -202,6 +202,7 @@ export function App() {
             <input
               type="text"
               className="fight-name-input"
+              maxLength={MAX_NAME_LEN}
               value={timeline.metadata.name}
               onChange={(e) => setName(e.target.value)}
               onBlur={(e) => {

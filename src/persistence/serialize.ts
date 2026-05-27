@@ -11,6 +11,7 @@ import {
   type FreeformNote,
   type Job,
   type JobOrUnset,
+  MAX_NAME_LEN,
   type MitigationInstance,
   type ObservedDamageEntry,
   type Phase,
@@ -393,7 +394,7 @@ function validateMetadata(v: unknown, path: string): TimelineFile["metadata"] {
     throw new TimelineValidationError(`${path}.fight_duration_sec`, "must be >= 1");
   }
   return {
-    name: asString(o.name, `${path}.name`),
+    name: asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN),
     boss_name: asString(o.boss_name, `${path}.boss_name`),
     fight_duration_sec,
     created_at: asString(o.created_at, `${path}.created_at`),
