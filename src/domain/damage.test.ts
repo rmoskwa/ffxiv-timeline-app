@@ -37,6 +37,7 @@ function bossType(overrides: Partial<BossAbilityType> = {}): BossAbilityType {
     base_damage: 100_000,
     damage_type: "magical",
     target_pattern: "raidwide",
+    boss_targetable: true,
     ...overrides,
   };
 }
@@ -492,6 +493,23 @@ describe("computeDamagePerPlayer — % mit behavior", () => {
     const rp = mit({ player_slot_id: "s0", type_id: "drk.reprisal", id: "mit-rp" });
     const result = computeDamagePerPlayer(bossInstance(), bossType(), [dm, rp], lookup, ROSTER);
     expect(dmg(result)).toEqual([64_800, 64_800, ...new Array(6).fill(81_000)]);
+  });
+
+  it("skips boss_debuff mits when the boss ability is not targetable", () => {
+    // Same setup as the multiplicative-stack test, but boss_targetable=false:
+    // Reprisal can't land on an untargetable boss, so only Dark Missionary
+    // applies. Non-tank: 100k × 0.9 = 90k; tank: × 0.8 = 72k. Party mit
+    // (Dark Missionary) still applies normally.
+    const dm = mit({ player_slot_id: "s0", type_id: "drk.dark_missionary" });
+    const rp = mit({ player_slot_id: "s0", type_id: "drk.reprisal", id: "mit-rp" });
+    const result = computeDamagePerPlayer(
+      bossInstance(),
+      bossType({ boss_targetable: false }),
+      [dm, rp],
+      lookup,
+      ROSTER,
+    );
+    expect(dmg(result)).toEqual([72_000, 72_000, ...new Array(6).fill(90_000)]);
   });
 
   it("self mits apply only to the owner; others get baseline (with Tank Mastery)", () => {

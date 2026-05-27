@@ -58,6 +58,7 @@ function makeTypedTimeline() {
     base_damage: 220_000,
     damage_type: "physical",
     target_pattern: "targeted",
+    boss_targetable: true,
     description: "test",
   };
   const inst: BossAbilityInstance = {

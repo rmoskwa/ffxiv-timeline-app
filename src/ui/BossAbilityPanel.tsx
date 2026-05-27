@@ -375,6 +375,16 @@ function TypeFields({ type }: { type: BossAbilityType }) {
           ))}
         </select>
       </label>
+      <label className="field">
+        <span>Boss targetable</span>
+        <select
+          value={type.boss_targetable ? "yes" : "no"}
+          onChange={(e) => updateType(type.id, { boss_targetable: e.target.value === "yes" })}
+        >
+          <option value="yes">yes</option>
+          <option value="no">no</option>
+        </select>
+      </label>
       <div className="field">
         <span>Description</span>
         <DescriptionField type={type} />
@@ -708,6 +718,7 @@ function NewTypeForm({ onClose }: { onClose: () => void }) {
   const [baseDamage, setBaseDamage] = useState("0");
   const [damageType, setDamageType] = useState<DamageType>("magical");
   const [targetPattern, setTargetPattern] = useState<TargetPattern>("raidwide");
+  const [bossTargetable, setBossTargetable] = useState(true);
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -735,6 +746,7 @@ function NewTypeForm({ onClose }: { onClose: () => void }) {
         base_damage: Math.round(dmg),
         damage_type: damageType,
         target_pattern: targetPattern,
+        boss_targetable: bossTargetable,
         ...(description.trim() ? { description: description.trim() } : {}),
       });
       onClose();
@@ -795,6 +807,17 @@ function NewTypeForm({ onClose }: { onClose: () => void }) {
               {p}
             </option>
           ))}
+        </select>
+      </label>
+
+      <label className="field">
+        <span>Boss targetable</span>
+        <select
+          value={bossTargetable ? "yes" : "no"}
+          onChange={(e) => setBossTargetable(e.target.value === "yes")}
+        >
+          <option value="yes">yes</option>
+          <option value="no">no</option>
         </select>
       </label>
 

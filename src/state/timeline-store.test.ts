@@ -166,6 +166,7 @@ describe("timeline-store — auto-spawn gated children", () => {
       base_damage: 50_000,
       damage_type: "magical",
       target_pattern: "raidwide",
+      boss_targetable: true,
     });
     useTimelineStore.getState().addBossAbilityInstance({
       type_id: bossTypeId,
@@ -229,6 +230,7 @@ describe("timeline-store — replaceBossTimeline", () => {
           base_damage: 100_000,
           damage_type: "magical",
           target_pattern: "raidwide",
+          boss_targetable: true,
         },
       ],
       boss_ability_instances: [
@@ -258,6 +260,7 @@ describe("timeline-store — replaceBossTimeline", () => {
       base_damage: 50_000,
       damage_type: "magical",
       target_pattern: "raidwide",
+      boss_targetable: true,
     });
     useTimelineStore
       .getState()

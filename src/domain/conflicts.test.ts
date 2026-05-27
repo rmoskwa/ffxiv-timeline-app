@@ -85,6 +85,7 @@ describe("detectConflicts — unset_target", () => {
     base_damage: 200_000,
     damage_type: "physical",
     target_pattern: "targeted",
+    boss_targetable: true,
   };
   const RAIDWIDE: BossAbilityType = {
     id: "type-rw",
@@ -92,6 +93,7 @@ describe("detectConflicts — unset_target", () => {
     base_damage: 80_000,
     damage_type: "magical",
     target_pattern: "raidwide",
+    boss_targetable: true,
   };
   const STACK: BossAbilityType = {
     id: "type-stack",
@@ -99,6 +101,7 @@ describe("detectConflicts — unset_target", () => {
     base_damage: 200_000,
     damage_type: "magical",
     target_pattern: "stack",
+    boss_targetable: true,
   };
   const bossLookup = [TARGETED, RAIDWIDE, STACK];
 

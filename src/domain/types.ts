@@ -57,6 +57,13 @@ export interface BossAbilityType {
   base_damage: number; // default 0
   damage_type: DamageType; // default "magical"
   target_pattern: TargetPattern; // default "raidwide"
+  // Whether the boss is targetable during this ability. When false, every mit
+  // with affects:boss_debuff is excluded from the per-hit % mit walk — the
+  // debuff can't land on an untargetable boss. Defaults to true on new types.
+  // Per-type (not per-instance): if the same ability fires in two states
+  // (targetable in one, untargetable in another), the user creates a second
+  // type rather than overriding per-instance.
+  boss_targetable: boolean;
   description?: string;
 }
 
@@ -346,7 +353,7 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 11 as const;
+export const TIMELINE_SCHEMA_VERSION = 12 as const;
 
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 

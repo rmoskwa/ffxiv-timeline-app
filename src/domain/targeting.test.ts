@@ -15,6 +15,7 @@ function bossType(pattern: TargetPattern): BossAbilityType {
     base_damage: 100_000,
     damage_type: "magical",
     target_pattern: pattern,
+    boss_targetable: true,
   };
 }
 

@@ -310,6 +310,11 @@ export function computeDamageTimeline(
       for (const m of allMits) {
         const mt = lookupMitType(m.type_id);
         if (!mt) continue;
+        // Untargetable boss: a boss_debuff can't land, so its % mit doesn't
+        // apply. Single check at the per-hit level (boss_debuff mits never
+        // seed barriers — recipientIncludes returns false — so the seeding
+        // path is already a no-op for them).
+        if (mt.affects === "boss_debuff" && !type.boss_targetable) continue;
         const trunc = effectiveEnds.get(`${m.id}|${playerId}`);
         if (mitCovers(m, mt, resolvedHit, i, roster, trunc)) {
           postMit *= 1 - mitPercentFor(mt, resolvedHit.damage_type) / 100;
