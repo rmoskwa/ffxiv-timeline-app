@@ -6,6 +6,7 @@ import {
   type BossAbilityType,
   type DamageType,
   MAX_BASE_DAMAGE,
+  MAX_NAME_LEN,
   type Phase,
   type Roster,
   type TargetPattern,
@@ -327,6 +328,7 @@ function TypeNameField({ type }: { type: BossAbilityType }) {
         type="text"
         className="boss-type-name-input"
         value={draft}
+        maxLength={MAX_NAME_LEN}
         aria-label="Ability name"
         onChange={(e) => {
           setDraft(e.target.value);
@@ -684,6 +686,7 @@ function NewTypeForm({ onClose }: { onClose: () => void }) {
           ref={nameRef}
           type="text"
           value={name}
+          maxLength={MAX_NAME_LEN}
           onChange={(e) => {
             setName(e.target.value);
             if (error) setError(null);

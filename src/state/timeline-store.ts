@@ -281,16 +281,21 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
 
   addBossAbilityType: (input) => {
     const id = crypto.randomUUID();
+    const clippedName = input.name.slice(0, MAX_NAME_LEN);
     const tl = useTimelineStore.getState().timeline;
     if (tl) {
-      const target = normalizeName(input.name);
+      const target = normalizeName(clippedName);
       if (tl.boss_ability_types.some((t) => normalizeName(t.name) === target)) {
-        throw new DuplicateNameError(input.name.trim());
+        throw new DuplicateNameError(clippedName.trim());
       }
     }
     set((s) => {
       if (!s.timeline) return s;
-      const clamped = { ...input, base_damage: clampBaseDamage(input.base_damage) };
+      const clamped = {
+        ...input,
+        name: clippedName,
+        base_damage: clampBaseDamage(input.base_damage),
+      };
       return {
         timeline: touch({
           ...s.timeline,
@@ -304,18 +309,22 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   updateBossAbilityType: (id, patch) =>
     set((s) => {
       if (!s.timeline) return s;
-      if (patch.name !== undefined) {
-        const target = normalizeName(patch.name);
+      const clippedName = patch.name !== undefined ? patch.name.slice(0, MAX_NAME_LEN) : undefined;
+      if (clippedName !== undefined) {
+        const target = normalizeName(clippedName);
         if (
           s.timeline.boss_ability_types.some((t) => t.id !== id && normalizeName(t.name) === target)
         ) {
-          throw new DuplicateNameError(patch.name.trim());
+          throw new DuplicateNameError(clippedName.trim());
         }
       }
-      const clampedPatch =
-        patch.base_damage !== undefined
-          ? { ...patch, base_damage: clampBaseDamage(patch.base_damage) }
-          : patch;
+      const clampedPatch = {
+        ...patch,
+        ...(clippedName !== undefined ? { name: clippedName } : {}),
+        ...(patch.base_damage !== undefined
+          ? { base_damage: clampBaseDamage(patch.base_damage) }
+          : {}),
+      };
       return {
         timeline: touch({
           ...s.timeline,

@@ -289,7 +289,7 @@ function validateBossAbilityType(v: unknown, path: string): BossAbilityType {
   const o = asObject(v, path);
   const out: BossAbilityType = {
     id: asString(o.id, `${path}.id`),
-    name: asString(o.name, `${path}.name`),
+    name: asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN),
     base_damage: asNonNegativeNumber(o.base_damage, `${path}.base_damage`),
     damage_type: asEnum(o.damage_type, DAMAGE_TYPES, `${path}.damage_type`),
     target_pattern: asEnum(o.target_pattern, TARGET_PATTERNS, `${path}.target_pattern`),
