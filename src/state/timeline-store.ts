@@ -10,6 +10,7 @@ import type {
   BossTimelineFile,
   JobOrUnset,
   MitigationInstance,
+  Phase,
   TimelineFile,
 } from "@/domain/types";
 import { newTimeline as makeNewTimeline } from "@/persistence/serialize";
@@ -76,6 +77,22 @@ export interface TimelineStore {
   addMitigationInstance: (input: MitInstanceInput) => string;
   updateMitigationInstance: (id: string, patch: Partial<MitInstanceInput>) => void;
   removeMitigationInstance: (id: string) => void;
+
+  // Phase actions. See docs/phases.md §5.
+  addPhase: (input: { start_time: number; name: string }) => void;
+  renamePhase: (id: string, name: string) => void;
+  setPhaseStartTime: (id: string, start_time: number) => void;
+  deletePhase: (id: string) => void;
+}
+
+// PhaseRejectedError is raised by store actions when an input would break the
+// phases-tile-the-timeline invariant (see docs/phases.md §4.2/§5). Callers
+// (modal, panel) surface the message inline.
+export class PhaseRejectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PhaseRejectedError";
+  }
 }
 
 // Stamp updated_at on every mutation so auto-save can diff cheaply later.
@@ -110,6 +127,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           boss_ability_types: imported.boss_ability_types,
           boss_ability_instances: imported.boss_ability_instances,
           mitigation_instances: [],
+          phases: imported.phases.map((p) => ({ ...p })),
         }),
         selectedInstance: null,
       };
@@ -134,6 +152,11 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       // outlasts the encounter); only drop mits whose effect_time itself is
       // now past the new end.
       const survivingMits = s.timeline.mitigation_instances.filter((m) => m.effect_time <= clamped);
+      // Phases must remain strictly inside the timeline (first phase pinned at
+      // 0; all others < fight_duration_sec). Dropping to a single survivor
+      // collapses the UI back to the empty-phases case per docs/phases.md §5.
+      const culledPhases = s.timeline.phases.filter((p) => p.start_time < clamped);
+      const survivingPhases = culledPhases.length >= 2 ? culledPhases : [];
       const survivingBossIds = new Set(survivingBoss.map((i) => i.id));
       const survivingMitIds = new Set(survivingMits.map((m) => m.id));
       const sel = s.selectedInstance;
@@ -146,6 +169,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           metadata: { ...s.timeline.metadata, fight_duration_sec: clamped },
           boss_ability_instances: survivingBoss,
           mitigation_instances: survivingMits,
+          phases: survivingPhases,
         }),
         ...(selectionStillValid ? {} : { selectedInstance: null }),
       };
@@ -377,6 +401,92 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         }),
         ...(sel?.kind === "mit" && cascadedIds.has(sel.id) ? { selectedInstance: null } : {}),
       };
+    }),
+
+  // ─── Phases ────────────────────────────────────────────────────────────
+  // See docs/phases.md §5. The first ever addPhase materializes an implicit
+  // Phase 1 at start_time:0 so the tile-the-fight invariant holds.
+
+  addPhase: (input) => {
+    const tl = useTimelineStore.getState().timeline;
+    if (!tl) return;
+    const start = Math.round(input.start_time);
+    const duration = tl.metadata.fight_duration_sec;
+    if (!Number.isFinite(start) || start <= 0 || start >= duration) {
+      throw new PhaseRejectedError(
+        `Start time must be between 0 and ${duration - 1} seconds (exclusive).`,
+      );
+    }
+    if (tl.phases.some((p) => p.start_time === start)) {
+      throw new PhaseRejectedError("A phase already starts at that time.");
+    }
+    set((s) => {
+      if (!s.timeline) return s;
+      const incoming: Phase = {
+        id: crypto.randomUUID(),
+        start_time: start,
+        name: input.name,
+      };
+      const seed: Phase[] =
+        s.timeline.phases.length === 0
+          ? [{ id: crypto.randomUUID(), start_time: 0, name: "Phase 1" }]
+          : [...s.timeline.phases];
+      const phases = [...seed, incoming].sort((a, b) => a.start_time - b.start_time);
+      return { timeline: touch({ ...s.timeline, phases }) };
+    });
+  },
+
+  renamePhase: (id, name) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      return {
+        timeline: touch({
+          ...s.timeline,
+          phases: s.timeline.phases.map((p) => (p.id === id ? { ...p, name } : p)),
+        }),
+      };
+    }),
+
+  setPhaseStartTime: (id, start_time) => {
+    const tl = useTimelineStore.getState().timeline;
+    if (!tl) return;
+    const idx = tl.phases.findIndex((p) => p.id === id);
+    if (idx < 0) return;
+    if (idx === 0) {
+      throw new PhaseRejectedError("The first phase is pinned to 0:00 and cannot be moved.");
+    }
+    const start = Math.round(start_time);
+    const prev = tl.phases[idx - 1]?.start_time ?? 0;
+    const next = tl.phases[idx + 1]?.start_time ?? tl.metadata.fight_duration_sec;
+    if (!Number.isFinite(start) || start <= prev || start >= next) {
+      throw new PhaseRejectedError(
+        `Start time must be strictly between ${prev} and ${next} seconds.`,
+      );
+    }
+    set((s) => {
+      if (!s.timeline) return s;
+      return {
+        timeline: touch({
+          ...s.timeline,
+          phases: s.timeline.phases.map((p) => (p.id === id ? { ...p, start_time: start } : p)),
+        }),
+      };
+    });
+  },
+
+  deletePhase: (id) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      const idx = s.timeline.phases.findIndex((p) => p.id === id);
+      if (idx < 0) return s;
+      // First phase cannot be deleted — its range is owned by whatever phase
+      // boundary comes next, and there is no "previous" to merge it into.
+      if (idx === 0) return s;
+      // Going from 2 phases to 1 collapses to the empty-phases UI (there is
+      // no such thing as a single user-added phase covering the whole fight).
+      const remaining = s.timeline.phases.filter((p) => p.id !== id);
+      const phases = remaining.length >= 2 ? remaining : [];
+      return { timeline: touch({ ...s.timeline, phases }) };
     }),
 }));
 

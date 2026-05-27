@@ -76,6 +76,7 @@ export function serializeBossTimeline(timeline: TimelineFile): string {
       target_slot_ids: [],
       observed_damage: [],
     })),
+    phases: timeline.phases.map((p) => ({ ...p })),
   };
   return JSON.stringify(file, null, 2);
 }
@@ -131,7 +132,7 @@ export function newTimeline(name: string): TimelineFile {
     boss_ability_types: [],
     boss_ability_instances: [],
     mitigation_instances: [],
-    phase_markers: [],
+    phases: [],
     freeform_notes: [],
   };
 }

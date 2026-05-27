@@ -9,15 +9,18 @@ import {
 import { useAutoSave } from "@/persistence/use-auto-save";
 import { useHydrate } from "@/persistence/use-hydrate";
 import { useTimelineStore } from "@/state/timeline-store";
+import { AddPhaseModal } from "./AddPhaseModal";
 import { RosterPanel } from "./RosterPanel";
 import { SetupWizard } from "./SetupWizard";
 import { TimelineEditor } from "./TimelineEditor";
+import { useAddPhaseModalStore } from "./use-add-phase-modal";
 
 export function App() {
   const { hydrated, error: hydrateError } = useHydrate();
   const timeline = useTimelineStore((s) => s.timeline);
   const loadTimeline = useTimelineStore((s) => s.loadTimeline);
   const closeTimeline = useTimelineStore((s) => s.closeTimeline);
+  const openAddPhase = useAddPhaseModalStore((s) => s.open);
 
   // Auto-save only after hydration completes AND a timeline is loaded.
   // The hydration gate guarantees the loaded ref is treated as the baseline
@@ -86,6 +89,9 @@ export function App() {
           <button type="button" className="link-button" onClick={handleSaveTimeline}>
             Save Timeline
           </button>
+          <button type="button" className="link-button" onClick={openAddPhase}>
+            Add Phase
+          </button>
           <button type="button" className="link-button" onClick={handleDiscard}>
             Discard
           </button>
@@ -96,6 +102,7 @@ export function App() {
         <RosterPanel />
         <TimelineEditor />
       </div>
+      <AddPhaseModal />
     </div>
   );
 }

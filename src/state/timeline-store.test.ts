@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { BossTimelineFile, Job, MitigationInstance, Roster } from "@/domain/types";
 import { TIMELINE_SCHEMA_VERSION } from "@/domain/types";
-import { useTimelineStore } from "./timeline-store";
+import { PhaseRejectedError, useTimelineStore } from "./timeline-store";
 
 const RAMPART = "drk.rampart"; // cooldown 90s, duration 20s
 
@@ -249,6 +249,7 @@ describe("timeline-store — replaceBossTimeline", () => {
           observed_damage: [],
         },
       ],
+      phases: [],
       ...overrides,
     };
   }
@@ -355,5 +356,160 @@ describe("timeline-store — offset-glued parent drag", () => {
     useTimelineStore.getState().updateMitigationInstance(seraphId, { target_slot_ids: [slotId] });
     const after = mitsOfType("sch.consolation").map((c) => c.effect_time);
     expect(after).toEqual(before);
+  });
+});
+
+// ─── Phases ─────────────────────────────────────────────────────────────────
+// docs/phases.md §5 / §8.
+
+function phases() {
+  return useTimelineStore.getState().timeline?.phases ?? [];
+}
+
+describe("timeline-store — phases", () => {
+  beforeEach(() => {
+    useTimelineStore.getState().newTimeline("phases-test");
+  });
+
+  it("starts with no phases (UI hidden)", () => {
+    expect(phases()).toEqual([]);
+  });
+
+  it("first addPhase materializes implicit Phase 1 at 0", () => {
+    useTimelineStore.getState().addPhase({ start_time: 105, name: "Adds" });
+    const got = phases();
+    expect(got).toHaveLength(2);
+    expect(got[0].start_time).toBe(0);
+    expect(got[0].name).toBe("Phase 1");
+    expect(got[1].start_time).toBe(105);
+    expect(got[1].name).toBe("Adds");
+  });
+
+  it("addPhase rejects start_time at the boundary or outside the fight", () => {
+    expect(() => useTimelineStore.getState().addPhase({ start_time: 0, name: "x" })).toThrow(
+      PhaseRejectedError,
+    );
+    const duration = useTimelineStore.getState().timeline?.metadata.fight_duration_sec ?? 0;
+    expect(() => useTimelineStore.getState().addPhase({ start_time: duration, name: "x" })).toThrow(
+      PhaseRejectedError,
+    );
+  });
+
+  it("addPhase rejects a duplicate boundary", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "A" });
+    expect(() => useTimelineStore.getState().addPhase({ start_time: 100, name: "B" })).toThrow(
+      PhaseRejectedError,
+    );
+  });
+
+  it("addPhase keeps the phases sorted by start_time", () => {
+    useTimelineStore.getState().addPhase({ start_time: 200, name: "B" });
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "A" });
+    useTimelineStore.getState().addPhase({ start_time: 300, name: "C" });
+    expect(phases().map((p) => p.start_time)).toEqual([0, 100, 200, 300]);
+  });
+
+  it("renamePhase updates only the name", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "Adds" });
+    const id = phases()[1].id;
+    useTimelineStore.getState().renamePhase(id, "Heat 2");
+    expect(phases()[1].name).toBe("Heat 2");
+    expect(phases()[1].start_time).toBe(100);
+  });
+
+  it("setPhaseStartTime accepts a value strictly between neighbors", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "A" });
+    useTimelineStore.getState().addPhase({ start_time: 200, name: "B" });
+    const aId = phases()[1].id;
+    useTimelineStore.getState().setPhaseStartTime(aId, 150);
+    expect(phases()[1].start_time).toBe(150);
+  });
+
+  it("setPhaseStartTime rejects values that meet or cross a neighbor", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "A" });
+    useTimelineStore.getState().addPhase({ start_time: 200, name: "B" });
+    const aId = phases()[1].id;
+    expect(() => useTimelineStore.getState().setPhaseStartTime(aId, 0)).toThrow(PhaseRejectedError);
+    expect(() => useTimelineStore.getState().setPhaseStartTime(aId, 200)).toThrow(
+      PhaseRejectedError,
+    );
+  });
+
+  it("setPhaseStartTime refuses to move the first phase off 0", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "A" });
+    const firstId = phases()[0].id;
+    expect(() => useTimelineStore.getState().setPhaseStartTime(firstId, 30)).toThrow(
+      PhaseRejectedError,
+    );
+  });
+
+  it("deletePhase on the first phase is a no-op", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "A" });
+    useTimelineStore.getState().addPhase({ start_time: 200, name: "B" });
+    const before = phases();
+    useTimelineStore.getState().deletePhase(before[0].id);
+    expect(phases()).toEqual(before);
+  });
+
+  it("deletePhase removes a middle phase and merges its range into the previous", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "A" });
+    useTimelineStore.getState().addPhase({ start_time: 200, name: "B" });
+    const middleId = phases()[1].id;
+    useTimelineStore.getState().deletePhase(middleId);
+    expect(phases().map((p) => p.start_time)).toEqual([0, 200]);
+  });
+
+  it("deletePhase from 2 → 1 collapses back to empty (phase UI hides)", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "A" });
+    expect(phases()).toHaveLength(2);
+    useTimelineStore.getState().deletePhase(phases()[1].id);
+    expect(phases()).toEqual([]);
+  });
+
+  it("setFightDuration drops phases past the new end and collapses survivors", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "A" });
+    useTimelineStore.getState().addPhase({ start_time: 200, name: "B" });
+    useTimelineStore.getState().addPhase({ start_time: 300, name: "C" });
+    useTimelineStore.getState().setFightDuration(250);
+    expect(phases().map((p) => p.start_time)).toEqual([0, 100, 200]);
+  });
+
+  it("setFightDuration that leaves only the implicit Phase 1 clears phases entirely", () => {
+    useTimelineStore.getState().addPhase({ start_time: 200, name: "A" });
+    useTimelineStore.getState().setFightDuration(100);
+    expect(phases()).toEqual([]);
+  });
+
+  it("replaceBossTimeline replaces phases with imported list", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "Existing" });
+    const imported: BossTimelineFile = {
+      schema_version: TIMELINE_SCHEMA_VERSION,
+      kind: "boss_timeline",
+      boss_name: "New",
+      fight_duration_sec: 400,
+      boss_ability_types: [],
+      boss_ability_instances: [],
+      phases: [
+        { id: "p1", start_time: 0, name: "Imported 1" },
+        { id: "p2", start_time: 220, name: "Imported 2" },
+      ],
+    };
+    useTimelineStore.getState().replaceBossTimeline(imported);
+    expect(phases().map((p) => p.name)).toEqual(["Imported 1", "Imported 2"]);
+  });
+
+  it("replaceBossTimeline with empty phases clears the recipient's phases", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "A" });
+    const imported: BossTimelineFile = {
+      schema_version: TIMELINE_SCHEMA_VERSION,
+      kind: "boss_timeline",
+      boss_name: "New",
+      fight_duration_sec: 400,
+      boss_ability_types: [],
+      boss_ability_instances: [],
+      phases: [],
+    };
+    useTimelineStore.getState().replaceBossTimeline(imported);
+    expect(phases()).toEqual([]);
   });
 });

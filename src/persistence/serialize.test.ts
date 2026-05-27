@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BossAbilityInstance, BossAbilityType } from "@/domain/types";
+import type { BossAbilityInstance, BossAbilityType, Phase } from "@/domain/types";
 import { TIMELINE_SCHEMA_VERSION } from "@/domain/types";
 import {
   deserialize,
@@ -74,11 +74,16 @@ function makeTypedTimeline() {
       },
     ],
   };
+  const phases: Phase[] = [
+    { id: "phase-1", start_time: 0, name: "Phase 1" },
+    { id: "phase-2", start_time: 105, name: "Adds" },
+  ];
   return {
     ...tl,
     metadata: { ...tl.metadata, boss_name: "Lindwurm" },
     boss_ability_types: [type],
     boss_ability_instances: [inst],
+    phases,
   };
 }
 
@@ -113,6 +118,13 @@ describe("serializeBossTimeline", () => {
     expect(back.boss_ability_instances).toEqual([
       { ...tl.boss_ability_instances[0], target_slot_ids: [], observed_damage: [] },
     ]);
+    expect(back.phases).toEqual(tl.phases);
+  });
+
+  it("carries an empty phases array when none are defined", () => {
+    const tl = { ...makeTypedTimeline(), phases: [] };
+    const parsed = JSON.parse(serializeBossTimeline(tl));
+    expect(parsed.phases).toEqual([]);
   });
 });
 

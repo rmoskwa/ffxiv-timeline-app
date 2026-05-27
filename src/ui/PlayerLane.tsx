@@ -5,6 +5,7 @@ import type { BossAbilityInstance, MitigationInstance, PlayerSlot } from "@/doma
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitSubLane } from "./MitSubLane";
+import { PhaseDividers } from "./PhaseDividers";
 import { jobColor } from "./role-color";
 import { CHIP_BAR_PX, JOB_GUTTER_PX } from "./timeline-constants";
 import { useDamageByInstance } from "./use-derived";
@@ -88,6 +89,7 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
           <span className="lane-slot-name">{label}</span>
         </div>
         <div className="lane-track player-header-track" style={{ width: laneWidthPx }}>
+          <PhaseDividers />
           {!isUnset &&
             damageMarks.map((m) => <DamageChip key={m.id} mark={m} pxPerSec={pxPerSec} />)}
         </div>
@@ -120,6 +122,7 @@ export function PlayerChipRow({ slot, index }: PlayerLaneProps) {
       <JobGutter slot={slot} title={label} />
       <div className="lane-label chip-row-label" aria-hidden />
       <div className="lane-track player-header-track chip-row-track" style={{ width: laneWidthPx }}>
+        <PhaseDividers />
         {!isUnset && damageMarks.map((m) => <DamageChip key={m.id} mark={m} pxPerSec={pxPerSec} />)}
       </div>
     </div>

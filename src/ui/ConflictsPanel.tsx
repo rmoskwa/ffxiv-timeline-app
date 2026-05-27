@@ -11,8 +11,9 @@
 
 import { type ReactNode, useState } from "react";
 import { getMitById } from "@/data/mit-library";
+import { phaseOrdinalFor } from "@/domain/phases";
 import { type TargetingState, targetingForBoss, targetingForMit } from "@/domain/targeting";
-import type { MitigationInstance, PlayerSlot, Roster } from "@/domain/types";
+import type { MitigationInstance, Phase, PlayerSlot, Roster } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { CautionIcon } from "./CautionIcon";
 import { JobIcon } from "./JobIcon";
@@ -22,12 +23,19 @@ import { useConflicts } from "./use-derived";
 
 const EMPTY_MITS: readonly MitigationInstance[] = [];
 const EMPTY_EXCLUDED: readonly string[] = [];
+const EMPTY_PHASES: readonly Phase[] = [];
+
+function prefixForInstance(effectTime: number, phases: readonly Phase[]): string {
+  const ord = phaseOrdinalFor(effectTime, phases);
+  return ord == null ? "" : `P${ord}: `;
+}
 
 export function ConflictsPanel() {
   const conflicts = useConflicts();
   const mits = useTimelineStore((s) => s.timeline?.mitigation_instances ?? EMPTY_MITS);
   const bossInstances = useTimelineStore((s) => s.timeline?.boss_ability_instances);
   const bossTypes = useTimelineStore((s) => s.timeline?.boss_ability_types);
+  const phases = useTimelineStore((s) => s.timeline?.phases ?? EMPTY_PHASES);
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const removeMit = useTimelineStore((s) => s.removeMitigationInstance);
   const selectBossInstance = useTimelineStore((s) => s.selectBossInstance);
@@ -93,7 +101,7 @@ export function ConflictsPanel() {
                         <span className="conflict-slot-num">⌬</span>
                       </div>
                     }
-                    title={type.name}
+                    title={`${prefixForInstance(inst.effect_time, phases)}${type.name}`}
                     detail={`${type.target_pattern} at ${secondsToTimecode(inst.effect_time)} — pick a target`}
                     actionTitle="Select this boss ability"
                     onAction={() => selectBossInstance(c.boss_instance_id)}

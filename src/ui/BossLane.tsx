@@ -1,15 +1,18 @@
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
+import { phaseOrdinalFor } from "@/domain/phases";
 import { targetingForBoss } from "@/domain/targeting";
 import {
   type BossAbilityInstance,
   type BossAbilityType,
   DEFAULT_FIGHT_DURATION_SEC,
+  type Phase,
   type Roster,
 } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossPlacementPicker } from "./BossPlacementPicker";
 import { clampLabelCenter, packLabelRows } from "./boss-label-packing";
+import { PhaseDividers } from "./PhaseDividers";
 import { PhantomGutter } from "./PlayerLane";
 import { TargetPicker } from "./TargetPicker";
 import {
@@ -28,9 +31,12 @@ import { useChipLayoutStore } from "./use-chip-layout";
 import { useDamageByInstance } from "./use-derived";
 import { useZoom } from "./use-zoom";
 
+const EMPTY_PHASES: readonly Phase[] = [];
+
 export function BossLane() {
   const types = useTimelineStore((s) => s.timeline?.boss_ability_types ?? []);
   const instances = useTimelineStore((s) => s.timeline?.boss_ability_instances ?? []);
+  const phases = useTimelineStore((s) => s.timeline?.phases ?? EMPTY_PHASES);
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const addInstance = useTimelineStore((s) => s.addBossAbilityInstance);
   const updateInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
@@ -59,6 +65,19 @@ export function BossLane() {
   const typeMap = useMemo(() => new Map(types.map((t) => [t.id, t])), [types]);
   const inert = types.length === 0;
 
+  // Per-instance "P{n}: " prefix derived from the current phase list. Empty
+  // string when no user-added phases exist. Used both for label-strip packing
+  // (so a prefixed label's width is measured correctly) and for rendering.
+  const phasePrefixById = useMemo(() => {
+    const m = new Map<string, string>();
+    if (phases.length === 0) return m;
+    for (const inst of instances) {
+      const ord = phaseOrdinalFor(inst.effect_time, phases);
+      if (ord != null) m.set(inst.id, `P${ord}: `);
+    }
+    return m;
+  }, [instances, phases]);
+
   // Greedy row-packing for label strip. Recomputes whenever the instances,
   // their type names, the zoom, or the lane width changes. Lane width is fed
   // in so labels near the boundaries get the same horizontal clamp the marker
@@ -67,10 +86,12 @@ export function BossLane() {
   const packed = useMemo(() => {
     const items = instances.flatMap((inst) => {
       const t = typeMap.get(inst.type_id);
-      return t ? [{ id: inst.id, effect_time: inst.effect_time, name: t.name }] : [];
+      if (!t) return [];
+      const prefix = phasePrefixById.get(inst.id) ?? "";
+      return [{ id: inst.id, effect_time: inst.effect_time, name: `${prefix}${t.name}` }];
     });
     return packLabelRows(items, pxPerSec, laneWidthPx);
-  }, [instances, typeMap, pxPerSec, laneWidthPx]);
+  }, [instances, typeMap, pxPerSec, laneWidthPx, phasePrefixById]);
 
   const stripHeight = bossLaneStripHeight(packed.rowCount);
   const contentHeight = stripHeight + BOSS_TRACK_HEIGHT;
@@ -117,6 +138,7 @@ export function BossLane() {
           onClick={inert ? undefined : handleTrackClick}
         >
           <div className="lane-gridlines" aria-hidden />
+          <PhaseDividers />
           {hoverSec !== null && pickerAtSec === null && (
             <div
               className="hover-ghost hover-ghost--track"
@@ -157,6 +179,7 @@ export function BossLane() {
               laneWidthPx={laneWidthPx}
               rowIndex={rowIndex}
               stripHeight={stripHeight}
+              phasePrefix={phasePrefixById.get(inst.id) ?? ""}
               onSelect={() => selectBossInstance(inst.id)}
               onPickTargets={(ids) => updateInstance(inst.id, { target_slot_ids: ids })}
             />
@@ -182,6 +205,7 @@ function BossMarker({
   laneWidthPx,
   rowIndex,
   stripHeight,
+  phasePrefix,
   onSelect,
   onPickTargets,
 }: {
@@ -194,6 +218,7 @@ function BossMarker({
   laneWidthPx: number;
   rowIndex: number;
   stripHeight: number;
+  phasePrefix: string;
   onSelect: () => void;
   onPickTargets: (ids: string[]) => void;
 }) {
@@ -219,8 +244,9 @@ function BossMarker({
 
   // Pin sits at the true effect_time; label can shift horizontally to stay
   // inside the lane. The connecting leader then slants — see the SVG below.
+  const displayName = `${phasePrefix}${type.name}`;
   const naturalCenter = instance.effect_time * pxPerSec;
-  const visibleWidth = Math.min(estimateLabelWidth(type.name), MAX_LABEL_WIDTH_PX);
+  const visibleWidth = Math.min(estimateLabelWidth(displayName), MAX_LABEL_WIDTH_PX);
   const labelCenter = clampLabelCenter(naturalCenter, visibleWidth, laneWidthPx);
   const labelDx = labelCenter - naturalCenter;
   // SVG bounding box for the leader: covers both endpoints with 1px stroke pad.
@@ -230,7 +256,7 @@ function BossMarker({
   const leaderPinX = -leaderSvgLeft;
 
   const title =
-    `${type.name} @ ${secondsToTimecode(instance.effect_time)}\n` +
+    `${displayName} @ ${secondsToTimecode(instance.effect_time)}\n` +
     `${type.base_damage > 0 ? `${type.base_damage.toLocaleString()} ` : ""}${type.damage_type} · ${type.target_pattern}` +
     (targetsUnset ? "\n⚠ no target picked — pick in the panel" : "") +
     (lethal ? "\n⚠ lethal to at least one player" : "");
@@ -256,7 +282,7 @@ function BossMarker({
           onSelect();
         }}
       >
-        {type.name}
+        {displayName}
       </button>
       {leaderHeight > 0 && (
         // biome-ignore lint/a11y/noSvgWithoutTitle: decorative connector — already aria-hidden, label is the click target

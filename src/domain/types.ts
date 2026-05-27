@@ -333,13 +333,16 @@ export type Roster = readonly [
   PlayerSlot,
 ];
 
-// ─── Phase Markers — data model from day 1, UI deferred to v0.2 ────────────
+// ─── Phases ────────────────────────────────────────────────────────────────
 
-export interface PhaseMarker {
+// A user-annotated contiguous segment of the timeline. Phases tile
+// [0, fight_duration_sec] in order; an instance's phase is derived at render
+// time from which [phase.start_time, next_phase.start_time) interval contains
+// its effect_time. See CONTEXT.md "Phase" and docs/phases.md.
+export interface Phase {
   id: string;
-  start_time: number;
-  name: string;
-  color?: string;
+  start_time: number; // seconds from pull; structurally 0 for the first phase
+  name: string; // user-given; defaults to "Phase {N}" at creation
 }
 
 // ─── Freeform Notes — data model from day 1, UI deferred to v0.2 ───────────
@@ -353,7 +356,7 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 12 as const;
+export const TIMELINE_SCHEMA_VERSION = 13 as const;
 
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 
@@ -371,7 +374,9 @@ export interface TimelineFile {
   boss_ability_types: BossAbilityType[];
   boss_ability_instances: BossAbilityInstance[];
   mitigation_instances: MitigationInstance[];
-  phase_markers: PhaseMarker[]; // empty in v0.1 UI; populated in v0.2
+  // Phase list. [] = no phase UI; otherwise length >= 2 and first.start_time === 0
+  // by invariant. See docs/phases.md §4.2.
+  phases: Phase[];
   freeform_notes: FreeformNote[]; // empty in v0.1 UI; populated in v0.2
 }
 
@@ -385,6 +390,7 @@ export interface BossTimelineFile {
   fight_duration_sec: number;
   boss_ability_types: BossAbilityType[];
   boss_ability_instances: BossAbilityInstance[];
+  phases: Phase[];
 }
 
 // ─── Derivations ────────────────────────────────────────────────────────────

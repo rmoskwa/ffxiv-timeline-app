@@ -1420,6 +1420,12 @@ button {
   font-weight: 700;
   white-space: nowrap;
 }
+/* End-of-track labels render to the LEFT of the tick so they don't overflow
+   into dead space past the timeline's right edge. */
+.tick-label.tick-label--end {
+  left: auto;
+  right: 4px;
+}
 
 .lane-gridlines {
   position: absolute;
@@ -2787,4 +2793,274 @@ button {
 .boss-placement-picker-meta {
   color: #888;
   font-size: 0.7rem;
+}
+
+/* ─── Phases panel ───────────────────────────────────────────────────── */
+
+.phases-panel {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.phases-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #353535;
+}
+.phases-panel-header h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #ccc;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.phases-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.phase-row {
+  display: grid;
+  grid-template-columns: auto 1fr 64px auto;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.3rem 0.4rem;
+  background: #232323;
+  border: 1px solid #353535;
+  border-radius: 3px;
+}
+.phase-row-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #9cf;
+  background: #1f2a35;
+  border: 1px solid #3a5a7a;
+  border-radius: 3px;
+  padding: 0.15rem 0.35rem;
+  letter-spacing: 0.04em;
+}
+.phase-row-name {
+  background: transparent;
+  color: #e0e0e0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 0.2rem 0.3rem;
+  font: inherit;
+  font-size: 0.8rem;
+  min-width: 0;
+}
+.phase-row-name:hover,
+.phase-row-name:focus {
+  background: #1a1a1a;
+  border-color: #444;
+}
+.phase-row-start {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 0.2rem 0.3rem;
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: right;
+  width: 100%;
+}
+.phase-row-start.is-readonly {
+  color: #777;
+  background: #1a1a1a;
+  border-color: #2c2c2c;
+  cursor: default;
+}
+.phase-row-start.is-invalid {
+  border-color: #c66;
+  color: #f88;
+}
+.phase-row-delete {
+  background: transparent;
+  color: #888;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+.phase-row-delete:hover:not(:disabled) {
+  color: #f88;
+}
+.phase-row-delete:disabled {
+  color: #444;
+  cursor: not-allowed;
+}
+.add-phase-toggle {
+  background: transparent;
+  color: #9cf;
+  border: 1px dashed #4a6a8a;
+  border-radius: 4px;
+  padding: 0.35rem 0.55rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  width: 100%;
+}
+.add-phase-toggle:hover {
+  background: #1f2a35;
+}
+
+/* ─── Add Phase modal ────────────────────────────────────────────────── */
+
+.add-phase-modal {
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  width: min(400px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.add-phase-modal h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #e0e0e0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.add-phase-modal .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+.add-phase-modal .field span {
+  color: #aaa;
+}
+.add-phase-modal input {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+  font-size: 0.9rem;
+}
+.add-phase-modal input.is-invalid {
+  border-color: #c66;
+  color: #f88;
+}
+.add-phase-modal .form-actions button:not(.link-button) {
+  background: #4a8;
+  color: #111;
+  border: none;
+  border-radius: 3px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.add-phase-modal .form-actions button:not(.link-button):disabled {
+  background: #333;
+  color: #777;
+  cursor: not-allowed;
+}
+
+/* ─── Phase dividers ─────────────────────────────────────────────────── */
+
+.phase-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #d0d0d0;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Phase-relative ruler row ───────────────────────────────────────── */
+
+.ruler-track--phase-relative {
+  position: relative;
+  overflow: hidden;
+}
+.ruler-track--phase-relative .phase-relative-segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.lane-row--ruler-phase-relative {
+  border-bottom: 1px dashed #333;
+}
+
+/* ─── Boss panel — per-phase grouping ────────────────────────────────── */
+
+.boss-instance-phase-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.boss-instance-phase-header {
+  font-size: 0.7rem;
+  color: #9cf;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.25rem;
+  border-bottom: 1px solid #2a3a4a;
+  font-weight: 600;
+}
+.boss-instance-phase-pill {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #9cf;
+  background: #1f2a35;
+  border: 1px solid #3a5a7a;
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+  letter-spacing: 0.04em;
+  margin-right: 0.35rem;
+}
+.theme-light .boss-instance-phase-header {
+  color: #2a5a8a;
+  border-bottom-color: #c8d8e8;
+}
+.theme-light .boss-instance-phase-pill {
+  background: #e8f0f8;
+  border-color: #b0c8e0;
+  color: #2a5a8a;
+}
+
+/* ─── Light-theme overrides for phases ──────────────────────────────── */
+
+.theme-light .phase-row {
+  background: #f3f3f3;
+  border-color: #d4d4d4;
+}
+.theme-light .phase-row-name {
+  color: #1a1a1a;
+}
+.theme-light .phase-row-name:hover,
+.theme-light .phase-row-name:focus {
+  background: #fff;
+  border-color: #c0c0c0;
+}
+.theme-light .phase-row-start {
+  background: #fff;
+  color: #1a1a1a;
+  border-color: #c0c0c0;
+}
+.theme-light .phase-row-start.is-readonly {
+  color: #888;
+  background: #f0f0f0;
+  border-color: #d4d4d4;
+}
+.theme-light .phase-divider {
+  background: #1a1a1a;
+  opacity: 0.25;
+}
+.theme-light .lane-row--ruler-phase-relative {
+  border-bottom-color: #d4d4d4;
 }

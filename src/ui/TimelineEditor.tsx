@@ -3,6 +3,7 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { BossAbilityPanel } from "./BossAbilityPanel";
 import { ConflictsPanel } from "./ConflictsPanel";
 import { MitInspectorPanel } from "./MitInspectorPanel";
+import { PhasesPanel } from "./PhasesPanel";
 import { TimelineCanvas } from "./TimelineCanvas";
 
 export function TimelineEditor() {
@@ -10,6 +11,7 @@ export function TimelineEditor() {
   return (
     <div className="editor-layout">
       <aside className="editor-sidebar">
+        <PhasesPanel />
         <BossAbilityPanel />
       </aside>
       <main className="editor-main">

@@ -1,10 +1,12 @@
 import { confirm as confirmDialog } from "@tauri-apps/plugin-dialog";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { phaseOrdinalFor } from "@/domain/phases";
 import { targetingCountsForPattern, targetingForBoss } from "@/domain/targeting";
 import type {
   BossAbilityInstance,
   BossAbilityType,
   DamageType,
+  Phase,
   Roster,
   TargetPattern,
 } from "@/domain/types";
@@ -18,10 +20,13 @@ import { parseTimecode, secondsToTimecode } from "./timeline-constants";
 const DAMAGE_TYPES: DamageType[] = ["magical", "physical", "unaspected"];
 const TARGET_PATTERNS: TargetPattern[] = ["raidwide", "targeted", "stack"];
 
+const EMPTY_PHASES: readonly Phase[] = [];
+
 export function BossAbilityPanel() {
   const timeline = useTimelineStore((s) => s.timeline);
   const types = useTimelineStore((s) => s.timeline?.boss_ability_types ?? []);
   const instances = useTimelineStore((s) => s.timeline?.boss_ability_instances ?? []);
+  const phases = useTimelineStore((s) => s.timeline?.phases ?? EMPTY_PHASES);
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const selectedBossInstanceId = useTimelineStore((s) =>
     s.selectedInstance?.kind === "boss" ? s.selectedInstance.id : null,
@@ -152,6 +157,7 @@ export function BossAbilityPanel() {
               type={t}
               instances={instancesByType.get(t.id) ?? []}
               roster={roster}
+              phases={phases}
               expanded={expandedTypeId === t.id}
               onToggle={() => {
                 setExpandedTypeId((prev) => (prev === t.id ? null : t.id));
@@ -193,12 +199,14 @@ function TypeEntry({
   type,
   instances,
   roster,
+  phases,
   expanded,
   onToggle,
 }: {
   type: BossAbilityType;
   instances: BossAbilityInstance[];
   roster: Roster;
+  phases: readonly Phase[];
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -260,15 +268,79 @@ function TypeEntry({
         </button>
       </header>
       <TypeFields type={type} />
-      {instances.length > 0 && (
-        <ul className="boss-instance-list">
-          {instances.map((inst) => (
-            <InstanceSubRow key={inst.id} instance={inst} type={type} roster={roster} />
-          ))}
-        </ul>
-      )}
+      {instances.length > 0 &&
+        (phases.length >= 2 ? (
+          <PhaseGroupedInstanceList
+            instances={instances}
+            type={type}
+            roster={roster}
+            phases={phases}
+          />
+        ) : (
+          <ul className="boss-instance-list">
+            {instances.map((inst) => (
+              <InstanceSubRow
+                key={inst.id}
+                instance={inst}
+                type={type}
+                roster={roster}
+                phaseOrdinal={null}
+              />
+            ))}
+          </ul>
+        ))}
       <AddPlacementForm type={type} roster={roster} />
     </section>
+  );
+}
+
+// Per-phase grouping for an expanded type's instance list. Sections render
+// in phase order; phases with no instances of THIS type are skipped (the
+// phase-grouped view is meant to label, not to surface every phase).
+function PhaseGroupedInstanceList({
+  instances,
+  type,
+  roster,
+  phases,
+}: {
+  instances: BossAbilityInstance[];
+  type: BossAbilityType;
+  roster: Roster;
+  phases: readonly Phase[];
+}) {
+  const byOrdinal = new Map<number, BossAbilityInstance[]>();
+  for (const inst of instances) {
+    const ord = phaseOrdinalFor(inst.effect_time, phases) ?? 1;
+    const arr = byOrdinal.get(ord) ?? [];
+    arr.push(inst);
+    byOrdinal.set(ord, arr);
+  }
+  return (
+    <div className="boss-instance-phase-groups">
+      {phases.map((phase, idx) => {
+        const ord = idx + 1;
+        const group = byOrdinal.get(ord);
+        if (!group || group.length === 0) return null;
+        return (
+          <div key={phase.id} className="boss-instance-phase-group">
+            <div className="boss-instance-phase-header">
+              {phase.name} (P{ord}) — {group.length} {group.length === 1 ? "ability" : "abilities"}
+            </div>
+            <ul className="boss-instance-list">
+              {group.map((inst) => (
+                <InstanceSubRow
+                  key={inst.id}
+                  instance={inst}
+                  type={type}
+                  roster={roster}
+                  phaseOrdinal={ord}
+                />
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -423,10 +495,12 @@ function InstanceSubRow({
   instance,
   type,
   roster,
+  phaseOrdinal,
 }: {
   instance: BossAbilityInstance;
   type: BossAbilityType;
   roster: Roster;
+  phaseOrdinal: number | null;
 }) {
   const selectedBossInstanceId = useTimelineStore((s) =>
     s.selectedInstance?.kind === "boss" ? s.selectedInstance.id : null,
@@ -448,6 +522,7 @@ function InstanceSubRow({
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard nav lives on the canvas; the row's nested controls are individually focusable */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: the row is a click-to-select wrapper; nested inputs handle their own activation */}
       <div className="boss-instance-row-body" onClick={() => selectBossInstance(instance.id)}>
+        {phaseOrdinal != null && <span className="boss-instance-phase-pill">P{phaseOrdinal}</span>}
         <TimecodeField
           value={instance.effect_time}
           maxSec={fightDurationSec}

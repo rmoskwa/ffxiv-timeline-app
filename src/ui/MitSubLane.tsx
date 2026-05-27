@@ -12,6 +12,7 @@ import {
 import { useTimelineStore } from "@/state/timeline-store";
 import { MitBar } from "./MitBar";
 import { MitIcon } from "./MitIcon";
+import { PhaseDividers } from "./PhaseDividers";
 import { snapClientXToSecond } from "./timeline-constants";
 import { useMitInstanceStates } from "./use-derived";
 import { useRowSize } from "./use-row-size";
@@ -217,6 +218,7 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
       onClick={handleClick}
     >
       <div className="lane-gridlines" aria-hidden />
+      <PhaseDividers />
       {damageMarks.map((m) => (
         <div
           key={m.id}
