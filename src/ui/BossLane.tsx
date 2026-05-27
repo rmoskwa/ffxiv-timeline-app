@@ -14,6 +14,7 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { BossPlacementPicker } from "./BossPlacementPicker";
 import { clampLabelCenter, packLabelRows } from "./boss-label-packing";
 import { PhaseDividers } from "./PhaseDividers";
+import { TimecodeField } from "./primitives/TimecodeField";
 import { TargetPicker } from "./TargetPicker";
 import {
   BOSS_PIN_HEIGHT,
@@ -22,7 +23,6 @@ import {
   estimateLabelWidth,
   LABEL_HEIGHT,
   LABEL_ROW_GAP,
-  parseTimecode,
   STRIP_BOTTOM_PADDING,
   secondsToTimecode,
   snapClientXToSecond,
@@ -333,25 +333,6 @@ function BossLaneLabel({ mergedGutter }: { mergedGutter: boolean }) {
   const setBossName = useTimelineStore((s) => s.setBossName);
   const setFightDuration = useTimelineStore((s) => s.setFightDuration);
 
-  const [durationDraft, setDurationDraft] = useState(() => secondsToTimecode(fightDurationSec));
-  const [durationInvalid, setDurationInvalid] = useState(false);
-
-  useEffect(() => {
-    setDurationDraft(secondsToTimecode(fightDurationSec));
-    setDurationInvalid(false);
-  }, [fightDurationSec]);
-
-  const commitDuration = () => {
-    const parsed = parseTimecode(durationDraft);
-    if (parsed === null || parsed < 1 || parsed > MAX_FIGHT_DURATION_SEC) {
-      setDurationDraft(secondsToTimecode(fightDurationSec));
-      setDurationInvalid(false);
-      return;
-    }
-    if (parsed !== fightDurationSec) setFightDuration(parsed);
-    setDurationInvalid(false);
-  };
-
   return (
     <div className={`lane-label lane-label--boss${mergedGutter ? " lane-label--boss-merged" : ""}`}>
       <textarea
@@ -372,30 +353,13 @@ function BossLaneLabel({ mergedGutter }: { mergedGutter: boolean }) {
       />
       <div className="boss-length-row">
         <span className="boss-length-prefix">Length:</span>
-        <input
-          type="text"
-          className={`boss-length-input${durationInvalid ? " is-invalid" : ""}`}
-          value={durationDraft}
-          onChange={(e) => {
-            const next = e.target.value;
-            setDurationDraft(next);
-            const parsed = parseTimecode(next);
-            setDurationInvalid(parsed === null || parsed < 1 || parsed > MAX_FIGHT_DURATION_SEC);
-          }}
+        <TimecodeField
+          value={fightDurationSec}
+          ariaLabel="Fight length (mm:ss)"
+          className="boss-length-input"
           title={`Max ${secondsToTimecode(MAX_FIGHT_DURATION_SEC)}`}
-          onBlur={commitDuration}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              e.currentTarget.blur();
-            } else if (e.key === "Escape") {
-              e.preventDefault();
-              setDurationDraft(secondsToTimecode(fightDurationSec));
-              setDurationInvalid(false);
-              e.currentTarget.blur();
-            }
-          }}
-          aria-label="Fight length (mm:ss)"
+          validate={(n) => n >= 1 && n <= MAX_FIGHT_DURATION_SEC}
+          onCommit={setFightDuration}
         />
       </div>
     </div>

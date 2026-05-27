@@ -9,6 +9,7 @@ import {
   type BossAbilityType,
   type BossTimelineFile,
   type JobOrUnset,
+  MAX_BASE_DAMAGE,
   MAX_FIGHT_DURATION_SEC,
   type MitigationInstance,
   type Phase,
@@ -37,6 +38,10 @@ function normalizeName(n: string): string {
 // bracket today; widen if a future expansion pushes ceilings past 999k.
 export const SLOT_HP_MIN = 1_000;
 export const SLOT_HP_MAX = 999_000;
+
+function clampBaseDamage(n: number): number {
+  return Math.min(MAX_BASE_DAMAGE, Math.max(0, Math.round(n)));
+}
 
 // At most one instance is selected at a time, across boss and mit kinds.
 // Selecting one clears the other; deselecting clears the field entirely.
@@ -268,10 +273,11 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
     }
     set((s) => {
       if (!s.timeline) return s;
+      const clamped = { ...input, base_damage: clampBaseDamage(input.base_damage) };
       return {
         timeline: touch({
           ...s.timeline,
-          boss_ability_types: [...s.timeline.boss_ability_types, { ...input, id }],
+          boss_ability_types: [...s.timeline.boss_ability_types, { ...clamped, id }],
         }),
       };
     });
@@ -289,11 +295,15 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           throw new DuplicateNameError(patch.name.trim());
         }
       }
+      const clampedPatch =
+        patch.base_damage !== undefined
+          ? { ...patch, base_damage: clampBaseDamage(patch.base_damage) }
+          : patch;
       return {
         timeline: touch({
           ...s.timeline,
           boss_ability_types: s.timeline.boss_ability_types.map((t) =>
-            t.id === id ? { ...t, ...patch } : t,
+            t.id === id ? { ...t, ...clampedPatch } : t,
           ),
         }),
       };

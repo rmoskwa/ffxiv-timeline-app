@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { SLOT_HP_MAX, SLOT_HP_MIN, useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { JobPicker } from "./JobPicker";
-import { parseNumericInput } from "./parse-number";
+import { NumberInput } from "./primitives/NumberInput";
 import { jobColor } from "./role-color";
 import { PLAYER_MAX_HP } from "./timeline-constants";
 import { useViewStore } from "./use-view";
@@ -108,10 +108,9 @@ function formatHp(hp: number): string {
 }
 
 // Display swaps on focus: formatted "150k" when blurred, raw integer "150000"
-// while editing. Accepts commas and k-suffix at parse time via
-// parseNumericInput. Out-of-range drafts paint the input red but don't block
-// blur — commit re-parses, clamps inside [SLOT_HP_MIN, SLOT_HP_MAX], and the
-// formatted display snaps back to whatever the store accepted.
+// while editing. Accepts commas and k-suffix at parse time via NumberInput's
+// shared parser. The store clamps to [SLOT_HP_MIN, SLOT_HP_MAX] so out-of-range
+// commits snap to the nearest valid value.
 function SlotHpInput({
   slotIdx,
   hp,
@@ -124,48 +123,27 @@ function SlotHpInput({
   onCommit: (hp: number) => void;
 }) {
   const committed = hp ?? PLAYER_MAX_HP;
-  const [focused, setFocused] = useState(false);
-  const [draft, setDraft] = useState("");
-
-  const parsedDraft = parseNumericInput(draft);
-  const draftInvalid =
-    focused && (parsedDraft === null || parsedDraft < SLOT_HP_MIN || parsedDraft > SLOT_HP_MAX);
-
   const labelText = `HP for slot ${slotIdx + 1}`;
+  const inputId = `slot-hp-${slotIdx}`;
 
   return (
-    <label className={`slot-hp-field${disabled ? " is-disabled" : ""}`} title={labelText}>
+    <label
+      htmlFor={inputId}
+      className={`slot-hp-field${disabled ? " is-disabled" : ""}`}
+      title={labelText}
+    >
       <span className="slot-hp-prefix" aria-hidden="true">
         HP:
       </span>
-      <input
-        type="text"
-        inputMode="numeric"
-        className={`slot-hp-input${draftInvalid ? " is-invalid" : ""}`}
-        value={focused ? draft : formatHp(committed)}
+      <NumberInput
+        id={inputId}
+        value={committed}
+        ariaLabel={labelText}
+        className="slot-hp-input"
         disabled={disabled}
-        aria-label={labelText}
-        onFocus={(e) => {
-          setFocused(true);
-          setDraft(String(committed));
-          // Selecting the existing value lets the user just type to replace.
-          e.currentTarget.select();
-        }}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          setFocused(false);
-          if (parsedDraft !== null && parsedDraft !== committed) onCommit(parsedDraft);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            e.currentTarget.blur();
-          } else if (e.key === "Escape") {
-            e.preventDefault();
-            setDraft(String(committed));
-            e.currentTarget.blur();
-          }
-        }}
+        formatDisplay={formatHp}
+        validate={(n) => n >= SLOT_HP_MIN && n <= SLOT_HP_MAX}
+        onCommit={onCommit}
       />
     </label>
   );

@@ -3,8 +3,8 @@
 
 import { useEffect, useState } from "react";
 import type { Phase } from "@/domain/types";
-import { PhaseRejectedError, useTimelineStore } from "@/state/timeline-store";
-import { parseTimecode, secondsToTimecode } from "./timeline-constants";
+import { useTimelineStore } from "@/state/timeline-store";
+import { TimecodeField } from "./primitives/TimecodeField";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
 
 export function PhasesPanel() {
@@ -105,64 +105,13 @@ function PhaseNameInput({ phase, onCommit }: { phase: Phase; onCommit: (name: st
 
 function PhaseStartTimeInput({ phase, isFirst }: { phase: Phase; isFirst: boolean }) {
   const setPhaseStartTime = useTimelineStore((s) => s.setPhaseStartTime);
-  const [draft, setDraft] = useState(secondsToTimecode(phase.start_time));
-  const [invalid, setInvalid] = useState(false);
-
-  useEffect(() => {
-    setDraft(secondsToTimecode(phase.start_time));
-    setInvalid(false);
-  }, [phase.start_time]);
-
-  const commit = () => {
-    if (isFirst) return;
-    const parsed = parseTimecode(draft);
-    if (parsed === null) {
-      setDraft(secondsToTimecode(phase.start_time));
-      setInvalid(false);
-      return;
-    }
-    if (parsed === phase.start_time) {
-      setInvalid(false);
-      return;
-    }
-    try {
-      setPhaseStartTime(phase.id, parsed);
-      setInvalid(false);
-    } catch (err) {
-      if (err instanceof PhaseRejectedError) {
-        setInvalid(true);
-        setDraft(secondsToTimecode(phase.start_time));
-        // Briefly leave the field visually invalid; reset on next focus so the
-        // user can see the rejection signal.
-        return;
-      }
-      throw err;
-    }
-  };
-
   return (
-    <input
-      type="text"
-      className={`phase-row-start${invalid ? " is-invalid" : ""}${isFirst ? " is-readonly" : ""}`}
-      value={draft}
-      aria-label={`Phase ${phase.name} start time`}
+    <TimecodeField
+      value={phase.start_time}
+      ariaLabel={`Phase ${phase.name} start time`}
+      className="phase-row-start"
       readOnly={isFirst}
-      onChange={(e) => {
-        setDraft(e.target.value);
-        if (invalid) setInvalid(false);
-      }}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          (e.currentTarget as HTMLInputElement).blur();
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          setDraft(secondsToTimecode(phase.start_time));
-          setInvalid(false);
-          (e.currentTarget as HTMLInputElement).blur();
-        }
-      }}
+      onCommit={(parsed) => setPhaseStartTime(phase.id, parsed)}
     />
   );
 }

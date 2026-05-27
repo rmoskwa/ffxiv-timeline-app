@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { phaseOrdinalFor } from "@/domain/phases";
 import { targetingCountsForPattern, targetingForBoss } from "@/domain/targeting";
-import type {
-  BossAbilityInstance,
-  BossAbilityType,
-  DamageType,
-  Phase,
-  Roster,
-  TargetPattern,
+import {
+  type BossAbilityInstance,
+  type BossAbilityType,
+  type DamageType,
+  MAX_BASE_DAMAGE,
+  type Phase,
+  type Roster,
+  type TargetPattern,
 } from "@/domain/types";
 import { DuplicateNameError, useTimelineStore } from "@/state/timeline-store";
 import { CautionIcon } from "./CautionIcon";
-import { parseNumericInput } from "./parse-number";
+import { NumberInput } from "./primitives/NumberInput";
+import { TimecodeField } from "./primitives/TimecodeField";
 import { TargetPicker } from "./TargetPicker";
 import { parseTimecode, secondsToTimecode } from "./timeline-constants";
 import { useBossImportExport } from "./use-boss-import-export";
@@ -357,7 +359,8 @@ function TypeFields({ type }: { type: BossAbilityType }) {
         <NumberInput
           value={type.base_damage}
           ariaLabel="Base damage"
-          onCommit={(n) => updateType(type.id, { base_damage: n })}
+          validate={(n) => n >= 0 && n <= MAX_BASE_DAMAGE}
+          onCommit={(n) => updateType(type.id, { base_damage: Math.round(n) })}
         />
       </div>
       <label className="field">
@@ -464,8 +467,11 @@ function InstanceSubRow({
         {phaseOrdinal != null && <span className="boss-instance-phase-pill">P{phaseOrdinal}</span>}
         <TimecodeField
           value={instance.effect_time}
-          maxSec={fightDurationSec}
+          ariaLabel="Timecode"
+          className="boss-instance-timecode"
+          validate={(n) => n <= fightDurationSec}
           onCommit={(n) => updateInstance(instance.id, { effect_time: n })}
+          onClick={(e) => e.stopPropagation()}
         />
         <div className="boss-instance-actions">
           {targeting.maxCount > 0 && !targeting.isComplete && (
@@ -510,104 +516,6 @@ function InstanceSubRow({
         </div>
       )}
     </li>
-  );
-}
-
-// ─── Inline timecode + numeric fields ──────────────────────────────────────
-
-function TimecodeField({
-  value,
-  maxSec,
-  onCommit,
-}: {
-  value: number;
-  maxSec?: number;
-  onCommit: (n: number) => void;
-}) {
-  const [draft, setDraft] = useState(secondsToTimecode(value));
-  const [error, setError] = useState(false);
-  useEffect(() => {
-    setDraft(secondsToTimecode(value));
-  }, [value]);
-
-  const commit = () => {
-    const parsed = parseTimecode(draft);
-    if (parsed === null || (maxSec !== undefined && parsed > maxSec)) {
-      setError(true);
-      setDraft(secondsToTimecode(value));
-      return;
-    }
-    setError(false);
-    if (parsed !== value) onCommit(parsed);
-  };
-
-  return (
-    <input
-      type="text"
-      className={`boss-instance-timecode${error ? " is-invalid" : ""}`}
-      value={draft}
-      aria-label="Timecode"
-      onChange={(e) => {
-        setDraft(e.target.value);
-        if (error) setError(false);
-      }}
-      onClick={(e) => e.stopPropagation()}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          (e.currentTarget as HTMLInputElement).blur();
-        } else if (e.key === "Escape") {
-          setDraft(secondsToTimecode(value));
-          setError(false);
-          (e.currentTarget as HTMLInputElement).blur();
-        }
-      }}
-    />
-  );
-}
-
-function NumberInput({
-  value,
-  ariaLabel,
-  onCommit,
-}: {
-  value: number;
-  ariaLabel: string;
-  onCommit: (n: number) => void;
-}) {
-  const [draft, setDraft] = useState(String(value));
-  useEffect(() => {
-    setDraft(String(value));
-  }, [value]);
-  return (
-    <input
-      type="text"
-      inputMode="numeric"
-      value={draft}
-      aria-label={ariaLabel}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => {
-        const n = parseNumericInput(draft);
-        if (n === null || n < 0) {
-          setDraft(String(value));
-          return;
-        }
-        const rounded = Math.round(n);
-        setDraft(String(rounded));
-        if (rounded !== value) onCommit(rounded);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          e.currentTarget.blur();
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          setDraft(String(value));
-          e.currentTarget.blur();
-        }
-      }}
-    />
   );
 }
 
@@ -729,7 +637,7 @@ function NewTypeForm({ onClose }: { onClose: () => void }) {
   const addType = useTimelineStore((s) => s.addBossAbilityType);
 
   const [name, setName] = useState("");
-  const [baseDamage, setBaseDamage] = useState("0");
+  const [baseDamage, setBaseDamage] = useState(0);
   const [damageType, setDamageType] = useState<DamageType>("magical");
   const [targetPattern, setTargetPattern] = useState<TargetPattern>("raidwide");
   const [bossTargetable, setBossTargetable] = useState(true);
@@ -749,15 +657,10 @@ function NewTypeForm({ onClose }: { onClose: () => void }) {
       setError("Name is required.");
       return;
     }
-    const dmg = parseNumericInput(baseDamage);
-    if (dmg === null || dmg < 0) {
-      setError("Base damage must be a non-negative number.");
-      return;
-    }
     try {
       addType({
         name: trimmed,
-        base_damage: Math.round(dmg),
+        base_damage: baseDamage,
         damage_type: damageType,
         target_pattern: targetPattern,
         boss_targetable: bossTargetable,
@@ -789,13 +692,14 @@ function NewTypeForm({ onClose }: { onClose: () => void }) {
         />
       </label>
 
-      <label className="field">
+      <label htmlFor="new-type-base-damage" className="field">
         <span>Base damage</span>
-        <input
-          type="text"
-          inputMode="numeric"
+        <NumberInput
+          id="new-type-base-damage"
           value={baseDamage}
-          onChange={(e) => setBaseDamage(e.target.value)}
+          ariaLabel="Base damage"
+          validate={(n) => n >= 0 && n <= MAX_BASE_DAMAGE}
+          onCommit={(n) => setBaseDamage(Math.min(MAX_BASE_DAMAGE, Math.max(0, Math.round(n))))}
         />
       </label>
 
