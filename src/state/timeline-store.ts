@@ -50,6 +50,10 @@ export interface TimelineStore {
   loadTimeline: (file: TimelineFile) => void;
   closeTimeline: () => void;
 
+  // Wipes boss ability types/instances, mitigation instances, and phases.
+  // Preserves roster and metadata (boss_name, fight_duration_sec).
+  clearTimeline: () => void;
+
   // Boss-timeline import: replaces the destination Timeline's boss types and
   // instances with the imported payload, wipes mitigation instances (boss-
   // anchored), bumps boss_name, and extends fight_duration_sec upward only.
@@ -108,6 +112,21 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   newTimeline: (name) => set({ timeline: makeNewTimeline(name), selectedInstance: null }),
   loadTimeline: (file) => set({ timeline: file, selectedInstance: null }),
   closeTimeline: () => set({ timeline: null, selectedInstance: null }),
+
+  clearTimeline: () =>
+    set((s) => {
+      if (!s.timeline) return s;
+      return {
+        timeline: touch({
+          ...s.timeline,
+          boss_ability_types: [],
+          boss_ability_instances: [],
+          mitigation_instances: [],
+          phases: [],
+        }),
+        selectedInstance: null,
+      };
+    }),
 
   replaceBossTimeline: (imported) =>
     set((s) => {

@@ -26,6 +26,7 @@ button {
   display: grid;
   place-items: center;
   padding: 2rem;
+  z-index: 100;
 }
 .wizard {
   background: #222;
@@ -1160,6 +1161,79 @@ button {
   font-variant-numeric: tabular-nums;
   min-width: 3rem;
   text-align: center;
+}
+.clear-timeline-button {
+  margin-left: auto;
+  background: #2a2a2a;
+  color: #ddd;
+  border: 1px solid #555;
+  border-radius: 3px;
+  height: 24px;
+  padding: 0 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.clear-timeline-button:hover {
+  background: #3a1f1f;
+  border-color: #c66;
+  color: #f88;
+}
+.clear-timeline-button:disabled {
+  background: #1f1f1f;
+  color: #555;
+  border-color: #333;
+  cursor: not-allowed;
+}
+.clear-timeline-modal {
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.clear-timeline-modal h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #e0e0e0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.clear-timeline-modal p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #ddd;
+}
+.clear-timeline-modal ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: #ddd;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.clear-timeline-modal-note {
+  color: #888;
+  font-size: 0.78rem;
+  font-style: italic;
+}
+.clear-timeline-modal-confirm {
+  background: #5a2424;
+  color: #fcc;
+  border: 1px solid #844;
+  border-radius: 3px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.clear-timeline-modal-confirm:hover {
+  background: #6a2828;
 }
 
 .lane-scroll {
