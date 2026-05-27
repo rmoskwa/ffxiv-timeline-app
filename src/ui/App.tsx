@@ -21,6 +21,7 @@ export function App() {
   const timeline = useTimelineStore((s) => s.timeline);
   const loadTimeline = useTimelineStore((s) => s.loadTimeline);
   const closeTimeline = useTimelineStore((s) => s.closeTimeline);
+  const setName = useTimelineStore((s) => s.setName);
   const openAddPhase = useAddPhaseModalStore((s) => s.open);
 
   // Auto-save only after hydration completes AND a timeline is loaded.
@@ -82,7 +83,22 @@ export function App() {
     <div className="app-shell">
       <header className="app-header">
         <div>
-          <h1>{timeline.metadata.name}</h1>
+          <input
+            type="text"
+            className="fight-name-input"
+            value={timeline.metadata.name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={(e) => {
+              if (e.target.value.trim() === "") setName("Untitled Timeline");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.currentTarget.blur();
+              }
+            }}
+            aria-label="Fight name"
+          />
           <p className="subtitle">
             schema v{TIMELINE_SCHEMA_VERSION} · {savedLabel}
           </p>

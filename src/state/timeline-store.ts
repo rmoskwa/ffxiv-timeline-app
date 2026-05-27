@@ -60,6 +60,7 @@ export interface TimelineStore {
   // See docs/boss-timeline-import-export.md §5.2.
   replaceBossTimeline: (imported: BossTimelineFile) => void;
 
+  setName: (name: string) => void;
   setBossName: (name: string) => void;
   setFightDuration: (sec: number) => void;
 
@@ -150,6 +151,14 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           phases: imported.phases.map((p) => ({ ...p })),
         }),
         selectedInstance: null,
+      };
+    }),
+
+  setName: (name) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      return {
+        timeline: touch({ ...s.timeline, metadata: { ...s.timeline.metadata, name } }),
       };
     }),
 
