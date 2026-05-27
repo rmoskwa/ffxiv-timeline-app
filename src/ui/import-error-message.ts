@@ -1,4 +1,8 @@
-import { KindMismatchError, SchemaVersionError } from "@/persistence/serialize";
+import {
+  KindMismatchError,
+  SchemaVersionError,
+  TimelineValidationError,
+} from "@/persistence/serialize";
 
 type ExpectedKind = "timeline" | "boss_timeline";
 
@@ -13,5 +17,8 @@ export function importErrorMessage(err: unknown, expected: ExpectedKind): string
     return err.message;
   }
   if (err instanceof SchemaVersionError) return err.message;
+  if (err instanceof TimelineValidationError) {
+    return `This file is the right format and version, but a field is invalid: ${err.path} — ${err.reason}.`;
+  }
   return "Couldn't read this file. It may not be a valid timeline JSON.";
 }

@@ -141,7 +141,18 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         (m, i) => (i.effect_time > m ? i.effect_time : m),
         0,
       );
-      const nextDuration = Math.max(s.timeline.metadata.fight_duration_sec, maxEffect);
+      // Extend upward to fit the import, but never past MAX_FIGHT_DURATION_SEC.
+      // Instances/phases past the cap are culled the same way setFightDuration
+      // does — the cap is the app-wide invariant, not import-exempt.
+      const nextDuration = Math.min(
+        MAX_FIGHT_DURATION_SEC,
+        Math.max(s.timeline.metadata.fight_duration_sec, maxEffect),
+      );
+      const survivingInstances = imported.boss_ability_instances.filter(
+        (i) => i.effect_time <= nextDuration,
+      );
+      const culledPhases = imported.phases.filter((p) => p.start_time < nextDuration);
+      const survivingPhases = culledPhases.length >= 2 ? culledPhases.map((p) => ({ ...p })) : [];
       return {
         timeline: touch({
           ...s.timeline,
@@ -151,9 +162,9 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
             fight_duration_sec: nextDuration,
           },
           boss_ability_types: imported.boss_ability_types,
-          boss_ability_instances: imported.boss_ability_instances,
+          boss_ability_instances: survivingInstances,
           mitigation_instances: [],
-          phases: imported.phases.map((p) => ({ ...p })),
+          phases: survivingPhases,
         }),
         selectedInstance: null,
       };

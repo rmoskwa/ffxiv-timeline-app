@@ -7,6 +7,7 @@
 
 import { confirm as confirmDialog, message as messageDialog } from "@tauri-apps/plugin-dialog";
 import { useCallback } from "react";
+import { MAX_FIGHT_DURATION_SEC } from "@/domain/types";
 import { exportBossTimelineDialog, importBossTimelineDialog } from "@/persistence/storage";
 import { useTimelineStore } from "@/state/timeline-store";
 import { importErrorMessage } from "./import-error-message";
@@ -40,8 +41,14 @@ export function useBossImportExport() {
         0,
       );
       const currentDuration = timeline.metadata.fight_duration_sec;
-      const wouldExtend = importedMaxEffect > currentDuration;
-      const isDestructive = existingTypes > 0 || existingMits > 0;
+      const cappedMaxEffect = Math.min(MAX_FIGHT_DURATION_SEC, importedMaxEffect);
+      const wouldExtend = cappedMaxEffect > currentDuration;
+      const wouldTruncate = importedMaxEffect > MAX_FIGHT_DURATION_SEC;
+      const droppedInstances = wouldTruncate
+        ? imported.boss_ability_instances.filter((i) => i.effect_time > MAX_FIGHT_DURATION_SEC)
+            .length
+        : 0;
+      const isDestructive = existingTypes > 0 || existingMits > 0 || wouldTruncate;
       if (isDestructive) {
         const lines: string[] = [];
         const planName = imported.boss_name.trim() || "Unnamed boss";
@@ -59,7 +66,12 @@ export function useBossImportExport() {
         }
         if (wouldExtend) {
           lines.push(
-            `Extends timeline duration: ${secondsToTimecode(currentDuration)} → ${secondsToTimecode(importedMaxEffect)}.`,
+            `Extends timeline duration: ${secondsToTimecode(currentDuration)} → ${secondsToTimecode(cappedMaxEffect)}.`,
+          );
+        }
+        if (wouldTruncate) {
+          lines.push(
+            `${droppedInstances} placement${droppedInstances === 1 ? "" : "s"} past ${secondsToTimecode(MAX_FIGHT_DURATION_SEC)} will be dropped (timeline cap).`,
           );
         }
         const ok = await confirmDialog(lines.join("\n"), {
