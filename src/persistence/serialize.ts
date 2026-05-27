@@ -1,7 +1,11 @@
 // JSON serialization for timeline files.
 // Pure functions — no I/O. Tauri FS wiring lives separately and calls these.
 
-import { sanitizeDescription, sanitizeSingleLineName } from "@/domain/sanitize-text";
+import {
+  normalizeNameForCompare,
+  sanitizeDescription,
+  sanitizeSingleLineName,
+} from "@/domain/sanitize-text";
 import {
   type BossAbilityInstance,
   type BossAbilityType,
@@ -12,9 +16,11 @@ import {
   type FreeformNote,
   type Job,
   type JobOrUnset,
+  MAX_BASE_DAMAGE,
   MAX_BOSS_ABILITY_INSTANCES,
   MAX_BOSS_ABILITY_TYPES,
   MAX_DESC_LEN,
+  MAX_FIGHT_DURATION_SEC,
   MAX_MITIGATION_INSTANCES,
   MAX_NAME_LEN,
   MAX_PHASES,
@@ -315,7 +321,12 @@ function validateBossAbilityType(v: unknown, path: string): BossAbilityType {
   const out: BossAbilityType = {
     id: asString(o.id, `${path}.id`),
     name: rawName,
-    base_damage: asNonNegativeNumber(o.base_damage, `${path}.base_damage`),
+    // Silent clamp matches the store's clampBaseDamage: typos in the JSON
+    // (a trailing zero) are forgiven rather than blocking the import.
+    base_damage: Math.min(
+      MAX_BASE_DAMAGE,
+      asNonNegativeNumber(o.base_damage, `${path}.base_damage`),
+    ),
     damage_type: asEnum(o.damage_type, DAMAGE_TYPES, `${path}.damage_type`),
     target_pattern: asEnum(o.target_pattern, TARGET_PATTERNS, `${path}.target_pattern`),
     boss_targetable: asBoolean(o.boss_targetable, `${path}.boss_targetable`),
@@ -418,10 +429,15 @@ function validateFreeformNote(v: unknown, path: string): FreeformNote {
 
 function validateMetadata(v: unknown, path: string): TimelineFile["metadata"] {
   const o = asObject(v, path);
-  const fight_duration_sec = asNumber(o.fight_duration_sec, `${path}.fight_duration_sec`);
-  if (fight_duration_sec < 1) {
+  const rawDuration = asNumber(o.fight_duration_sec, `${path}.fight_duration_sec`);
+  if (rawDuration < 1) {
     throw new TimelineValidationError(`${path}.fight_duration_sec`, "must be >= 1");
   }
+  // Silent clamp matches setFightDuration. The store's loadTimeline path does
+  // not re-clamp, so this is the last line of defense for the full-Timeline
+  // import. Instances/phases past the cap stay in the file; setFightDuration
+  // (or the next edit) will cull them via the same code path the user hits.
+  const fight_duration_sec = Math.min(MAX_FIGHT_DURATION_SEC, rawDuration);
   const nameTrimmed = sanitizeSingleLineName(asString(o.name, `${path}.name`))
     .slice(0, MAX_NAME_LEN)
     .trim();
@@ -447,21 +463,38 @@ export function validateTimelineFile(parsed: unknown): TimelineFile {
   assertCap(mitInstancesArr, MAX_MITIGATION_INSTANCES, "$.mitigation_instances");
   const phasesArr = asArray(o.phases, "$.phases");
   assertCap(phasesArr, MAX_PHASES, "$.phases");
+  const metadata = validateMetadata(o.metadata, "$.metadata");
+  const boss_ability_types = typesArr.map((el, i) =>
+    validateBossAbilityType(el, `$.boss_ability_types[${i}]`),
+  );
+  assertUniqueTypeNames(boss_ability_types, "$.boss_ability_types");
+  const boss_ability_instances = bossInstancesArr.map((el, i) =>
+    validateBossAbilityInstance(el, `$.boss_ability_instances[${i}]`),
+  );
+  assertTypeReferences(boss_ability_instances, boss_ability_types, "$.boss_ability_instances");
+  const mitigation_instances = mitInstancesArr.map((el, i) =>
+    validateMitigationInstance(el, `$.mitigation_instances[${i}]`),
+  );
+  const phases = phasesArr.map((el, i) => validatePhase(el, `$.phases[${i}]`, i));
+  // Cull instances and phases that lie past the clamped fight_duration_sec.
+  // Mirrors setFightDuration: instance.effect_time <= clamped, phase.start_time
+  // < clamped, and phases collapse to [] if fewer than 2 survive. The store's
+  // loadTimeline does not re-clamp, so this is the last line of defense.
+  const culled = cullPastDuration(
+    metadata.fight_duration_sec,
+    boss_ability_instances,
+    mitigation_instances,
+    phases,
+  );
   return {
     schema_version: TIMELINE_SCHEMA_VERSION,
     kind: "timeline",
-    metadata: validateMetadata(o.metadata, "$.metadata"),
+    metadata,
     roster: validateRoster(o.roster, "$.roster"),
-    boss_ability_types: typesArr.map((el, i) =>
-      validateBossAbilityType(el, `$.boss_ability_types[${i}]`),
-    ),
-    boss_ability_instances: bossInstancesArr.map((el, i) =>
-      validateBossAbilityInstance(el, `$.boss_ability_instances[${i}]`),
-    ),
-    mitigation_instances: mitInstancesArr.map((el, i) =>
-      validateMitigationInstance(el, `$.mitigation_instances[${i}]`),
-    ),
-    phases: phasesArr.map((el, i) => validatePhase(el, `$.phases[${i}]`, i)),
+    boss_ability_types,
+    boss_ability_instances: culled.boss_ability_instances,
+    mitigation_instances: culled.mitigation_instances,
+    phases: culled.phases,
     freeform_notes: asArray(o.freeform_notes, "$.freeform_notes").map((el, i) =>
       validateFreeformNote(el, `$.freeform_notes[${i}]`),
     ),
@@ -470,16 +503,29 @@ export function validateTimelineFile(parsed: unknown): TimelineFile {
 
 export function validateBossTimelineFile(parsed: unknown): BossTimelineFile {
   const o = asObject(parsed, "$");
-  const fight_duration_sec = asNumber(o.fight_duration_sec, "$.fight_duration_sec");
-  if (fight_duration_sec < 1) {
+  const rawDuration = asNumber(o.fight_duration_sec, "$.fight_duration_sec");
+  if (rawDuration < 1) {
     throw new TimelineValidationError("$.fight_duration_sec", "must be >= 1");
   }
+  // Silent clamp matches the full-Timeline path and the store's
+  // replaceBossTimeline. Instances/phases past the cap are culled below.
+  const fight_duration_sec = Math.min(MAX_FIGHT_DURATION_SEC, rawDuration);
   const typesArr = asArray(o.boss_ability_types, "$.boss_ability_types");
   assertCap(typesArr, MAX_BOSS_ABILITY_TYPES, "$.boss_ability_types");
   const bossInstancesArr = asArray(o.boss_ability_instances, "$.boss_ability_instances");
   assertCap(bossInstancesArr, MAX_BOSS_ABILITY_INSTANCES, "$.boss_ability_instances");
   const phasesArr = asArray(o.phases, "$.phases");
   assertCap(phasesArr, MAX_PHASES, "$.phases");
+  const boss_ability_types = typesArr.map((el, i) =>
+    validateBossAbilityType(el, `$.boss_ability_types[${i}]`),
+  );
+  assertUniqueTypeNames(boss_ability_types, "$.boss_ability_types");
+  const boss_ability_instances = bossInstancesArr.map((el, i) =>
+    validateBossAbilityInstance(el, `$.boss_ability_instances[${i}]`),
+  );
+  assertTypeReferences(boss_ability_instances, boss_ability_types, "$.boss_ability_instances");
+  const phases = phasesArr.map((el, i) => validatePhase(el, `$.phases[${i}]`, i));
+  const culled = cullPastDuration(fight_duration_sec, boss_ability_instances, [], phases);
   return {
     schema_version: TIMELINE_SCHEMA_VERSION,
     kind: "boss_timeline",
@@ -490,12 +536,69 @@ export function validateBossTimelineFile(parsed: unknown): BossTimelineFile {
       return t === "" ? "Boss Name" : t;
     })(),
     fight_duration_sec,
-    boss_ability_types: typesArr.map((el, i) =>
-      validateBossAbilityType(el, `$.boss_ability_types[${i}]`),
-    ),
-    boss_ability_instances: bossInstancesArr.map((el, i) =>
-      validateBossAbilityInstance(el, `$.boss_ability_instances[${i}]`),
-    ),
-    phases: phasesArr.map((el, i) => validatePhase(el, `$.phases[${i}]`, i)),
+    boss_ability_types,
+    boss_ability_instances: culled.boss_ability_instances,
+    phases: culled.phases,
   };
+}
+
+// Filters out instances/phases past the clamped fight_duration_sec. Mirrors
+// setFightDuration's instance rules (effect_time <= clamped) and phase rule
+// (start_time < clamped). Unlike the store, we do not collapse single-phase
+// survivors to [] — the file is authoritative; if it carries one phase, we
+// respect that (tile-the-fight is a UI-edit invariant, not an import one).
+function cullPastDuration(
+  clamped: number,
+  bossInstances: BossAbilityInstance[],
+  mitInstances: MitigationInstance[],
+  phases: Phase[],
+): {
+  boss_ability_instances: BossAbilityInstance[];
+  mitigation_instances: MitigationInstance[];
+  phases: Phase[];
+} {
+  return {
+    boss_ability_instances: bossInstances.filter((i) => i.effect_time <= clamped),
+    mitigation_instances: mitInstances.filter((m) => m.effect_time <= clamped),
+    phases: phases.filter((p) => p.start_time < clamped),
+  };
+}
+
+// Boss ability type names must be unique within a timeline. Matches the
+// store's DuplicateNameError check (normalizeNameForCompare collapses NBSP,
+// ZWJ/ZWNJ, whitespace runs, and case). Rejecting on import keeps the
+// picker UI single-valued and stops dupes from sneaking in via hand-edit.
+function assertUniqueTypeNames(types: BossAbilityType[], path: string): void {
+  const seen = new Map<string, number>();
+  for (let i = 0; i < types.length; i++) {
+    const key = normalizeNameForCompare(types[i].name);
+    const prev = seen.get(key);
+    if (prev !== undefined) {
+      throw new TimelineValidationError(
+        `${path}[${i}].name`,
+        `duplicates ${path}[${prev}].name (case-insensitive)`,
+      );
+    }
+    seen.set(key, i);
+  }
+}
+
+// Every boss_ability_instance.type_id must resolve to a known
+// boss_ability_types[].id. The damage engine survives a dangling reference
+// (returns a null result array), but the user would see an instance on the
+// canvas with no damage chip — better to reject so they fix the file.
+function assertTypeReferences(
+  instances: BossAbilityInstance[],
+  types: BossAbilityType[],
+  path: string,
+): void {
+  const known = new Set(types.map((t) => t.id));
+  for (let i = 0; i < instances.length; i++) {
+    if (!known.has(instances[i].type_id)) {
+      throw new TimelineValidationError(
+        `${path}[${i}].type_id`,
+        `does not reference any boss_ability_types[].id`,
+      );
+    }
+  }
 }
