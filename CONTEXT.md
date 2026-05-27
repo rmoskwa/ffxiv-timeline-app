@@ -54,6 +54,14 @@ _Avoid_: damage dealer, attacker, striker
 The colloquial role group covering **roles** that primarily keep the party alive: `tank` and `healer`. Not a value in the Role enum. Pairs with **DPS** when describing a support/DPS split — the most likely first role-based targeting axis.
 _Avoid_: utility, sustain, frontline
 
+**Phase**:
+A user-annotated contiguous segment of the timeline, defined by a `start_time` and a name. Phases tile `[0, fight_duration_sec]` — every moment of the fight belongs to exactly one phase; phases never overlap or leave gaps. **Organizational only**: phase membership is a derived label on instances, not a container that owns them. Boss instances and mit instances store absolute **effect time**; their phase is computed from which `[phase.start_time, next_phase.start_time)` interval contains it. Sliding a phase's `start_time` re-labels instances, never relocates them — cooldowns and **active windows** are agnostic to phase boundaries and span them freely. When a Timeline has zero user-added phases, the phase UI is hidden entirely (single-row ruler, no **Phase divider**, no **Phase ordinal** prefix). The first phase's `start_time` is structurally `0` and is read-only.
+_Avoid_: act, segment, section, stage
+
+**Phase ordinal**:
+The 1-indexed position of a **Phase** in the timeline's ordered phase list. Drives the `P?:` prefix rendered on the boss-lane **Label** chip, **BossAbilityPanel** sub-rows, and **ConflictsPanel** rows that reference a boss instance. Derived from list position — never stored, never affected by the user-given phase name (renaming a phase from `"Phase 2"` to `"Adds"` does not change its prefix). Re-numbers automatically when phases are added, deleted (via merge-into-previous), or have their boundaries slid.
+_Avoid_: phase number, phase index, phase id (in user-facing prose)
+
 ### Targeting & effects
 
 **Targeting**:
@@ -225,6 +233,10 @@ The transient state marking one **instance** as the focus of editing. **Mutually
 - **Mit-instance selection** is canvas-only (no panel counterpart). Clicking a **Bar** selects its mit instance; visually a blue border on the bar.
 
 _Avoid_: focus, highlight, active
+
+**Phase divider**:
+A thin (1px), low-opacity, neutral-colored vertical line painted across every **Lane** and **Sub-lane** at each **Phase** boundary (i.e., at each phase's `start_time` except the first). Z-ordered *behind* **Bars** and **Markers** so mit-bar and boss-marker visuals remain authoritative where they overlap the divider — preserving the "phases are organizational only" rule that cooldowns and **active windows** flow uninterrupted across boundaries. Hidden entirely when the timeline has zero user-added phases.
+_Avoid_: phase boundary line, phase break, separator
 
 ### Imports
 
