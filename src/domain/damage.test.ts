@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  aggregateDamageByTime,
   computeDamagePerPlayer,
   computeDamageTimeline,
   effectiveCooldownSeconds,
@@ -2742,5 +2743,85 @@ describe("§9.6 multi-hit at identical effect_time", () => {
     // s6 (non-tank) only sees the raidwide.
     expect(out.get("rw")?.[6]?.damage_taken_to_hp).toBe(100_000);
     expect(out.get("tb")?.[6]).toBeNull();
+  });
+});
+
+describe("aggregateDamageByTime", () => {
+  it("sums two raidwides at the same t into one combined chip per player", () => {
+    // Two raidwides at t=60: 30k + 90k. Non-tanks should report 120k summed,
+    // hp_after = 100k − 120k clamped at 0, lethal vs 100k max HP.
+    const a = bossInstance({ id: "h1", type_id: "boss.a", effect_time: 60 });
+    const b = bossInstance({ id: "h2", type_id: "boss.b", effect_time: 60 });
+    const aType = bossType({ id: "boss.a", base_damage: 30_000 });
+    const bType = bossType({ id: "boss.b", base_damage: 90_000 });
+    const perHit = computeDamageTimeline([a, b], [aType, bType], [], lookup, ROSTER);
+    const byTime = aggregateDamageByTime([a, b], perHit);
+    expect(byTime.size).toBe(1);
+    const s6 = byTime.get(60)?.[6];
+    expect(s6).toEqual({
+      damage_taken_to_hp: 120_000,
+      hp_after: 0,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
+    // Tank: each hit takes ×0.8 (Tank Mastery), so 24k + 72k = 96k; not lethal.
+    const s0 = byTime.get(60)?.[0];
+    expect(s0?.damage_taken_to_hp).toBe(96_000);
+    expect(s0?.hp_after).toBe(4_000);
+  });
+
+  it("merges raidwide + targeted at the same t — only the picked slot sums both", () => {
+    // 50k raidwide hits everyone; 30k targeted hits s3 (WHM) only. Per CONTEXT
+    // example: WHM takes 80k, other non-tanks take 50k, non-targeted tanks ×0.8.
+    const rw = bossInstance({ id: "rw", type_id: "boss.rw", effect_time: 30 });
+    const tb = bossInstance({
+      id: "tb",
+      type_id: "boss.tgt",
+      effect_time: 30,
+      target_slot_ids: ["s3"],
+    });
+    const rwType = bossType({ id: "boss.rw", base_damage: 50_000 });
+    const tbType = bossType({ id: "boss.tgt", base_damage: 30_000, target_pattern: "targeted" });
+    const perHit = computeDamageTimeline([rw, tb], [rwType, tbType], [], lookup, ROSTER);
+    const byTime = aggregateDamageByTime([rw, tb], perHit);
+    const row = byTime.get(30);
+    expect(row?.[3]?.damage_taken_to_hp).toBe(80_000); // WHM: 50k + 30k
+    expect(row?.[6]?.damage_taken_to_hp).toBe(50_000); // BLM: just the raidwide
+    expect(row?.[0]?.damage_taken_to_hp).toBe(40_000); // DRK tank: 50k × 0.8
+  });
+
+  it("single hit passes through unchanged (no regression)", () => {
+    const h = bossInstance({ id: "h1", effect_time: 60 });
+    const perHit = computeDamageTimeline([h], [bossType()], [], lookup, ROSTER);
+    const byTime = aggregateDamageByTime([h], perHit);
+    expect(byTime.get(60)?.[6]).toEqual(perHit.get("h1")?.[6]);
+  });
+
+  it("carries the post-all-hits shield state from the last hit at this time", () => {
+    // 30k self-shield on s6. Two 20k hits at t=60 in input order.
+    // hit1 drains 20k from the 30k pool → leaves 10k; hit2 drains the remaining
+    // 10k → 0 and bleeds 10k to HP. Aggregated chip: 0 + 10k = 10k to HP,
+    // shields_after = 0 (final state, not hit1's 10k mid-state).
+    const shield = mit({
+      player_slot_id: "s6",
+      type_id: "synth.self_shield_30",
+      effect_time: 50,
+    });
+    const h1 = bossInstance({ id: "h1", effect_time: 60 });
+    const h2 = bossInstance({ id: "h2", effect_time: 60 });
+    const perHit = computeDamageTimeline(
+      [h1, h2],
+      [bossType({ base_damage: 20_000 })],
+      [shield],
+      lookup,
+      ROSTER,
+    );
+    const byTime = aggregateDamageByTime([h1, h2], perHit);
+    expect(byTime.get(60)?.[6]).toEqual({
+      damage_taken_to_hp: 10_000,
+      hp_after: 90_000,
+      active_shields_after: 0,
+      max_hp: 100_000,
+    });
   });
 });
