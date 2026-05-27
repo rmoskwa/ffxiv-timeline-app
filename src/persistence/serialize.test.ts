@@ -268,6 +268,14 @@ describe("deserialize — field validation", () => {
     expect(deserialize(json).boss_ability_types[0].name.length).toBe(MAX_NAME_LEN);
   });
 
+  it("truncates phases[].name to MAX_NAME_LEN on deserialize", () => {
+    const tl = newTimeline("fixture");
+    const huge = "p".repeat(MAX_NAME_LEN + 500);
+    const badPhase: Phase = { id: "phase-x", start_time: 60, name: huge };
+    const json = JSON.stringify({ ...tl, phases: [badPhase] });
+    expect(deserialize(json).phases[0].name.length).toBe(MAX_NAME_LEN);
+  });
+
   it("truncates boss_ability_types[].description to MAX_DESC_LEN on deserialize", () => {
     const tl = newTimeline("fixture");
     const huge = "d".repeat(MAX_DESC_LEN + 500);

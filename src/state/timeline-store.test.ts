@@ -662,6 +662,25 @@ describe("timeline-store — setName length cap", () => {
     expect(type?.description?.length).toBe(MAX_DESC_LEN);
   });
 
+  it("truncates addPhase name to MAX_NAME_LEN", () => {
+    const huge = "p".repeat(MAX_NAME_LEN + 500);
+    useTimelineStore.getState().addPhase({ start_time: 100, name: huge });
+    const phases = useTimelineStore.getState().timeline?.phases ?? [];
+    const added = phases.find((p) => p.start_time === 100);
+    expect(added?.name.length).toBe(MAX_NAME_LEN);
+  });
+
+  it("truncates renamePhase name to MAX_NAME_LEN", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "short" });
+    const phaseId = useTimelineStore
+      .getState()
+      .timeline?.phases.find((p) => p.start_time === 100)?.id;
+    const huge = "r".repeat(MAX_NAME_LEN + 500);
+    useTimelineStore.getState().renamePhase(phaseId ?? "", huge);
+    const phase = useTimelineStore.getState().timeline?.phases.find((p) => p.id === phaseId);
+    expect(phase?.name.length).toBe(MAX_NAME_LEN);
+  });
+
   it("preserves newlines inside a description (only the length is capped)", () => {
     const id = useTimelineStore.getState().addBossAbilityType({
       name: "multiline",
