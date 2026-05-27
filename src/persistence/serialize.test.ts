@@ -245,6 +245,13 @@ describe("deserialize — field validation", () => {
     const json = JSON.stringify({ ...tl, metadata: { ...tl.metadata, name: huge } });
     expect(deserialize(json).metadata.name.length).toBe(MAX_NAME_LEN);
   });
+
+  it("truncates metadata.boss_name to MAX_NAME_LEN on deserialize", () => {
+    const tl = newTimeline("fixture");
+    const huge = "b".repeat(MAX_NAME_LEN + 500);
+    const json = JSON.stringify({ ...tl, metadata: { ...tl.metadata, boss_name: huge } });
+    expect(deserialize(json).metadata.boss_name.length).toBe(MAX_NAME_LEN);
+  });
 });
 
 describe("deserializeBossTimeline — field validation", () => {
@@ -276,6 +283,12 @@ describe("deserializeBossTimeline — field validation", () => {
       phases: [{ id: "p1", start_time: "soon", name: "Start" }],
     });
     expect(() => deserializeBossTimeline(json)).toThrowError(/start_time/);
+  });
+
+  it("truncates boss_name to MAX_NAME_LEN", () => {
+    const huge = "b".repeat(MAX_NAME_LEN + 500);
+    const json = bossTimelineWith({ boss_name: huge });
+    expect(deserializeBossTimeline(json).boss_name.length).toBe(MAX_NAME_LEN);
   });
 
   it("rejects an instance with a non-string target_slot_ids entry", () => {

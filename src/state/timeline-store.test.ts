@@ -578,4 +578,10 @@ describe("timeline-store — setName length cap", () => {
     useTimelineStore.getState().setName(exact);
     expect(useTimelineStore.getState().timeline?.metadata.name).toBe(exact);
   });
+
+  it("truncates a pasted boss_name to MAX_NAME_LEN", () => {
+    const huge = "b".repeat(MAX_NAME_LEN + 500);
+    useTimelineStore.getState().setBossName(huge);
+    expect(useTimelineStore.getState().timeline?.metadata.boss_name.length).toBe(MAX_NAME_LEN);
+  });
 });
