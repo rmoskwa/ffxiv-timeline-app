@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { BossTimelineFile, Job, MitigationInstance, Roster } from "@/domain/types";
 import { MAX_DESC_LEN, MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
-import { PhaseRejectedError, useTimelineStore } from "./timeline-store";
+import { EmptyNameError, PhaseRejectedError, useTimelineStore } from "./timeline-store";
 
 const RAMPART = "drk.rampart"; // cooldown 90s, duration 20s
 
@@ -686,6 +686,54 @@ describe("timeline-store — setName length cap", () => {
     useTimelineStore.getState().renamePhase(phaseId ?? "", huge);
     const phase = useTimelineStore.getState().timeline?.phases.find((p) => p.id === phaseId);
     expect(phase?.name.length).toBe(MAX_NAME_LEN);
+  });
+
+  it("addBossAbilityType rejects a whitespace-only name", () => {
+    expect(() =>
+      useTimelineStore.getState().addBossAbilityType({
+        name: "   \t  ",
+        base_damage: 0,
+        damage_type: "magical",
+        target_pattern: "raidwide",
+        boss_targetable: true,
+      }),
+    ).toThrowError(EmptyNameError);
+  });
+
+  it("updateBossAbilityType rejects a whitespace-only name", () => {
+    const id = useTimelineStore.getState().addBossAbilityType({
+      name: "real",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    expect(() =>
+      useTimelineStore.getState().updateBossAbilityType(id, { name: "   " }),
+    ).toThrowError(EmptyNameError);
+  });
+
+  it("renamePhase falls back to 'Phase N' when given whitespace", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "Initial" });
+    const phaseId = useTimelineStore
+      .getState()
+      .timeline?.phases.find((p) => p.start_time === 100)?.id;
+    useTimelineStore.getState().renamePhase(phaseId ?? "", "   ");
+    const phase = useTimelineStore.getState().timeline?.phases.find((p) => p.id === phaseId);
+    expect(phase?.name).toMatch(/^Phase \d+$/);
+  });
+
+  it("addPhase falls back to 'Phase N' when given whitespace", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "   " });
+    const phase = useTimelineStore.getState().timeline?.phases.find((p) => p.start_time === 100);
+    expect(phase?.name).toMatch(/^Phase \d+$/);
+  });
+
+  it("setSlotLabel clears the label when given whitespace", () => {
+    useTimelineStore.getState().setSlotLabel(0, "Real Label");
+    expect(useTimelineStore.getState().timeline?.roster[0].name_label).toBe("Real Label");
+    useTimelineStore.getState().setSlotLabel(0, "   ");
+    expect(useTimelineStore.getState().timeline?.roster[0].name_label).toBeUndefined();
   });
 
   it("preserves newlines inside a description (only the length is capped)", () => {

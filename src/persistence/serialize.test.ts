@@ -268,6 +268,49 @@ describe("deserialize — field validation", () => {
     expect(deserialize(json).boss_ability_types[0].name.length).toBe(MAX_NAME_LEN);
   });
 
+  it("falls back to 'Untitled Timeline' when metadata.name is whitespace-only", () => {
+    const tl = newTimeline("fixture");
+    const json = JSON.stringify({ ...tl, metadata: { ...tl.metadata, name: "   \t  " } });
+    expect(deserialize(json).metadata.name).toBe("Untitled Timeline");
+  });
+
+  it("falls back to 'Boss Name' when metadata.boss_name is whitespace-only", () => {
+    const tl = newTimeline("fixture");
+    const json = JSON.stringify({ ...tl, metadata: { ...tl.metadata, boss_name: "   " } });
+    expect(deserialize(json).metadata.boss_name).toBe("Boss Name");
+  });
+
+  it("rejects a boss-ability type with a whitespace-only name", () => {
+    const tl = newTimeline("fixture");
+    const badType: BossAbilityType = {
+      id: "t1",
+      name: "   ",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_types: [badType] });
+    expect(() => deserialize(json)).toThrowError(/name/);
+  });
+
+  it("falls back to 'Phase N' when a phase name is whitespace-only", () => {
+    const tl = newTimeline("fixture");
+    const badPhases: Phase[] = [
+      { id: "p0", start_time: 0, name: "First" },
+      { id: "p1", start_time: 100, name: "   " },
+    ];
+    const json = JSON.stringify({ ...tl, phases: badPhases });
+    expect(deserialize(json).phases[1].name).toBe("Phase 2");
+  });
+
+  it("clears a whitespace-only name_label on deserialize", () => {
+    const tl = newTimeline("fixture");
+    const labeledRoster = tl.roster.map((s, i) => (i === 0 ? { ...s, name_label: "   " } : s));
+    const json = JSON.stringify({ ...tl, roster: labeledRoster });
+    expect(deserialize(json).roster[0].name_label).toBeUndefined();
+  });
+
   it("truncates roster[].name_label to MAX_NAME_LEN on deserialize", () => {
     const tl = newTimeline("fixture");
     const huge = "s".repeat(MAX_NAME_LEN + 500);
