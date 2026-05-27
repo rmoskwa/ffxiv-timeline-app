@@ -44,4 +44,37 @@ describe("parseNumericInput", () => {
     expect(parseNumericInput("-100")).toBe(-100);
     expect(parseNumericInput("-1k")).toBe(-1000);
   });
+
+  it("rejects Infinity and NaN literals via Number.isFinite", () => {
+    expect(parseNumericInput("Infinity")).toBeNull();
+    expect(parseNumericInput("-Infinity")).toBeNull();
+    expect(parseNumericInput("NaN")).toBeNull();
+  });
+
+  it("accepts scientific notation — callers clamp range", () => {
+    expect(parseNumericInput("1e9")).toBe(1_000_000_000);
+    expect(parseNumericInput("2.5e3")).toBe(2500);
+  });
+
+  it("accepts -0 as 0 (sign of zero is discarded by callers)", () => {
+    expect(parseNumericInput("-0")).toBe(-0);
+  });
+
+  it("accepts hex literals via Number() — uncommon but ultimately clamped at the store", () => {
+    expect(parseNumericInput("0x1F")).toBe(31);
+  });
+
+  it("rejects multi-decimal forms even after comma stripping", () => {
+    expect(parseNumericInput("1,000.5.5")).toBeNull();
+  });
+
+  it("expands large k-suffix values — caller clamps the result", () => {
+    expect(parseNumericInput("999000k")).toBe(999_000_000);
+  });
+
+  it("rejects malformed k-suffix variants", () => {
+    expect(parseNumericInput("1.5kk")).toBeNull();
+    expect(parseNumericInput("1.5k.5")).toBeNull();
+    expect(parseNumericInput("kk")).toBeNull();
+  });
 });
