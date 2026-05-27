@@ -4,14 +4,15 @@
 import { create } from "zustand";
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
 import { computeDamageTimeline, type MitInstanceState } from "@/domain/damage";
-import type {
-  BossAbilityInstance,
-  BossAbilityType,
-  BossTimelineFile,
-  JobOrUnset,
-  MitigationInstance,
-  Phase,
-  TimelineFile,
+import {
+  type BossAbilityInstance,
+  type BossAbilityType,
+  type BossTimelineFile,
+  type JobOrUnset,
+  MAX_FIGHT_DURATION_SEC,
+  type MitigationInstance,
+  type Phase,
+  type TimelineFile,
 } from "@/domain/types";
 import { newTimeline as makeNewTimeline } from "@/persistence/serialize";
 
@@ -144,7 +145,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   setFightDuration: (sec) =>
     set((s) => {
       if (!s.timeline) return s;
-      const clamped = Math.max(1, Math.round(sec));
+      const clamped = Math.min(MAX_FIGHT_DURATION_SEC, Math.max(1, Math.round(sec)));
       const survivingBoss = s.timeline.boss_ability_instances.filter(
         (i) => i.effect_time <= clamped,
       );

@@ -6,6 +6,7 @@ import {
   type BossAbilityInstance,
   type BossAbilityType,
   DEFAULT_FIGHT_DURATION_SEC,
+  MAX_FIGHT_DURATION_SEC,
   type Phase,
   type Roster,
 } from "@/domain/types";
@@ -344,7 +345,7 @@ function BossLaneLabel() {
 
   const commitDuration = () => {
     const parsed = parseTimecode(durationDraft);
-    if (parsed === null || parsed < 1) {
+    if (parsed === null || parsed < 1 || parsed > MAX_FIGHT_DURATION_SEC) {
       setDurationDraft(secondsToTimecode(fightDurationSec));
       setDurationInvalid(false);
       return;
@@ -379,8 +380,9 @@ function BossLaneLabel() {
             const next = e.target.value;
             setDurationDraft(next);
             const parsed = parseTimecode(next);
-            setDurationInvalid(parsed === null || parsed < 1);
+            setDurationInvalid(parsed === null || parsed < 1 || parsed > MAX_FIGHT_DURATION_SEC);
           }}
+          title={`Max ${secondsToTimecode(MAX_FIGHT_DURATION_SEC)}`}
           onBlur={commitDuration}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
