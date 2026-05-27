@@ -352,6 +352,59 @@ describe("deserialize — field validation", () => {
     const json = JSON.stringify({ ...tl, boss_ability_types: [badType] });
     expect(deserialize(json).boss_ability_types[0].description?.length).toBe(MAX_DESC_LEN);
   });
+
+  // §5.5 — CONTEXT.md "Bar": no two mit instances may share a slot+type+
+  // effect_time. UI placement enforces this; this catches the hand-edited file.
+  it("rejects two mit instances on the same slot, type, and effect_time", () => {
+    const tl = newTimeline("fixture");
+    const slotId = tl.roster[0].id;
+    const dupes = [
+      {
+        id: "m1",
+        type_id: "drk.rampart",
+        player_slot_id: slotId,
+        effect_time: 30,
+        target_slot_ids: [],
+        coverage_overrides: [],
+      },
+      {
+        id: "m2",
+        type_id: "drk.rampart",
+        player_slot_id: slotId,
+        effect_time: 30,
+        target_slot_ids: [],
+        coverage_overrides: [],
+      },
+    ];
+    const json = JSON.stringify({ ...tl, mitigation_instances: dupes });
+    expect(() => deserialize(json)).toThrowError(/mitigation_instances\[1\]/);
+  });
+
+  it("accepts mit instances with same slot+type at different effect_time", () => {
+    // Real-world: two Rampart casts on the same player a cooldown apart.
+    const tl = newTimeline("fixture");
+    const slotId = tl.roster[0].id;
+    const mits = [
+      {
+        id: "m1",
+        type_id: "drk.rampart",
+        player_slot_id: slotId,
+        effect_time: 0,
+        target_slot_ids: [],
+        coverage_overrides: [],
+      },
+      {
+        id: "m2",
+        type_id: "drk.rampart",
+        player_slot_id: slotId,
+        effect_time: 90,
+        target_slot_ids: [],
+        coverage_overrides: [],
+      },
+    ];
+    const json = JSON.stringify({ ...tl, mitigation_instances: mits });
+    expect(deserialize(json).mitigation_instances).toHaveLength(2);
+  });
 });
 
 describe("deserializeBossTimeline — field validation", () => {

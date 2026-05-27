@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { phaseOrdinalFor } from "@/domain/phases";
 import type { BossTimelineFile, Job, MitigationInstance, Roster } from "@/domain/types";
 import {
   MAX_BOSS_ABILITY_INSTANCES,
@@ -974,5 +975,235 @@ describe("timeline-store — quantity caps", () => {
     expect(() => useTimelineStore.getState().replaceBossTimeline(oversizedTypes)).toThrow(
       LimitExceededError,
     );
+  });
+});
+
+// ─── State-coupling cascades (stress-test plan §5) ──────────────────────────
+// Per CONTEXT.md the boss timeline anchors mits — re-import wipes them; trimming
+// fight_duration_sec culls instances past the cut; deleting a type cascades to
+// its instances; offset-glued children follow parent drags. These tests pin the
+// invariants when many records sit on either side of the boundary.
+
+describe("timeline-store — §5.1 trim fight_duration with many records", () => {
+  beforeEach(freshTimeline);
+
+  it("drops every boss instance past the cut and keeps every one at or before", () => {
+    const bossTypeId = useTimelineStore.getState().addBossAbilityType({
+      name: "Pulse",
+      base_damage: 10_000,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    // 500 instances spread 0..499s; 1300 above the cut at the cap is impractical
+    // so we sit comfortably under MAX_BOSS_ABILITY_INSTANCES (1000).
+    for (let t = 0; t < 500; t++) {
+      useTimelineStore.getState().addBossAbilityInstance({
+        type_id: bossTypeId,
+        effect_time: t,
+        target_slot_ids: [],
+      });
+    }
+    useTimelineStore.getState().setFightDuration(60);
+    const survivors = useTimelineStore.getState().timeline?.boss_ability_instances ?? [];
+    expect(survivors).toHaveLength(61); // 0..60 inclusive
+    expect(survivors.every((i) => i.effect_time <= 60)).toBe(true);
+    expect(survivors.some((i) => i.effect_time === 60)).toBe(true);
+  });
+
+  it("drops mits whose effect_time is past the cut, regardless of footprint", () => {
+    const slotId = rosterSlotId(0);
+    // 50 mits, every 5s up to 245s. With Rampart's 90s cooldown, the last
+    // surviving placement at 60 has a footprint reaching to 150 — well past
+    // the new end. setFightDuration must keep it (footprint may overflow,
+    // effect_time may not).
+    for (let t = 0; t <= 245; t += 5) {
+      useTimelineStore.setState((s) => {
+        if (!s.timeline) return s;
+        return {
+          timeline: {
+            ...s.timeline,
+            mitigation_instances: [
+              ...s.timeline.mitigation_instances,
+              {
+                id: `m-${t}`,
+                type_id: RAMPART,
+                player_slot_id: slotId,
+                effect_time: t,
+                target_slot_ids: [],
+                coverage_overrides: [],
+              },
+            ],
+          },
+        };
+      });
+    }
+    expect(useTimelineStore.getState().timeline?.mitigation_instances).toHaveLength(50);
+    useTimelineStore.getState().setFightDuration(60);
+    const survivors = useTimelineStore.getState().timeline?.mitigation_instances ?? [];
+    // 0,5,10,15,20,25,30,35,40,45,50,55,60 = 13 placements at effect_time <= 60
+    expect(survivors).toHaveLength(13);
+    expect(survivors.every((m) => m.effect_time <= 60)).toBe(true);
+  });
+
+  it("clears a stale selection when the trimmed cut removes the selected instance", () => {
+    const bossTypeId = useTimelineStore.getState().addBossAbilityType({
+      name: "Pulse",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    const instId = useTimelineStore.getState().addBossAbilityInstance({
+      type_id: bossTypeId,
+      effect_time: 120,
+      target_slot_ids: [],
+    });
+    useTimelineStore.getState().selectBossInstance(instId);
+    useTimelineStore.getState().setFightDuration(60);
+    expect(useTimelineStore.getState().selectedInstance).toBeNull();
+  });
+});
+
+describe("timeline-store — §5.2 delete type cascades but preserves mits", () => {
+  beforeEach(freshTimeline);
+
+  it("removing a type drops every instance referencing it; mits untouched", () => {
+    const slotId = rosterSlotId(0);
+    const doomedType = useTimelineStore.getState().addBossAbilityType({
+      name: "Doomed",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    const survivorType = useTimelineStore.getState().addBossAbilityType({
+      name: "Survivor",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    for (let t = 0; t < 200; t++) {
+      useTimelineStore.getState().addBossAbilityInstance({
+        type_id: doomedType,
+        effect_time: t,
+        target_slot_ids: [],
+      });
+    }
+    useTimelineStore.getState().addBossAbilityInstance({
+      type_id: survivorType,
+      effect_time: 500,
+      target_slot_ids: [],
+    });
+    // Mit placed independently of any boss type — must survive the cascade.
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: RAMPART,
+      player_slot_id: slotId,
+      effect_time: 30,
+      target_slot_ids: [],
+    });
+    useTimelineStore.getState().removeBossAbilityType(doomedType);
+    const tl = useTimelineStore.getState().timeline;
+    expect(tl?.boss_ability_types.map((t) => t.id)).toEqual([survivorType]);
+    expect(tl?.boss_ability_instances).toHaveLength(1);
+    expect(tl?.boss_ability_instances[0].type_id).toBe(survivorType);
+    // Mits are not tied to boss types, so the count is unchanged.
+    expect(tl?.mitigation_instances).toHaveLength(1);
+  });
+
+  it("clears a selection that pointed at one of the cascaded instances", () => {
+    const doomedType = useTimelineStore.getState().addBossAbilityType({
+      name: "Doomed",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    const instId = useTimelineStore.getState().addBossAbilityInstance({
+      type_id: doomedType,
+      effect_time: 10,
+      target_slot_ids: [],
+    });
+    useTimelineStore.getState().selectBossInstance(instId);
+    useTimelineStore.getState().removeBossAbilityType(doomedType);
+    expect(useTimelineStore.getState().selectedInstance).toBeNull();
+  });
+});
+
+describe("timeline-store — §5.3 phase boundary collision (next phase claims it)", () => {
+  // The domain rule in phaseOrdinalFor (`effect_time < phases[i].start_time`)
+  // is unit-tested in phases.test.ts. This test confirms the same rule holds
+  // when a boss instance lands on the exact start_time of a user-added phase.
+  beforeEach(freshTimeline);
+
+  it("a boss instance at effect_time === phase.start_time lives in the new phase", () => {
+    useTimelineStore.getState().addPhase({ start_time: 100, name: "Adds" });
+    const typeId = useTimelineStore.getState().addBossAbilityType({
+      name: "Tower",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    useTimelineStore.getState().addBossAbilityInstance({
+      type_id: typeId,
+      effect_time: 100,
+      target_slot_ids: [],
+    });
+    const tl = useTimelineStore.getState().timeline;
+    expect(tl?.boss_ability_instances).toHaveLength(1);
+    // Phase ordinal lookup: t=100 sits in the second phase (the Adds phase),
+    // not the implicit Phase 1.
+    expect(phaseOrdinalFor(100, tl?.phases ?? [])).toBe(2);
+    expect(phaseOrdinalFor(99, tl?.phases ?? [])).toBe(1);
+  });
+});
+
+describe("timeline-store — §5.7 offset-glue preserves child zone membership", () => {
+  it("dragging Sun Sign's parent to t=0 keeps the child inside the new exec zone", () => {
+    freshTimelineForJob("AST");
+    const slotId = rosterSlotId(0);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "ast.neutral_sect",
+      player_slot_id: slotId,
+      effect_time: 200,
+      target_slot_ids: [],
+    });
+    const parentId = mitsOfType("ast.neutral_sect")[0].id;
+    // Default Sun Sign auto-spawn position: parent + 15 (middle of 30s zone).
+    const before = mitsOfType("ast.sun_sign")[0];
+    expect(before.effect_time).toBe(215);
+    // Drag the parent all the way to 0. The child must move by the same delta.
+    useTimelineStore.getState().updateMitigationInstance(parentId, { effect_time: 0 });
+    const after = mitsOfType("ast.sun_sign")[0];
+    expect(after.effect_time).toBe(15);
+    // Zone membership preserved: child sits at parent+15 inside parent..parent+30.
+    const parentNow = mitsOfType("ast.neutral_sect")[0];
+    expect(after.effect_time).toBeGreaterThan(parentNow.effect_time);
+    expect(after.effect_time).toBeLessThan(parentNow.effect_time + 30);
+  });
+
+  it("dragging the parent past fight_duration is not a store concern (UI clamps)", () => {
+    // The store accepts whatever UI MitBar.tsx delivers; offset-glue is pure.
+    // Pinned here so a future refactor doesn't accidentally start clamping in
+    // the store — UI is the right place because clamp inputs (px/sec, lane
+    // width, neighbor footprints) are view-layer concerns.
+    freshTimelineForJob("PCT");
+    const slotId = rosterSlotId(0);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "pct.tempera_coat",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    const coatId = mitsOfType("pct.tempera_coat")[0].id;
+    // Set parent to 10_000 — silly value, but the store should not silently
+    // discard it: clamping is the UI's job at the drag boundary.
+    useTimelineStore.getState().updateMitigationInstance(coatId, { effect_time: 10_000 });
+    const grassa = mitsOfType("pct.tempera_grassa")[0];
+    // Child rides the same delta (10_000); the rendering layer is what would
+    // hide it past the lane edge.
+    expect(grassa.effect_time).toBe(10_005);
   });
 });
