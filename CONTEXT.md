@@ -84,6 +84,10 @@ Edge cases:
 Finer-grained patterns such as `spread` are not currently in the enum — they collapse cleanly into `targeted`.
 _Avoid_: attack type, distribution, spread pattern
 
+**Boss targetable**:
+A type-level boolean on a boss ability. `true` (the default) means the boss can be hit by player actions during this ability; `false` means the boss is out of reach but still capable of outputting damage (a long cast from off-arena, an untargetable add phase, etc.). When `false`, every mitigation with `affects: boss_debuff` (Reprisal, Addle, Feint, …) is excluded from this hit's % mit walk — the debuff can't land on something you can't target. Per-type, not per-instance: if the same ability fires in both states (e.g. targetable in one phase, untargetable in another), the user authors a second `BossAbilityType` rather than overriding per-instance.
+_Avoid_: targetable boss, debuff applies
+
 **Affects**:
 A type-level enum on a mitigation describing whom it reaches (`self`, `target`, `party`, `boss_debuff`, `target_or_self`, `none`). `affects: target` and `affects: target_or_self` are the mit-side triggers for required **Targeting** (one slot). The verb form is *reaches* — "this mit reaches the entire party."
 
@@ -178,7 +182,7 @@ Cooldown overlap is *not* a conflict kind: two Bars on the same sub-lane (same s
 _Avoid_: error, warning, problem
 
 **Schema version**:
-The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `11` (bumped from `10` when `stack` was added to `TargetPattern`).
+The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `12` (bumped from `11` when `boss_targetable` was added to `BossAbilityType`).
 _Avoid_: file version, format version
 
 ### Canvas
