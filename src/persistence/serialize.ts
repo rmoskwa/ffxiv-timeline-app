@@ -1,6 +1,7 @@
 // JSON serialization for timeline files.
 // Pure functions — no I/O. Tauri FS wiring lives separately and calls these.
 
+import { sanitizeDescription, sanitizeSingleLineName } from "@/domain/sanitize-text";
 import {
   type BossAbilityInstance,
   type BossAbilityType,
@@ -269,7 +270,7 @@ function validatePlayerSlot(v: unknown, path: string): PlayerSlot {
   };
   const name_label = asOptionalString(o.name_label, `${path}.name_label`);
   if (name_label !== undefined) {
-    const cleaned = name_label.slice(0, MAX_NAME_LEN).trim();
+    const cleaned = sanitizeSingleLineName(name_label).slice(0, MAX_NAME_LEN).trim();
     if (cleaned !== "") slot.name_label = cleaned;
   }
   const hp = asOptionalNumber(o.hp, `${path}.hp`);
@@ -291,7 +292,9 @@ function validateRoster(v: unknown, path: string): Roster {
 
 function validateBossAbilityType(v: unknown, path: string): BossAbilityType {
   const o = asObject(v, path);
-  const rawName = asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN).trim();
+  const rawName = sanitizeSingleLineName(asString(o.name, `${path}.name`))
+    .slice(0, MAX_NAME_LEN)
+    .trim();
   if (rawName === "") {
     throw new TimelineValidationError(`${path}.name`, "must not be empty");
   }
@@ -304,7 +307,8 @@ function validateBossAbilityType(v: unknown, path: string): BossAbilityType {
     boss_targetable: asBoolean(o.boss_targetable, `${path}.boss_targetable`),
   };
   const description = asOptionalString(o.description, `${path}.description`);
-  if (description !== undefined) out.description = description.slice(0, MAX_DESC_LEN);
+  if (description !== undefined)
+    out.description = sanitizeDescription(description).slice(0, MAX_DESC_LEN);
   return out;
 }
 
@@ -376,7 +380,9 @@ function validateMitigationInstance(v: unknown, path: string): MitigationInstanc
 
 function validatePhase(v: unknown, path: string, index: number): Phase {
   const o = asObject(v, path);
-  const trimmed = asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN).trim();
+  const trimmed = sanitizeSingleLineName(asString(o.name, `${path}.name`))
+    .slice(0, MAX_NAME_LEN)
+    .trim();
   return {
     id: asString(o.id, `${path}.id`),
     start_time: asNonNegativeNumber(o.start_time, `${path}.start_time`),
@@ -402,8 +408,12 @@ function validateMetadata(v: unknown, path: string): TimelineFile["metadata"] {
   if (fight_duration_sec < 1) {
     throw new TimelineValidationError(`${path}.fight_duration_sec`, "must be >= 1");
   }
-  const nameTrimmed = asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN).trim();
-  const bossTrimmed = asString(o.boss_name, `${path}.boss_name`).slice(0, MAX_NAME_LEN).trim();
+  const nameTrimmed = sanitizeSingleLineName(asString(o.name, `${path}.name`))
+    .slice(0, MAX_NAME_LEN)
+    .trim();
+  const bossTrimmed = sanitizeSingleLineName(asString(o.boss_name, `${path}.boss_name`))
+    .slice(0, MAX_NAME_LEN)
+    .trim();
   return {
     name: nameTrimmed === "" ? "Untitled Timeline" : nameTrimmed,
     boss_name: bossTrimmed === "" ? "Boss Name" : bossTrimmed,
@@ -446,7 +456,9 @@ export function validateBossTimelineFile(parsed: unknown): BossTimelineFile {
     schema_version: TIMELINE_SCHEMA_VERSION,
     kind: "boss_timeline",
     boss_name: (() => {
-      const t = asString(o.boss_name, "$.boss_name").slice(0, MAX_NAME_LEN).trim();
+      const t = sanitizeSingleLineName(asString(o.boss_name, "$.boss_name"))
+        .slice(0, MAX_NAME_LEN)
+        .trim();
       return t === "" ? "Boss Name" : t;
     })(),
     fight_duration_sec,
