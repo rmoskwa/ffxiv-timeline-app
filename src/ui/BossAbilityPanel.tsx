@@ -12,7 +12,7 @@ import {
   type Roster,
   type TargetPattern,
 } from "@/domain/types";
-import { DuplicateNameError, useTimelineStore } from "@/state/timeline-store";
+import { DuplicateNameError, LimitExceededError, useTimelineStore } from "@/state/timeline-store";
 import { CautionIcon } from "./CautionIcon";
 import { NumberInput } from "./primitives/NumberInput";
 import { TimecodeField } from "./primitives/TimecodeField";
@@ -568,7 +568,15 @@ function AddPlacementForm({ type, roster }: { type: BossAbilityType; roster: Ros
       setError(`Time must be within the fight length (${secondsToTimecode(fightDurationSec)}).`);
       return;
     }
-    addInstance({ type_id: type.id, effect_time: parsed, target_slot_ids: targetIds });
+    try {
+      addInstance({ type_id: type.id, effect_time: parsed, target_slot_ids: targetIds });
+    } catch (err) {
+      if (err instanceof LimitExceededError) {
+        setError(err.message);
+        return;
+      }
+      throw err;
+    }
     reset();
     setOpen(false);
   };
@@ -672,7 +680,7 @@ function NewTypeForm({ onClose }: { onClose: () => void }) {
       });
       onClose();
     } catch (err) {
-      if (err instanceof DuplicateNameError) {
+      if (err instanceof DuplicateNameError || err instanceof LimitExceededError) {
         setError(err.message);
       } else {
         throw err;

@@ -12,8 +12,12 @@ import {
   type FreeformNote,
   type Job,
   type JobOrUnset,
+  MAX_BOSS_ABILITY_INSTANCES,
+  MAX_BOSS_ABILITY_TYPES,
   MAX_DESC_LEN,
+  MAX_MITIGATION_INSTANCES,
   MAX_NAME_LEN,
+  MAX_PHASES,
   type MitigationInstance,
   type ObservedDamageEntry,
   type Phase,
@@ -205,6 +209,16 @@ function asObject(v: unknown, path: string): Record<string, unknown> {
 function asArray(v: unknown, path: string): unknown[] {
   if (!Array.isArray(v)) throw new TimelineValidationError(path, "expected an array");
   return v;
+}
+
+// Hard cap on one of the four unbounded collections. Sized in types.ts at
+// roughly 5–10× a realistic L100 savage fight so a planner never bumps them.
+// Mirrors LimitExceededError in the store; surfaces import-side as a
+// TimelineValidationError so importErrorMessage shows the offending path.
+function assertCap(arr: unknown[], cap: number, path: string): void {
+  if (arr.length > cap) {
+    throw new TimelineValidationError(path, `must have at most ${cap} entries (got ${arr.length})`);
+  }
 }
 
 function asString(v: unknown, path: string): string {
@@ -425,21 +439,29 @@ function validateMetadata(v: unknown, path: string): TimelineFile["metadata"] {
 
 export function validateTimelineFile(parsed: unknown): TimelineFile {
   const o = asObject(parsed, "$");
+  const typesArr = asArray(o.boss_ability_types, "$.boss_ability_types");
+  assertCap(typesArr, MAX_BOSS_ABILITY_TYPES, "$.boss_ability_types");
+  const bossInstancesArr = asArray(o.boss_ability_instances, "$.boss_ability_instances");
+  assertCap(bossInstancesArr, MAX_BOSS_ABILITY_INSTANCES, "$.boss_ability_instances");
+  const mitInstancesArr = asArray(o.mitigation_instances, "$.mitigation_instances");
+  assertCap(mitInstancesArr, MAX_MITIGATION_INSTANCES, "$.mitigation_instances");
+  const phasesArr = asArray(o.phases, "$.phases");
+  assertCap(phasesArr, MAX_PHASES, "$.phases");
   return {
     schema_version: TIMELINE_SCHEMA_VERSION,
     kind: "timeline",
     metadata: validateMetadata(o.metadata, "$.metadata"),
     roster: validateRoster(o.roster, "$.roster"),
-    boss_ability_types: asArray(o.boss_ability_types, "$.boss_ability_types").map((el, i) =>
+    boss_ability_types: typesArr.map((el, i) =>
       validateBossAbilityType(el, `$.boss_ability_types[${i}]`),
     ),
-    boss_ability_instances: asArray(o.boss_ability_instances, "$.boss_ability_instances").map(
-      (el, i) => validateBossAbilityInstance(el, `$.boss_ability_instances[${i}]`),
+    boss_ability_instances: bossInstancesArr.map((el, i) =>
+      validateBossAbilityInstance(el, `$.boss_ability_instances[${i}]`),
     ),
-    mitigation_instances: asArray(o.mitigation_instances, "$.mitigation_instances").map((el, i) =>
+    mitigation_instances: mitInstancesArr.map((el, i) =>
       validateMitigationInstance(el, `$.mitigation_instances[${i}]`),
     ),
-    phases: asArray(o.phases, "$.phases").map((el, i) => validatePhase(el, `$.phases[${i}]`, i)),
+    phases: phasesArr.map((el, i) => validatePhase(el, `$.phases[${i}]`, i)),
     freeform_notes: asArray(o.freeform_notes, "$.freeform_notes").map((el, i) =>
       validateFreeformNote(el, `$.freeform_notes[${i}]`),
     ),
@@ -452,6 +474,12 @@ export function validateBossTimelineFile(parsed: unknown): BossTimelineFile {
   if (fight_duration_sec < 1) {
     throw new TimelineValidationError("$.fight_duration_sec", "must be >= 1");
   }
+  const typesArr = asArray(o.boss_ability_types, "$.boss_ability_types");
+  assertCap(typesArr, MAX_BOSS_ABILITY_TYPES, "$.boss_ability_types");
+  const bossInstancesArr = asArray(o.boss_ability_instances, "$.boss_ability_instances");
+  assertCap(bossInstancesArr, MAX_BOSS_ABILITY_INSTANCES, "$.boss_ability_instances");
+  const phasesArr = asArray(o.phases, "$.phases");
+  assertCap(phasesArr, MAX_PHASES, "$.phases");
   return {
     schema_version: TIMELINE_SCHEMA_VERSION,
     kind: "boss_timeline",
@@ -462,12 +490,12 @@ export function validateBossTimelineFile(parsed: unknown): BossTimelineFile {
       return t === "" ? "Boss Name" : t;
     })(),
     fight_duration_sec,
-    boss_ability_types: asArray(o.boss_ability_types, "$.boss_ability_types").map((el, i) =>
+    boss_ability_types: typesArr.map((el, i) =>
       validateBossAbilityType(el, `$.boss_ability_types[${i}]`),
     ),
-    boss_ability_instances: asArray(o.boss_ability_instances, "$.boss_ability_instances").map(
-      (el, i) => validateBossAbilityInstance(el, `$.boss_ability_instances[${i}]`),
+    boss_ability_instances: bossInstancesArr.map((el, i) =>
+      validateBossAbilityInstance(el, `$.boss_ability_instances[${i}]`),
     ),
-    phases: asArray(o.phases, "$.phases").map((el, i) => validatePhase(el, `$.phases[${i}]`, i)),
+    phases: phasesArr.map((el, i) => validatePhase(el, `$.phases[${i}]`, i)),
   };
 }

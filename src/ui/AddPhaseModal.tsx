@@ -5,7 +5,7 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { MAX_NAME_LEN } from "@/domain/types";
-import { PhaseRejectedError, useTimelineStore } from "@/state/timeline-store";
+import { LimitExceededError, PhaseRejectedError, useTimelineStore } from "@/state/timeline-store";
 import { parseTimecode, secondsToTimecode } from "./timeline-constants";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
 
@@ -51,7 +51,7 @@ export function AddPhaseModal() {
       addPhase({ start_time: parsedStart, name: nameDraft.trim() || defaultName });
       close();
     } catch (err) {
-      if (err instanceof PhaseRejectedError) {
+      if (err instanceof PhaseRejectedError || err instanceof LimitExceededError) {
         setError(err.message);
         return;
       }

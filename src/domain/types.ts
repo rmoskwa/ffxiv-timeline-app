@@ -398,6 +398,16 @@ export const MAX_NAME_LEN = 80; // user-given name fields (fight name, boss name
 
 export const MAX_DESC_LEN = 1000; // user-given description fields (boss ability description, freeform notes) — room for a paragraph or two; newlines preserved
 
+// Hard caps for the four unbounded collections in the file. Sized at roughly
+// 5–10× a realistic L100 savage fight so a planner never bumps them, but a
+// malicious or runaway import is rejected before it can freeze the canvas.
+// Enforced at the store mutation boundary (throws LimitExceededError) and at
+// deserialize (throws TimelineValidationError). See docs/stress-test-plan.md §2.
+export const MAX_BOSS_ABILITY_TYPES = 200;
+export const MAX_BOSS_ABILITY_INSTANCES = 1000;
+export const MAX_MITIGATION_INSTANCES = 2000;
+export const MAX_PHASES = 50;
+
 export interface TimelineFile {
   schema_version: typeof TIMELINE_SCHEMA_VERSION;
   kind: "timeline";

@@ -15,9 +15,13 @@ import {
   type BossTimelineFile,
   type JobOrUnset,
   MAX_BASE_DAMAGE,
+  MAX_BOSS_ABILITY_INSTANCES,
+  MAX_BOSS_ABILITY_TYPES,
   MAX_DESC_LEN,
   MAX_FIGHT_DURATION_SEC,
+  MAX_MITIGATION_INSTANCES,
   MAX_NAME_LEN,
+  MAX_PHASES,
   type MitigationInstance,
   type Phase,
   type TimelineFile,
@@ -44,6 +48,24 @@ export class EmptyNameError extends Error {
   constructor() {
     super("Name is required.");
     this.name = "EmptyNameError";
+  }
+}
+
+// One of the four unbounded collections (boss ability types/instances, mit
+// instances, phases) hit its hard cap. Caps sit at roughly 5–10× a realistic
+// fight, so a planner never bumps them — this error guards against runaway
+// imports and programmatic-loop accidents. See domain/types.ts MAX_* constants.
+export class LimitExceededError extends Error {
+  constructor(
+    public readonly collection:
+      | "boss_ability_types"
+      | "boss_ability_instances"
+      | "mitigation_instances"
+      | "phases",
+    public readonly cap: number,
+  ) {
+    super(`Cannot add more than ${cap} ${collection.replace(/_/g, " ")} to a single timeline.`);
+    this.name = "LimitExceededError";
   }
 }
 
@@ -147,7 +169,19 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       };
     }),
 
-  replaceBossTimeline: (imported) =>
+  replaceBossTimeline: (imported) => {
+    // Hard caps on the imported payload — the deserializer also enforces
+    // these, but a replaceBossTimeline call from any other (programmatic)
+    // path must hit the same gate.
+    if (imported.boss_ability_types.length > MAX_BOSS_ABILITY_TYPES) {
+      throw new LimitExceededError("boss_ability_types", MAX_BOSS_ABILITY_TYPES);
+    }
+    if (imported.boss_ability_instances.length > MAX_BOSS_ABILITY_INSTANCES) {
+      throw new LimitExceededError("boss_ability_instances", MAX_BOSS_ABILITY_INSTANCES);
+    }
+    if (imported.phases.length > MAX_PHASES) {
+      throw new LimitExceededError("phases", MAX_PHASES);
+    }
     set((s) => {
       if (!s.timeline) return s;
       const maxEffect = imported.boss_ability_instances.reduce(
@@ -181,7 +215,8 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         }),
         selectedInstance: null,
       };
-    }),
+    });
+  },
 
   // Typing buffer for the fight-name input — accepts raw value (including
   // whitespace mid-edit). The UI applies the "Untitled Timeline" fallback on
@@ -308,6 +343,9 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
     if (clippedName === "") throw new EmptyNameError();
     const tl = useTimelineStore.getState().timeline;
     if (tl) {
+      if (tl.boss_ability_types.length >= MAX_BOSS_ABILITY_TYPES) {
+        throw new LimitExceededError("boss_ability_types", MAX_BOSS_ABILITY_TYPES);
+      }
       const target = normalizeNameForCompare(clippedName);
       if (tl.boss_ability_types.some((t) => normalizeNameForCompare(t.name) === target)) {
         throw new DuplicateNameError(clippedName);
@@ -393,6 +431,10 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
 
   addBossAbilityInstance: (input) => {
     const id = crypto.randomUUID();
+    const tl = useTimelineStore.getState().timeline;
+    if (tl && tl.boss_ability_instances.length >= MAX_BOSS_ABILITY_INSTANCES) {
+      throw new LimitExceededError("boss_ability_instances", MAX_BOSS_ABILITY_INSTANCES);
+    }
     set((s) => {
       if (!s.timeline) return s;
       const instance: BossAbilityInstance = { ...input, id, observed_damage: [] };
@@ -444,6 +486,19 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   // never re-runs). PRD §6.5.
   addMitigationInstance: (input) => {
     const id = crypto.randomUUID();
+    // Check against the cap including the child auto-spawn cost so a parent
+    // placement that would push us past the limit fails up-front instead of
+    // landing the parent alone.
+    const tl = useTimelineStore.getState().timeline;
+    if (tl) {
+      const parentType = getMitById(input.type_id);
+      const childCount = parentType
+        ? getGatedChildrenOf(parentType.id).reduce((sum, c) => sum + Math.max(1, c.max_charges), 0)
+        : 0;
+      if (tl.mitigation_instances.length + 1 + childCount > MAX_MITIGATION_INSTANCES) {
+        throw new LimitExceededError("mitigation_instances", MAX_MITIGATION_INSTANCES);
+      }
+    }
     set((s) => {
       if (!s.timeline) return s;
       const parent: MitigationInstance = { ...input, id, coverage_overrides: [] };
@@ -511,6 +566,12 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   addPhase: (input) => {
     const tl = useTimelineStore.getState().timeline;
     if (!tl) return;
+    // First add seeds an implicit Phase 1 — so the effective post-add count is
+    // (current === 0 ? 2 : current + 1).
+    const projectedCount = tl.phases.length === 0 ? 2 : tl.phases.length + 1;
+    if (projectedCount > MAX_PHASES) {
+      throw new LimitExceededError("phases", MAX_PHASES);
+    }
     const start = Math.round(input.start_time);
     const duration = tl.metadata.fight_duration_sec;
     if (!Number.isFinite(start) || start <= 0 || start >= duration) {
