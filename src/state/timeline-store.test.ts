@@ -97,6 +97,70 @@ describe("timeline-store — selection mutex", () => {
     useTimelineStore.getState().deselectInstance();
     expect(useTimelineStore.getState().selectedInstance).toBeNull();
   });
+
+  it("selecting a boss instance clears a prior mit selection", () => {
+    useTimelineStore.getState().selectMitInstance("mit-a");
+    expect(useTimelineStore.getState().selectedInstance).toEqual({ kind: "mit", id: "mit-a" });
+    useTimelineStore.getState().selectBossInstance("boss-a");
+    expect(useTimelineStore.getState().selectedInstance).toEqual({ kind: "boss", id: "boss-a" });
+  });
+
+  it("deselectInstance on already-null selection is a no-op", () => {
+    expect(useTimelineStore.getState().selectedInstance).toBeNull();
+    useTimelineStore.getState().deselectInstance();
+    expect(useTimelineStore.getState().selectedInstance).toBeNull();
+  });
+});
+
+// ─── interaction storms ──────────────────────────────────────────────────
+// Spam-add must mint unique IDs; the keyboard selection model must survive a
+// no-selection Delete and an Esc with no selection.
+
+describe("timeline-store — §7 spam add", () => {
+  beforeEach(freshTimeline);
+
+  it("mints unique IDs across rapid addBossAbilityInstance calls", () => {
+    const bossTypeId = useTimelineStore.getState().addBossAbilityType({
+      name: "Spam Hit",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    const ids: string[] = [];
+    for (let i = 0; i < 200; i++) {
+      ids.push(
+        useTimelineStore.getState().addBossAbilityInstance({
+          type_id: bossTypeId,
+          effect_time: i,
+          target_slot_ids: [],
+        }),
+      );
+    }
+    expect(new Set(ids).size).toBe(ids.length);
+    // Survives in storage with the same uniqueness.
+    const stored = useTimelineStore.getState().timeline?.boss_ability_instances ?? [];
+    expect(new Set(stored.map((i) => i.id)).size).toBe(stored.length);
+  });
+
+  it("mints unique IDs across rapid addMitigationInstance calls", () => {
+    const slotId = rosterSlotId(0);
+    // RAMPART cooldown blocks legal placement at the same slot, but the store
+    // trusts the caller (gating lives in MitSubLane.legalHoverSec). The point of
+    // this test is the ID-mint guarantee, not the legality.
+    const ids: string[] = [];
+    for (let i = 0; i < 100; i++) {
+      ids.push(
+        useTimelineStore.getState().addMitigationInstance({
+          type_id: RAMPART,
+          player_slot_id: slotId,
+          effect_time: i * 100,
+          target_slot_ids: [],
+        }),
+      );
+    }
+    expect(new Set(ids).size).toBe(ids.length);
+  });
 });
 
 // ─── Gated-child behaviors ──────────────────────────────────────────────────
