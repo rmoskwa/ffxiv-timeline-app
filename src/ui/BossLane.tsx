@@ -344,6 +344,9 @@ function BossLaneLabel({ mergedGutter }: { mergedGutter: boolean }) {
         rows={1}
         // Wrapping is purely visual — strip any newlines from typing or paste.
         onChange={(e) => setBossName(e.target.value.replace(/\n/g, ""))}
+        onBlur={(e) => {
+          if (e.target.value.trim() === "") setBossName("Boss Name");
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();

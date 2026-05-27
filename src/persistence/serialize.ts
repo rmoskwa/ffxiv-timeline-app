@@ -147,7 +147,7 @@ export function newTimeline(name: string): TimelineFile {
     kind: "timeline",
     metadata: {
       name,
-      boss_name: "",
+      boss_name: "Boss Name",
       fight_duration_sec: DEFAULT_FIGHT_DURATION_SEC,
       created_at: now,
       updated_at: now,
@@ -268,7 +268,10 @@ function validatePlayerSlot(v: unknown, path: string): PlayerSlot {
     job: asJobOrUnset(o.job, `${path}.job`),
   };
   const name_label = asOptionalString(o.name_label, `${path}.name_label`);
-  if (name_label !== undefined) slot.name_label = name_label.slice(0, MAX_NAME_LEN);
+  if (name_label !== undefined) {
+    const cleaned = name_label.slice(0, MAX_NAME_LEN).trim();
+    if (cleaned !== "") slot.name_label = cleaned;
+  }
   const hp = asOptionalNumber(o.hp, `${path}.hp`);
   if (hp !== undefined) {
     if (hp < 0) throw new TimelineValidationError(`${path}.hp`, "must be >= 0");
@@ -288,9 +291,13 @@ function validateRoster(v: unknown, path: string): Roster {
 
 function validateBossAbilityType(v: unknown, path: string): BossAbilityType {
   const o = asObject(v, path);
+  const rawName = asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN).trim();
+  if (rawName === "") {
+    throw new TimelineValidationError(`${path}.name`, "must not be empty");
+  }
   const out: BossAbilityType = {
     id: asString(o.id, `${path}.id`),
-    name: asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN),
+    name: rawName,
     base_damage: asNonNegativeNumber(o.base_damage, `${path}.base_damage`),
     damage_type: asEnum(o.damage_type, DAMAGE_TYPES, `${path}.damage_type`),
     target_pattern: asEnum(o.target_pattern, TARGET_PATTERNS, `${path}.target_pattern`),
@@ -367,12 +374,13 @@ function validateMitigationInstance(v: unknown, path: string): MitigationInstanc
   return out;
 }
 
-function validatePhase(v: unknown, path: string): Phase {
+function validatePhase(v: unknown, path: string, index: number): Phase {
   const o = asObject(v, path);
+  const trimmed = asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN).trim();
   return {
     id: asString(o.id, `${path}.id`),
     start_time: asNonNegativeNumber(o.start_time, `${path}.start_time`),
-    name: asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN),
+    name: trimmed === "" ? `Phase ${index + 1}` : trimmed,
   };
 }
 
@@ -394,9 +402,11 @@ function validateMetadata(v: unknown, path: string): TimelineFile["metadata"] {
   if (fight_duration_sec < 1) {
     throw new TimelineValidationError(`${path}.fight_duration_sec`, "must be >= 1");
   }
+  const nameTrimmed = asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN).trim();
+  const bossTrimmed = asString(o.boss_name, `${path}.boss_name`).slice(0, MAX_NAME_LEN).trim();
   return {
-    name: asString(o.name, `${path}.name`).slice(0, MAX_NAME_LEN),
-    boss_name: asString(o.boss_name, `${path}.boss_name`).slice(0, MAX_NAME_LEN),
+    name: nameTrimmed === "" ? "Untitled Timeline" : nameTrimmed,
+    boss_name: bossTrimmed === "" ? "Boss Name" : bossTrimmed,
     fight_duration_sec,
     created_at: asString(o.created_at, `${path}.created_at`),
     updated_at: asString(o.updated_at, `${path}.updated_at`),
@@ -419,7 +429,7 @@ export function validateTimelineFile(parsed: unknown): TimelineFile {
     mitigation_instances: asArray(o.mitigation_instances, "$.mitigation_instances").map((el, i) =>
       validateMitigationInstance(el, `$.mitigation_instances[${i}]`),
     ),
-    phases: asArray(o.phases, "$.phases").map((el, i) => validatePhase(el, `$.phases[${i}]`)),
+    phases: asArray(o.phases, "$.phases").map((el, i) => validatePhase(el, `$.phases[${i}]`, i)),
     freeform_notes: asArray(o.freeform_notes, "$.freeform_notes").map((el, i) =>
       validateFreeformNote(el, `$.freeform_notes[${i}]`),
     ),
@@ -435,7 +445,10 @@ export function validateBossTimelineFile(parsed: unknown): BossTimelineFile {
   return {
     schema_version: TIMELINE_SCHEMA_VERSION,
     kind: "boss_timeline",
-    boss_name: asString(o.boss_name, "$.boss_name").slice(0, MAX_NAME_LEN),
+    boss_name: (() => {
+      const t = asString(o.boss_name, "$.boss_name").slice(0, MAX_NAME_LEN).trim();
+      return t === "" ? "Boss Name" : t;
+    })(),
     fight_duration_sec,
     boss_ability_types: asArray(o.boss_ability_types, "$.boss_ability_types").map((el, i) =>
       validateBossAbilityType(el, `$.boss_ability_types[${i}]`),
@@ -443,6 +456,6 @@ export function validateBossTimelineFile(parsed: unknown): BossTimelineFile {
     boss_ability_instances: asArray(o.boss_ability_instances, "$.boss_ability_instances").map(
       (el, i) => validateBossAbilityInstance(el, `$.boss_ability_instances[${i}]`),
     ),
-    phases: asArray(o.phases, "$.phases").map((el, i) => validatePhase(el, `$.phases[${i}]`)),
+    phases: asArray(o.phases, "$.phases").map((el, i) => validatePhase(el, `$.phases[${i}]`, i)),
   };
 }

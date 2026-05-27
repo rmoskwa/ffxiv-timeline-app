@@ -32,6 +32,16 @@ export class DuplicateNameError extends Error {
   }
 }
 
+// Required name fields (today: boss ability type name) must contain at least
+// one non-whitespace character. UI surfaces this as a field error; the store
+// throws to defend non-UI callers.
+export class EmptyNameError extends Error {
+  constructor() {
+    super("Name is required.");
+    this.name = "EmptyNameError";
+  }
+}
+
 function normalizeName(n: string): string {
   return n.trim().toLowerCase();
 }
@@ -172,6 +182,9 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       };
     }),
 
+  // Typing buffer for the fight-name input — accepts raw value (including
+  // whitespace mid-edit). The UI applies the "Untitled Timeline" fallback on
+  // blur. The deserialize path applies the same fallback on import.
   setName: (name) =>
     set((s) => {
       if (!s.timeline) return s;
@@ -181,6 +194,8 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       };
     }),
 
+  // Typing buffer for the boss-name input — see setName above for the rule.
+  // UI applies the "Boss Name" fallback on blur; deserialize falls back on import.
   setBossName: (name) =>
     set((s) => {
       if (!s.timeline) return s;
@@ -249,15 +264,17 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   setSlotLabel: (slotIdx, label) =>
     set((s) => {
       if (!s.timeline) return s;
-      const clipped = label !== undefined ? label.slice(0, MAX_NAME_LEN) : undefined;
+      // Empty/whitespace-only label clears the field (back to the job-code fallback).
+      const trimmed = label !== undefined ? label.slice(0, MAX_NAME_LEN).trim() : undefined;
+      const final = trimmed === "" ? undefined : trimmed;
       const roster = s.timeline.roster.map((slot, i) => {
         if (i !== slotIdx) return slot;
         // exactOptionalPropertyTypes: omit the key when label is undefined.
-        if (clipped === undefined) {
+        if (final === undefined) {
           const { name_label: _drop, ...rest } = slot;
           return rest;
         }
-        return { ...slot, name_label: clipped };
+        return { ...slot, name_label: final };
       }) as unknown as TimelineFile["roster"];
       return { timeline: touch({ ...s.timeline, roster }) };
     }),
@@ -283,12 +300,13 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
 
   addBossAbilityType: (input) => {
     const id = crypto.randomUUID();
-    const clippedName = input.name.slice(0, MAX_NAME_LEN);
+    const clippedName = input.name.slice(0, MAX_NAME_LEN).trim();
+    if (clippedName === "") throw new EmptyNameError();
     const tl = useTimelineStore.getState().timeline;
     if (tl) {
       const target = normalizeName(clippedName);
       if (tl.boss_ability_types.some((t) => normalizeName(t.name) === target)) {
-        throw new DuplicateNameError(clippedName.trim());
+        throw new DuplicateNameError(clippedName);
       }
     }
     set((s) => {
@@ -314,13 +332,15 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   updateBossAbilityType: (id, patch) =>
     set((s) => {
       if (!s.timeline) return s;
-      const clippedName = patch.name !== undefined ? patch.name.slice(0, MAX_NAME_LEN) : undefined;
+      const clippedName =
+        patch.name !== undefined ? patch.name.slice(0, MAX_NAME_LEN).trim() : undefined;
       if (clippedName !== undefined) {
+        if (clippedName === "") throw new EmptyNameError();
         const target = normalizeName(clippedName);
         if (
           s.timeline.boss_ability_types.some((t) => t.id !== id && normalizeName(t.name) === target)
         ) {
-          throw new DuplicateNameError(clippedName.trim());
+          throw new DuplicateNameError(clippedName);
         }
       }
       const clampedPatch = {
@@ -495,10 +515,15 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
     }
     set((s) => {
       if (!s.timeline) return s;
+      const trimmedName = input.name.slice(0, MAX_NAME_LEN).trim();
+      // Fallback ordinal: the new phase will sit at position (current length + 1)
+      // after the implicit-Phase-1 seed; first-add inserts both Phase 1 and the
+      // user's phase, so the user's natural ordinal is 2 when length is 0.
+      const fallback = `Phase ${Math.max(s.timeline.phases.length + 1, 2)}`;
       const incoming: Phase = {
         id: crypto.randomUUID(),
         start_time: start,
-        name: input.name.slice(0, MAX_NAME_LEN),
+        name: trimmedName === "" ? fallback : trimmedName,
       };
       const seed: Phase[] =
         s.timeline.phases.length === 0
@@ -512,11 +537,14 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   renamePhase: (id, name) =>
     set((s) => {
       if (!s.timeline) return s;
-      const clipped = name.slice(0, MAX_NAME_LEN);
+      const trimmed = name.slice(0, MAX_NAME_LEN).trim();
+      const idx = s.timeline.phases.findIndex((p) => p.id === id);
+      if (idx < 0) return s;
+      const final = trimmed === "" ? `Phase ${idx + 1}` : trimmed;
       return {
         timeline: touch({
           ...s.timeline,
-          phases: s.timeline.phases.map((p) => (p.id === id ? { ...p, name: clipped } : p)),
+          phases: s.timeline.phases.map((p) => (p.id === id ? { ...p, name: final } : p)),
         }),
       };
     }),
