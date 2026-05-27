@@ -475,6 +475,7 @@ export function validateTimelineFile(parsed: unknown): TimelineFile {
   const mitigation_instances = mitInstancesArr.map((el, i) =>
     validateMitigationInstance(el, `$.mitigation_instances[${i}]`),
   );
+  assertNoDuplicateMitPlacements(mitigation_instances, "$.mitigation_instances");
   const phases = phasesArr.map((el, i) => validatePhase(el, `$.phases[${i}]`, i));
   // Cull instances and phases that lie past the clamped fight_duration_sec.
   // Mirrors setFightDuration: instance.effect_time <= clamped, phase.start_time
@@ -600,5 +601,29 @@ function assertTypeReferences(
         `does not reference any boss_ability_types[].id`,
       );
     }
+  }
+}
+
+// Per CONTEXT.md "Bar": two mit instances on the same sub-lane (same slot +
+// same type) can never share `[effect_time, effect_time + cooldown_seconds]`.
+// UI placement and drag enforce this; this catches the hand-edited case where
+// a JSON file slips two instances onto the same (slot, type) at the same
+// effect_time — the strictly-data-only collision the validator can detect
+// without consulting the mit library for cooldown spans. Real cooldown-window
+// overlap goes uncaught; setFightDuration and the first user drag will
+// reconcile it via the snap-to-earliest-legal placement rule.
+function assertNoDuplicateMitPlacements(instances: MitigationInstance[], path: string): void {
+  const seen = new Map<string, number>();
+  for (let i = 0; i < instances.length; i++) {
+    const m = instances[i];
+    const key = `${m.player_slot_id} ${m.type_id} ${m.effect_time}`;
+    const prev = seen.get(key);
+    if (prev !== undefined) {
+      throw new TimelineValidationError(
+        `${path}[${i}]`,
+        `duplicates ${path}[${prev}]: another mitigation instance on the same slot, type, and effect_time`,
+      );
+    }
+    seen.set(key, i);
   }
 }
