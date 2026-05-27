@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BossAbilityInstance, BossAbilityType, Phase } from "@/domain/types";
-import { TIMELINE_SCHEMA_VERSION } from "@/domain/types";
+import { MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
 import {
   deserialize,
   deserializeBossTimeline,
@@ -237,6 +237,13 @@ describe("deserialize — field validation", () => {
   it("round-trips a freshly-created timeline through the validator", () => {
     const tl = newTimeline("fixture");
     expect(deserialize(serialize(tl))).toEqual(tl);
+  });
+
+  it("truncates metadata.name to MAX_NAME_LEN on deserialize", () => {
+    const tl = newTimeline("fixture");
+    const huge = "z".repeat(MAX_NAME_LEN + 500);
+    const json = JSON.stringify({ ...tl, metadata: { ...tl.metadata, name: huge } });
+    expect(deserialize(json).metadata.name.length).toBe(MAX_NAME_LEN);
   });
 });
 

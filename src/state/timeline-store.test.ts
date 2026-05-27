@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { BossTimelineFile, Job, MitigationInstance, Roster } from "@/domain/types";
-import { TIMELINE_SCHEMA_VERSION } from "@/domain/types";
+import { MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
 import { PhaseRejectedError, useTimelineStore } from "./timeline-store";
 
 const RAMPART = "drk.rampart"; // cooldown 90s, duration 20s
@@ -561,5 +561,21 @@ describe("timeline-store — phases", () => {
     };
     useTimelineStore.getState().replaceBossTimeline(imported);
     expect(phases()).toEqual([]);
+  });
+});
+
+describe("timeline-store — setName length cap", () => {
+  beforeEach(freshTimeline);
+
+  it("truncates a pasted name to MAX_NAME_LEN", () => {
+    const huge = "x".repeat(MAX_NAME_LEN + 500);
+    useTimelineStore.getState().setName(huge);
+    expect(useTimelineStore.getState().timeline?.metadata.name.length).toBe(MAX_NAME_LEN);
+  });
+
+  it("leaves a name at exactly MAX_NAME_LEN untouched", () => {
+    const exact = "y".repeat(MAX_NAME_LEN);
+    useTimelineStore.getState().setName(exact);
+    expect(useTimelineStore.getState().timeline?.metadata.name).toBe(exact);
   });
 });
