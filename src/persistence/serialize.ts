@@ -268,7 +268,7 @@ function validatePlayerSlot(v: unknown, path: string): PlayerSlot {
     job: asJobOrUnset(o.job, `${path}.job`),
   };
   const name_label = asOptionalString(o.name_label, `${path}.name_label`);
-  if (name_label !== undefined) slot.name_label = name_label;
+  if (name_label !== undefined) slot.name_label = name_label.slice(0, MAX_NAME_LEN);
   const hp = asOptionalNumber(o.hp, `${path}.hp`);
   if (hp !== undefined) {
     if (hp < 0) throw new TimelineValidationError(`${path}.hp`, "must be >= 0");

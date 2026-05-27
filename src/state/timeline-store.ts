@@ -249,14 +249,15 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   setSlotLabel: (slotIdx, label) =>
     set((s) => {
       if (!s.timeline) return s;
+      const clipped = label !== undefined ? label.slice(0, MAX_NAME_LEN) : undefined;
       const roster = s.timeline.roster.map((slot, i) => {
         if (i !== slotIdx) return slot;
         // exactOptionalPropertyTypes: omit the key when label is undefined.
-        if (label === undefined) {
+        if (clipped === undefined) {
           const { name_label: _drop, ...rest } = slot;
           return rest;
         }
-        return { ...slot, name_label: label };
+        return { ...slot, name_label: clipped };
       }) as unknown as TimelineFile["roster"];
       return { timeline: touch({ ...s.timeline, roster }) };
     }),
