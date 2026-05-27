@@ -1,5 +1,6 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { confirm as confirmDialog, message as messageDialog } from "@tauri-apps/plugin-dialog";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { TIMELINE_SCHEMA_VERSION } from "@/domain/types";
 import {
   deleteWorkingTimeline,
@@ -10,11 +11,15 @@ import { useAutoSave } from "@/persistence/use-auto-save";
 import { useHydrate } from "@/persistence/use-hydrate";
 import { useTimelineStore } from "@/state/timeline-store";
 import { AddPhaseModal } from "./AddPhaseModal";
+import { ClearTimelineModal, useClearTimelineModalStore } from "./ClearTimelineModal";
+import { HelpModals, useHelpModalStore } from "./HelpModals";
 import { importErrorMessage } from "./import-error-message";
+import { type Menu, MenuBar } from "./MenuBar";
 import { RosterPanel } from "./RosterPanel";
 import { SetupWizard } from "./SetupWizard";
 import { TimelineEditor } from "./TimelineEditor";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
+import { useBossImportExport } from "./use-boss-import-export";
 
 export function App() {
   const { hydrated, error: hydrateError } = useHydrate();
@@ -23,6 +28,9 @@ export function App() {
   const closeTimeline = useTimelineStore((s) => s.closeTimeline);
   const setName = useTimelineStore((s) => s.setName);
   const openAddPhase = useAddPhaseModalStore((s) => s.open);
+  const openClearTimeline = useClearTimelineModalStore((s) => s.open);
+  const showHelp = useHelpModalStore((s) => s.show);
+  const { handleImport: handleBossImport, handleExport: handleBossExport } = useBossImportExport();
 
   // Auto-save only after hydration completes AND a timeline is loaded.
   // The hydration gate guarantees the loaded ref is treated as the baseline
@@ -65,12 +73,96 @@ export function App() {
     }
   }, [closeTimeline]);
 
+  const handleExit = useCallback(async () => {
+    await getCurrentWindow().close();
+  }, []);
+
+  const menus = useMemo<Menu[]>(
+    () => [
+      {
+        label: "File",
+        items: [
+          {
+            kind: "item",
+            label: "New Timeline",
+            onClick: handleDiscard,
+            disabled: timeline === null,
+          },
+          { kind: "item", label: "Open Timeline…", onClick: handleOpenTimeline },
+          {
+            kind: "item",
+            label: "Save Timeline…",
+            onClick: handleSaveTimeline,
+            disabled: timeline === null,
+          },
+          { kind: "separator" },
+          { kind: "item", label: "Exit", onClick: handleExit },
+        ],
+      },
+      {
+        label: "Edit",
+        items: [
+          {
+            kind: "item",
+            label: "Add Phase",
+            onClick: openAddPhase,
+            disabled: timeline === null,
+          },
+          {
+            kind: "item",
+            label: "Clear Timeline",
+            onClick: openClearTimeline,
+            disabled: timeline === null,
+          },
+          { kind: "separator" },
+          {
+            kind: "item",
+            label: "Import Boss Abilities…",
+            onClick: handleBossImport,
+            disabled: timeline === null,
+          },
+          {
+            kind: "item",
+            label: "Export Boss Abilities…",
+            onClick: handleBossExport,
+            disabled: timeline === null,
+          },
+        ],
+      },
+      {
+        label: "Help",
+        items: [
+          { kind: "item", label: "Keyboard Shortcuts", onClick: () => showHelp("shortcuts") },
+          { kind: "item", label: "About", onClick: () => showHelp("about") },
+        ],
+      },
+    ],
+    [
+      timeline,
+      handleDiscard,
+      handleOpenTimeline,
+      handleSaveTimeline,
+      handleExit,
+      openAddPhase,
+      openClearTimeline,
+      handleBossImport,
+      handleBossExport,
+      showHelp,
+    ],
+  );
+
   if (!hydrated) {
     return <div className="hydrating">Loading timeline…</div>;
   }
 
   if (!timeline) {
-    return <SetupWizard hydrateError={hydrateError} />;
+    return (
+      <div className="app-root">
+        <MenuBar menus={menus} />
+        <SetupWizard hydrateError={hydrateError} />
+        <HelpModals />
+      </div>
+    );
   }
 
   const savedLabel = saveError
@@ -80,50 +172,55 @@ export function App() {
       : `updated ${new Date(timeline.metadata.updated_at).toLocaleTimeString()}`;
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div>
-          <input
-            type="text"
-            className="fight-name-input"
-            value={timeline.metadata.name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={(e) => {
-              if (e.target.value.trim() === "") setName("Untitled Timeline");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                e.currentTarget.blur();
-              }
-            }}
-            aria-label="Fight name"
-          />
-          <p className="subtitle">
-            schema v{TIMELINE_SCHEMA_VERSION} · {savedLabel}
-          </p>
-        </div>
-        <div className="header-actions">
-          <button type="button" className="link-button" onClick={handleOpenTimeline}>
-            Open Timeline
-          </button>
-          <button type="button" className="link-button" onClick={handleSaveTimeline}>
-            Save Timeline
-          </button>
-          <button type="button" className="link-button" onClick={openAddPhase}>
-            Add Phase
-          </button>
-          <button type="button" className="link-button" onClick={handleDiscard}>
-            Discard
-          </button>
-        </div>
-      </header>
+    <div className="app-root">
+      <MenuBar menus={menus} />
+      <div className="app-shell">
+        <header className="app-header">
+          <div>
+            <input
+              type="text"
+              className="fight-name-input"
+              value={timeline.metadata.name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={(e) => {
+                if (e.target.value.trim() === "") setName("Untitled Timeline");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                }
+              }}
+              aria-label="Fight name"
+            />
+            <p className="subtitle">
+              schema v{TIMELINE_SCHEMA_VERSION} · {savedLabel}
+            </p>
+          </div>
+          <div className="header-actions">
+            <button type="button" className="link-button" onClick={handleOpenTimeline}>
+              Open Timeline
+            </button>
+            <button type="button" className="link-button" onClick={handleSaveTimeline}>
+              Save Timeline
+            </button>
+            <button type="button" className="link-button" onClick={openAddPhase}>
+              Add Phase
+            </button>
+            <button type="button" className="link-button" onClick={handleDiscard}>
+              Discard
+            </button>
+          </div>
+        </header>
 
-      <div className="app-body">
-        <RosterPanel />
-        <TimelineEditor />
+        <div className="app-body">
+          <RosterPanel />
+          <TimelineEditor />
+        </div>
+        <AddPhaseModal />
+        <ClearTimelineModal />
       </div>
-      <AddPhaseModal />
+      <HelpModals />
     </div>
   );
 }

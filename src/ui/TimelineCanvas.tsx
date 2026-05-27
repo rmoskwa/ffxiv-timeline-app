@@ -1,9 +1,10 @@
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
 import { DEFAULT_FIGHT_DURATION_SEC } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossLane } from "./BossLane";
+import { useClearTimelineModalStore } from "./ClearTimelineModal";
 import { PlayerChipRow, PlayerLane, SlotMitGroup } from "./PlayerLane";
 import { Ruler } from "./Ruler";
 import {
@@ -252,121 +253,35 @@ function ZoomToolbar() {
 }
 
 // Right-justified Clear Timeline button. Wipes boss ability types/instances,
-// mitigation instances, and phases — roster + metadata survive. Confirms only
-// when there is something to delete; an already-empty timeline clears silently.
+// mitigation instances, and phases — roster + metadata survive. Disabled when
+// there's nothing to clear; otherwise opens the shared confirmation modal
+// (also reachable from Edit ▸ Clear Timeline in the menu bar).
 function ClearTimelineControl() {
-  const bossTypeCount = useTimelineStore((s) => s.timeline?.boss_ability_types.length ?? 0);
-  const bossInstanceCount = useTimelineStore((s) => s.timeline?.boss_ability_instances.length ?? 0);
-  const mitCount = useTimelineStore((s) => s.timeline?.mitigation_instances.length ?? 0);
-  const phaseCount = useTimelineStore((s) => s.timeline?.phases.length ?? 0);
-  const clearTimeline = useTimelineStore((s) => s.clearTimeline);
-  const [confirming, setConfirming] = useState(false);
-
-  const hasContent = bossTypeCount > 0 || bossInstanceCount > 0 || mitCount > 0 || phaseCount > 0;
-
-  const handleClick = () => {
-    if (!hasContent) return;
-    setConfirming(true);
-  };
-
-  return (
-    <>
-      <button
-        type="button"
-        className="clear-timeline-button"
-        onClick={handleClick}
-        disabled={!hasContent}
-        title={
-          hasContent
-            ? "Wipe boss abilities, mitigations, and phases (roster preserved)"
-            : "Nothing to clear"
-        }
-      >
-        Clear Timeline
-      </button>
-      {confirming && (
-        <ClearTimelineConfirm
-          bossInstanceCount={bossInstanceCount}
-          bossTypeCount={bossTypeCount}
-          mitCount={mitCount}
-          phaseCount={phaseCount}
-          onCancel={() => setConfirming(false)}
-          onConfirm={() => {
-            clearTimeline();
-            setConfirming(false);
-          }}
-        />
-      )}
-    </>
-  );
-}
-
-function ClearTimelineConfirm({
-  bossInstanceCount,
-  bossTypeCount,
-  mitCount,
-  phaseCount,
-  onCancel,
-  onConfirm,
-}: {
-  bossInstanceCount: number;
-  bossTypeCount: number;
-  mitCount: number;
-  phaseCount: number;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onCancel();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
-
-  const items: string[] = [];
-  if (bossInstanceCount > 0) {
-    items.push(
-      `${bossInstanceCount} boss ability instance${bossInstanceCount === 1 ? "" : "s"}` +
-        (bossTypeCount > 0 ? ` (${bossTypeCount} type${bossTypeCount === 1 ? "" : "s"})` : ""),
+  const hasContent = useTimelineStore((s) => {
+    const t = s.timeline;
+    if (!t) return false;
+    return (
+      t.boss_ability_types.length > 0 ||
+      t.boss_ability_instances.length > 0 ||
+      t.mitigation_instances.length > 0 ||
+      t.phases.length > 0
     );
-  } else if (bossTypeCount > 0) {
-    items.push(`${bossTypeCount} boss ability type${bossTypeCount === 1 ? "" : "s"}`);
-  }
-  if (mitCount > 0) {
-    items.push(`${mitCount} mitigation${mitCount === 1 ? "" : "s"}`);
-  }
-  if (phaseCount > 0) {
-    items.push(`${phaseCount} phase${phaseCount === 1 ? "" : "s"}`);
-  }
-
-  const handleBackdropPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) onCancel();
-  };
+  });
+  const openModal = useClearTimelineModalStore((s) => s.open);
 
   return (
-    <div className="modal-backdrop" onPointerDown={handleBackdropPointerDown}>
-      <div className="clear-timeline-modal" role="dialog" aria-label="Confirm clear timeline">
-        <h2>Clear Timeline</h2>
-        <p>This will delete:</p>
-        <ul>
-          {items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-        <p className="clear-timeline-modal-note">Roster, boss name, and fight length are kept.</p>
-        <div className="form-actions">
-          <button type="button" className="link-button" onClick={onCancel}>
-            Cancel
-          </button>
-          <button type="button" className="clear-timeline-modal-confirm" onClick={onConfirm}>
-            Clear
-          </button>
-        </div>
-      </div>
-    </div>
+    <button
+      type="button"
+      className="clear-timeline-button"
+      onClick={openModal}
+      disabled={!hasContent}
+      title={
+        hasContent
+          ? "Wipe boss abilities, mitigations, and phases (roster preserved)"
+          : "Nothing to clear"
+      }
+    >
+      Clear Timeline
+    </button>
   );
 }
