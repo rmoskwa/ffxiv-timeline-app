@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { BossAbilityInstance, BossAbilityType, Phase } from "@/domain/types";
-import { MAX_DESC_LEN, MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
+import {
+  MAX_BOSS_ABILITY_INSTANCES,
+  MAX_BOSS_ABILITY_TYPES,
+  MAX_DESC_LEN,
+  MAX_MITIGATION_INSTANCES,
+  MAX_NAME_LEN,
+  MAX_PHASES,
+  TIMELINE_SCHEMA_VERSION,
+} from "@/domain/types";
 import {
   deserialize,
   deserializeBossTimeline,
@@ -448,5 +456,101 @@ describe("deserialize — dangerous unicode sanitization", () => {
     };
     const json = JSON.stringify({ ...tl, boss_ability_types: [badType] });
     expect(deserialize(json).boss_ability_types[0].description).toBe("intro\nbad text\nend");
+  });
+});
+
+describe("deserialize — quantity caps", () => {
+  it("rejects > MAX_BOSS_ABILITY_TYPES", () => {
+    const tl = newTimeline("fixture");
+    const oversized = Array.from({ length: MAX_BOSS_ABILITY_TYPES + 1 }, (_, i) => ({
+      id: `t${i}`,
+      name: `T${i}`,
+      base_damage: 0,
+      damage_type: "magical" as const,
+      target_pattern: "raidwide" as const,
+      boss_targetable: true,
+    }));
+    const json = JSON.stringify({ ...tl, boss_ability_types: oversized });
+    expect(() => deserialize(json)).toThrow(TimelineValidationError);
+  });
+
+  it("rejects > MAX_BOSS_ABILITY_INSTANCES", () => {
+    const tl = newTimeline("fixture");
+    const type: BossAbilityType = {
+      id: "t0",
+      name: "T0",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    };
+    const oversized = Array.from({ length: MAX_BOSS_ABILITY_INSTANCES + 1 }, (_, i) => ({
+      id: `i${i}`,
+      type_id: "t0",
+      effect_time: i % 600,
+      target_slot_ids: [],
+      observed_damage: [],
+    }));
+    const json = JSON.stringify({
+      ...tl,
+      boss_ability_types: [type],
+      boss_ability_instances: oversized,
+    });
+    expect(() => deserialize(json)).toThrow(TimelineValidationError);
+  });
+
+  it("rejects > MAX_MITIGATION_INSTANCES", () => {
+    const tl = newTimeline("fixture");
+    const slotId = tl.roster[0].id;
+    const oversized = Array.from({ length: MAX_MITIGATION_INSTANCES + 1 }, (_, i) => ({
+      id: `m${i}`,
+      type_id: "drk.rampart",
+      player_slot_id: slotId,
+      effect_time: i % 600,
+      target_slot_ids: [],
+      coverage_overrides: [],
+    }));
+    const json = JSON.stringify({ ...tl, mitigation_instances: oversized });
+    expect(() => deserialize(json)).toThrow(TimelineValidationError);
+  });
+
+  it("rejects > MAX_PHASES", () => {
+    const tl = newTimeline("fixture");
+    const oversized: Phase[] = Array.from({ length: MAX_PHASES + 1 }, (_, i) => ({
+      id: `p${i}`,
+      start_time: i,
+      name: `Phase ${i + 1}`,
+    }));
+    const json = JSON.stringify({ ...tl, phases: oversized });
+    expect(() => deserialize(json)).toThrow(TimelineValidationError);
+  });
+
+  it("boss-timeline import rejects > MAX_BOSS_ABILITY_INSTANCES", () => {
+    const oversized = Array.from({ length: MAX_BOSS_ABILITY_INSTANCES + 1 }, (_, i) => ({
+      id: `i${i}`,
+      type_id: "t0",
+      effect_time: i % 600,
+      target_slot_ids: [],
+      observed_damage: [],
+    }));
+    const file = {
+      schema_version: TIMELINE_SCHEMA_VERSION,
+      kind: "boss_timeline",
+      boss_name: "Boss",
+      fight_duration_sec: 600,
+      boss_ability_types: [
+        {
+          id: "t0",
+          name: "T0",
+          base_damage: 0,
+          damage_type: "magical",
+          target_pattern: "raidwide",
+          boss_targetable: true,
+        },
+      ],
+      boss_ability_instances: oversized,
+      phases: [],
+    };
+    expect(() => deserializeBossTimeline(JSON.stringify(file))).toThrow(TimelineValidationError);
   });
 });

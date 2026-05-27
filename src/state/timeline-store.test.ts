@@ -1,7 +1,20 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { BossTimelineFile, Job, MitigationInstance, Roster } from "@/domain/types";
-import { MAX_DESC_LEN, MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
-import { EmptyNameError, PhaseRejectedError, useTimelineStore } from "./timeline-store";
+import {
+  MAX_BOSS_ABILITY_INSTANCES,
+  MAX_BOSS_ABILITY_TYPES,
+  MAX_DESC_LEN,
+  MAX_MITIGATION_INSTANCES,
+  MAX_NAME_LEN,
+  MAX_PHASES,
+  TIMELINE_SCHEMA_VERSION,
+} from "@/domain/types";
+import {
+  EmptyNameError,
+  LimitExceededError,
+  PhaseRejectedError,
+  useTimelineStore,
+} from "./timeline-store";
 
 const RAMPART = "drk.rampart"; // cooldown 90s, duration 20s
 
@@ -833,5 +846,133 @@ describe("timeline-store — dangerous unicode sanitization", () => {
     useTimelineStore.getState().addPhase({ start_time: 100, name: family });
     const phase = useTimelineStore.getState().timeline?.phases.find((p) => p.start_time === 100);
     expect(phase?.name).toBe(family);
+  });
+});
+
+describe("timeline-store — quantity caps", () => {
+  beforeEach(freshTimeline);
+
+  it("rejects addBossAbilityType past MAX_BOSS_ABILITY_TYPES", () => {
+    const tl = useTimelineStore.getState().timeline;
+    if (!tl) throw new Error("no timeline");
+    // Seed the array up to the cap directly to keep the test cheap.
+    useTimelineStore.setState({
+      timeline: {
+        ...tl,
+        boss_ability_types: Array.from({ length: MAX_BOSS_ABILITY_TYPES }, (_, i) => ({
+          id: `t${i}`,
+          name: `T${i}`,
+          base_damage: 0,
+          damage_type: "magical",
+          target_pattern: "raidwide",
+          boss_targetable: true,
+        })),
+      },
+    });
+    expect(() =>
+      useTimelineStore.getState().addBossAbilityType({
+        name: "One Too Many",
+        base_damage: 0,
+        damage_type: "magical",
+        target_pattern: "raidwide",
+        boss_targetable: true,
+      }),
+    ).toThrow(LimitExceededError);
+  });
+
+  it("rejects addBossAbilityInstance past MAX_BOSS_ABILITY_INSTANCES", () => {
+    const tl = useTimelineStore.getState().timeline;
+    if (!tl) throw new Error("no timeline");
+    useTimelineStore.setState({
+      timeline: {
+        ...tl,
+        boss_ability_types: [
+          {
+            id: "t0",
+            name: "T0",
+            base_damage: 0,
+            damage_type: "magical",
+            target_pattern: "raidwide",
+            boss_targetable: true,
+          },
+        ],
+        boss_ability_instances: Array.from({ length: MAX_BOSS_ABILITY_INSTANCES }, (_, i) => ({
+          id: `i${i}`,
+          type_id: "t0",
+          effect_time: i,
+          target_slot_ids: [],
+          observed_damage: [],
+        })),
+      },
+    });
+    expect(() =>
+      useTimelineStore.getState().addBossAbilityInstance({
+        type_id: "t0",
+        effect_time: 0,
+        target_slot_ids: [],
+      }),
+    ).toThrow(LimitExceededError);
+  });
+
+  it("rejects addMitigationInstance past MAX_MITIGATION_INSTANCES", () => {
+    const tl = useTimelineStore.getState().timeline;
+    if (!tl) throw new Error("no timeline");
+    const slotId = rosterSlotId(0);
+    useTimelineStore.setState({
+      timeline: {
+        ...tl,
+        mitigation_instances: Array.from({ length: MAX_MITIGATION_INSTANCES }, (_, i) => ({
+          id: `m${i}`,
+          type_id: RAMPART,
+          player_slot_id: slotId,
+          effect_time: i,
+          target_slot_ids: [],
+          coverage_overrides: [],
+        })),
+      },
+    });
+    expect(() =>
+      useTimelineStore.getState().addMitigationInstance({
+        type_id: RAMPART,
+        player_slot_id: slotId,
+        effect_time: 0,
+        target_slot_ids: [],
+      }),
+    ).toThrow(LimitExceededError);
+  });
+
+  it("rejects addPhase past MAX_PHASES", () => {
+    // First addPhase seeds an implicit Phase 1, so MAX_PHASES - 1 adds reach
+    // the cap and the next throws.
+    const store = useTimelineStore.getState();
+    for (let i = 1; i < MAX_PHASES; i++) {
+      store.addPhase({ start_time: i, name: `Phase ${i + 1}` });
+    }
+    expect(useTimelineStore.getState().timeline?.phases).toHaveLength(MAX_PHASES);
+    expect(() => store.addPhase({ start_time: MAX_PHASES + 1, name: "overflow" })).toThrow(
+      LimitExceededError,
+    );
+  });
+
+  it("replaceBossTimeline rejects payloads past any cap", () => {
+    const oversizedTypes: BossTimelineFile = {
+      schema_version: TIMELINE_SCHEMA_VERSION,
+      kind: "boss_timeline",
+      boss_name: "B",
+      fight_duration_sec: 600,
+      boss_ability_types: Array.from({ length: MAX_BOSS_ABILITY_TYPES + 1 }, (_, i) => ({
+        id: `t${i}`,
+        name: `T${i}`,
+        base_damage: 0,
+        damage_type: "magical",
+        target_pattern: "raidwide",
+        boss_targetable: true,
+      })),
+      boss_ability_instances: [],
+      phases: [],
+    };
+    expect(() => useTimelineStore.getState().replaceBossTimeline(oversizedTypes)).toThrow(
+      LimitExceededError,
+    );
   });
 });
