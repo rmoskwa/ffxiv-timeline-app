@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { BossTimelineFile, Job, MitigationInstance, Roster } from "@/domain/types";
-import { MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
+import { MAX_DESC_LEN, MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
 import { PhaseRejectedError, useTimelineStore } from "./timeline-store";
 
 const RAMPART = "drk.rampart"; // cooldown 90s, duration 20s
@@ -632,5 +632,46 @@ describe("timeline-store — setName length cap", () => {
         boss_targetable: true,
       }),
     ).toThrowError(/Death/);
+  });
+
+  it("truncates type description to MAX_DESC_LEN on add", () => {
+    const huge = "d".repeat(MAX_DESC_LEN + 500);
+    const id = useTimelineStore.getState().addBossAbilityType({
+      name: "with-desc",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+      description: huge,
+    });
+    const type = useTimelineStore.getState().timeline?.boss_ability_types.find((t) => t.id === id);
+    expect(type?.description?.length).toBe(MAX_DESC_LEN);
+  });
+
+  it("truncates type description to MAX_DESC_LEN on update", () => {
+    const id = useTimelineStore.getState().addBossAbilityType({
+      name: "edit-desc",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    const huge = "e".repeat(MAX_DESC_LEN + 500);
+    useTimelineStore.getState().updateBossAbilityType(id, { description: huge });
+    const type = useTimelineStore.getState().timeline?.boss_ability_types.find((t) => t.id === id);
+    expect(type?.description?.length).toBe(MAX_DESC_LEN);
+  });
+
+  it("preserves newlines inside a description (only the length is capped)", () => {
+    const id = useTimelineStore.getState().addBossAbilityType({
+      name: "multiline",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+      description: "line 1\nline 2\nline 3",
+    });
+    const type = useTimelineStore.getState().timeline?.boss_ability_types.find((t) => t.id === id);
+    expect(type?.description).toBe("line 1\nline 2\nline 3");
   });
 });

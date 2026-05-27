@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BossAbilityInstance, BossAbilityType, Phase } from "@/domain/types";
-import { MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
+import { MAX_DESC_LEN, MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
 import {
   deserialize,
   deserializeBossTimeline,
@@ -266,6 +266,22 @@ describe("deserialize — field validation", () => {
     };
     const json = JSON.stringify({ ...tl, boss_ability_types: [badType] });
     expect(deserialize(json).boss_ability_types[0].name.length).toBe(MAX_NAME_LEN);
+  });
+
+  it("truncates boss_ability_types[].description to MAX_DESC_LEN on deserialize", () => {
+    const tl = newTimeline("fixture");
+    const huge = "d".repeat(MAX_DESC_LEN + 500);
+    const badType: BossAbilityType = {
+      id: "t1",
+      name: "short",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+      description: huge,
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_types: [badType] });
+    expect(deserialize(json).boss_ability_types[0].description?.length).toBe(MAX_DESC_LEN);
   });
 });
 
