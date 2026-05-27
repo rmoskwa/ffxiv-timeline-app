@@ -584,4 +584,53 @@ describe("timeline-store — setName length cap", () => {
     useTimelineStore.getState().setBossName(huge);
     expect(useTimelineStore.getState().timeline?.metadata.boss_name.length).toBe(MAX_NAME_LEN);
   });
+
+  it("truncates addBossAbilityType name to MAX_NAME_LEN", () => {
+    const huge = "a".repeat(MAX_NAME_LEN + 500);
+    const id = useTimelineStore.getState().addBossAbilityType({
+      name: huge,
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    const type = useTimelineStore.getState().timeline?.boss_ability_types.find((t) => t.id === id);
+    expect(type?.name.length).toBe(MAX_NAME_LEN);
+  });
+
+  it("truncates updateBossAbilityType name to MAX_NAME_LEN", () => {
+    const id = useTimelineStore.getState().addBossAbilityType({
+      name: "short",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    const huge = "c".repeat(MAX_NAME_LEN + 500);
+    useTimelineStore.getState().updateBossAbilityType(id, { name: huge });
+    const type = useTimelineStore.getState().timeline?.boss_ability_types.find((t) => t.id === id);
+    expect(type?.name.length).toBe(MAX_NAME_LEN);
+  });
+
+  it("detects duplicate type names after truncation collapses them", () => {
+    const baseName = "Death".padEnd(MAX_NAME_LEN, "x"); // exactly MAX_NAME_LEN chars
+    useTimelineStore.getState().addBossAbilityType({
+      name: baseName,
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    // Different input, same truncated form → must collide
+    const longer = `${baseName}yyyyy`;
+    expect(() =>
+      useTimelineStore.getState().addBossAbilityType({
+        name: longer,
+        base_damage: 0,
+        damage_type: "magical",
+        target_pattern: "raidwide",
+        boss_targetable: true,
+      }),
+    ).toThrowError(/Death/);
+  });
 });

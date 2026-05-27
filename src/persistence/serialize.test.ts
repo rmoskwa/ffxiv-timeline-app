@@ -252,6 +252,21 @@ describe("deserialize — field validation", () => {
     const json = JSON.stringify({ ...tl, metadata: { ...tl.metadata, boss_name: huge } });
     expect(deserialize(json).metadata.boss_name.length).toBe(MAX_NAME_LEN);
   });
+
+  it("truncates boss_ability_types[].name to MAX_NAME_LEN on deserialize", () => {
+    const tl = newTimeline("fixture");
+    const huge = "t".repeat(MAX_NAME_LEN + 500);
+    const badType: BossAbilityType = {
+      id: "t1",
+      name: huge,
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_types: [badType] });
+    expect(deserialize(json).boss_ability_types[0].name.length).toBe(MAX_NAME_LEN);
+  });
 });
 
 describe("deserializeBossTimeline — field validation", () => {
