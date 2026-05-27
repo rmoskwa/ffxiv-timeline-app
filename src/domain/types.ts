@@ -408,6 +408,13 @@ export const MAX_BOSS_ABILITY_INSTANCES = 1000;
 export const MAX_MITIGATION_INSTANCES = 2000;
 export const MAX_PHASES = 50;
 
+// Hard cap on the JSON string length passed to deserialize. A legitimate
+// fully-loaded file (200 types with 1000-char descriptions, 1000 boss
+// instances with many observed_damage pulls, 2000 mits) stays comfortably
+// under 5 MB; 10 MB leaves plenty of headroom. Blocks a 100 MB adversarial
+// or runaway file from freezing the UI on JSON.parse.
+export const MAX_IMPORT_CHARS = 10_485_760;
+
 export interface TimelineFile {
   schema_version: typeof TIMELINE_SCHEMA_VERSION;
   kind: "timeline";

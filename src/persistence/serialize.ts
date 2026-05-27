@@ -21,6 +21,7 @@ import {
   MAX_BOSS_ABILITY_TYPES,
   MAX_DESC_LEN,
   MAX_FIGHT_DURATION_SEC,
+  MAX_IMPORT_CHARS,
   MAX_MITIGATION_INSTANCES,
   MAX_NAME_LEN,
   MAX_PHASES,
@@ -78,8 +79,22 @@ export function serialize(timeline: TimelineFile): string {
   return JSON.stringify(timeline, null, 2);
 }
 
+// Strips a leading UTF-8 BOM (U+FEFF) so files hand-edited in tools that
+// re-add a BOM (Notepad, Windows PowerShell `Out-File`) still parse. Without
+// this, JSON.parse rejects the BOM with a generic SyntaxError that surfaces
+// as "Couldn't read this file" — the user can't tell what's wrong.
+function preparseGate(json: string): string {
+  if (json.length > MAX_IMPORT_CHARS) {
+    throw new TimelineValidationError(
+      "$",
+      `file is too large (${json.length} chars; max ${MAX_IMPORT_CHARS})`,
+    );
+  }
+  return json.charCodeAt(0) === 0xfeff ? json.slice(1) : json;
+}
+
 export function deserialize(json: string): TimelineFile {
-  const parsed: unknown = JSON.parse(json);
+  const parsed: unknown = JSON.parse(preparseGate(json));
   if (typeof parsed !== "object" || parsed === null) {
     throw new SchemaVersionError((parsed as { schema_version?: unknown } | null)?.schema_version);
   }
@@ -117,7 +132,7 @@ export function serializeBossTimeline(timeline: TimelineFile): string {
 }
 
 export function deserializeBossTimeline(json: string): BossTimelineFile {
-  const parsed: unknown = JSON.parse(json);
+  const parsed: unknown = JSON.parse(preparseGate(json));
   if (typeof parsed !== "object" || parsed === null) {
     throw new SchemaVersionError((parsed as { schema_version?: unknown } | null)?.schema_version);
   }
