@@ -8,6 +8,7 @@
 // The menu is the discovery surface; in-canvas buttons remain the daily-driver
 // layer. Both are intentional.
 
+import type React from "react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 export type MenuItem =
@@ -26,9 +27,11 @@ export interface Menu {
 
 interface MenuBarProps {
   menus: Menu[];
+  // Right-aligned content (icon buttons, etc). Sits opposite the menu labels.
+  rightSlot?: React.ReactNode;
 }
 
-export function MenuBar({ menus }: MenuBarProps) {
+export function MenuBar({ menus, rightSlot }: MenuBarProps) {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const idPrefix = useId();
@@ -126,63 +129,69 @@ export function MenuBar({ menus }: MenuBarProps) {
 
   return (
     <div className="menu-bar" role="menubar" ref={barRef}>
-      {menus.map((menu, idx) => {
-        const isOpen = openIdx === idx;
-        return (
-          <div key={menu.label} className={`menu-bar-menu${isOpen ? " menu-bar-menu--open" : ""}`}>
-            <button
-              type="button"
-              role="menuitem"
-              aria-haspopup="menu"
-              aria-expanded={isOpen}
-              aria-controls={`${idPrefix}-panel-${idx}`}
-              data-menu-trigger={idx}
-              className="menu-bar-trigger"
-              onClick={() => setOpenIdx(isOpen ? null : idx)}
-              onMouseEnter={() => {
-                if (openIdx !== null && openIdx !== idx) setOpenIdx(idx);
-              }}
-              onKeyDown={(e) => handleTriggerKey(e, idx)}
+      <div className="menu-bar-menus">
+        {menus.map((menu, idx) => {
+          const isOpen = openIdx === idx;
+          return (
+            <div
+              key={menu.label}
+              className={`menu-bar-menu${isOpen ? " menu-bar-menu--open" : ""}`}
             >
-              {menu.label}
-            </button>
-            {isOpen && (
-              <div
-                id={`${idPrefix}-panel-${idx}`}
-                role="menu"
-                aria-label={menu.label}
-                className="menu-bar-panel"
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="menu"
+                aria-expanded={isOpen}
+                aria-controls={`${idPrefix}-panel-${idx}`}
+                data-menu-trigger={idx}
+                className="menu-bar-trigger"
+                onClick={() => setOpenIdx(isOpen ? null : idx)}
+                onMouseEnter={() => {
+                  if (openIdx !== null && openIdx !== idx) setOpenIdx(idx);
+                }}
+                onKeyDown={(e) => handleTriggerKey(e, idx)}
               >
-                {menu.items.map((item, itemIdx) => {
-                  if (item.kind === "separator") {
+                {menu.label}
+              </button>
+              {isOpen && (
+                <div
+                  id={`${idPrefix}-panel-${idx}`}
+                  role="menu"
+                  aria-label={menu.label}
+                  className="menu-bar-panel"
+                >
+                  {menu.items.map((item, itemIdx) => {
+                    if (item.kind === "separator") {
+                      return (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: separators have no stable identity; index is fine here
+                        <hr key={`sep-${itemIdx}`} className="menu-bar-separator" />
+                      );
+                    }
                     return (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: separators have no stable identity; index is fine here
-                      <hr key={`sep-${itemIdx}`} className="menu-bar-separator" />
+                      <button
+                        key={item.label}
+                        type="button"
+                        role="menuitem"
+                        data-menu-item={`${idx}-${itemIdx}`}
+                        className="menu-bar-item"
+                        disabled={item.disabled}
+                        onClick={() => {
+                          item.onClick();
+                          close();
+                        }}
+                        onKeyDown={(e) => handleItemKey(e, idx, itemIdx)}
+                      >
+                        {item.label}
+                      </button>
                     );
-                  }
-                  return (
-                    <button
-                      key={item.label}
-                      type="button"
-                      role="menuitem"
-                      data-menu-item={`${idx}-${itemIdx}`}
-                      className="menu-bar-item"
-                      disabled={item.disabled}
-                      onClick={() => {
-                        item.onClick();
-                        close();
-                      }}
-                      onKeyDown={(e) => handleItemKey(e, idx, itemIdx)}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {rightSlot && <div className="menu-bar-right">{rightSlot}</div>}
     </div>
   );
 }

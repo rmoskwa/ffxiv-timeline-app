@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { confirm as confirmDialog, message as messageDialog } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useCallback, useMemo } from "react";
 import { TIMELINE_SCHEMA_VERSION } from "@/domain/types";
 import {
@@ -15,11 +16,14 @@ import { ClearTimelineModal, useClearTimelineModalStore } from "./ClearTimelineM
 import { HelpModals, useHelpModalStore } from "./HelpModals";
 import { importErrorMessage } from "./import-error-message";
 import { type Menu, MenuBar } from "./MenuBar";
+import { OctocatIcon } from "./OctocatIcon";
 import { RosterPanel } from "./RosterPanel";
 import { SetupWizard } from "./SetupWizard";
 import { TimelineEditor } from "./TimelineEditor";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
 import { useBossImportExport } from "./use-boss-import-export";
+
+const GITHUB_URL = "https://github.com/rmoskwa/ffxiv-timeline-app";
 
 export function App() {
   const { hydrated, error: hydrateError } = useHydrate();
@@ -75,6 +79,10 @@ export function App() {
 
   const handleExit = useCallback(async () => {
     await getCurrentWindow().close();
+  }, []);
+
+  const handleOpenGitHub = useCallback(async () => {
+    await openUrl(GITHUB_URL);
   }, []);
 
   const menus = useMemo<Menu[]>(
@@ -133,6 +141,7 @@ export function App() {
         label: "Help",
         items: [
           { kind: "item", label: "Keyboard Shortcuts", onClick: () => showHelp("shortcuts") },
+          { kind: "item", label: "View on GitHub", onClick: handleOpenGitHub },
           { kind: "item", label: "About", onClick: () => showHelp("about") },
         ],
       },
@@ -148,7 +157,20 @@ export function App() {
       handleBossImport,
       handleBossExport,
       showHelp,
+      handleOpenGitHub,
     ],
+  );
+
+  const menuBarRightSlot = (
+    <button
+      type="button"
+      className="menu-bar-icon-button"
+      onClick={handleOpenGitHub}
+      title="View on GitHub"
+      aria-label="View on GitHub"
+    >
+      <OctocatIcon size={18} />
+    </button>
   );
 
   if (!hydrated) {
@@ -158,7 +180,7 @@ export function App() {
   if (!timeline) {
     return (
       <div className="app-root">
-        <MenuBar menus={menus} />
+        <MenuBar menus={menus} rightSlot={menuBarRightSlot} />
         <SetupWizard hydrateError={hydrateError} />
         <HelpModals />
       </div>
@@ -173,7 +195,7 @@ export function App() {
 
   return (
     <div className="app-root">
-      <MenuBar menus={menus} />
+      <MenuBar menus={menus} rightSlot={menuBarRightSlot} />
       <div className="app-shell">
         <header className="app-header">
           <div>

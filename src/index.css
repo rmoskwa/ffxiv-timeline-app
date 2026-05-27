@@ -3193,12 +3193,40 @@ button {
   position: relative;
   z-index: 200;
   display: flex;
-  gap: 0;
+  align-items: stretch;
   background: #1a1a1a;
   border-bottom: 1px solid #2a2a2a;
   padding: 0;
   user-select: none;
   flex-shrink: 0;
+}
+.menu-bar-menus {
+  display: flex;
+}
+.menu-bar-right {
+  display: flex;
+  align-items: center;
+  padding-left: 0.5rem;
+}
+.menu-bar-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #bbb;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  border-radius: 3px;
+  line-height: 0;
+}
+.menu-bar-icon-button:hover {
+  background: #2a2a2a;
+  color: #fff;
+}
+.menu-bar-icon-button:focus-visible {
+  outline: 1px solid #5a8;
+  outline-offset: -1px;
 }
 .menu-bar-menu {
   position: relative;
