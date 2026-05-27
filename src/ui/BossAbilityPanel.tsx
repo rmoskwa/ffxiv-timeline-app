@@ -1,4 +1,4 @@
-import { confirm as confirmDialog } from "@tauri-apps/plugin-dialog";
+import { confirm as confirmDialog, message as messageDialog } from "@tauri-apps/plugin-dialog";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { phaseOrdinalFor } from "@/domain/phases";
 import { targetingCountsForPattern, targetingForBoss } from "@/domain/targeting";
@@ -13,6 +13,7 @@ import type {
 import { exportBossTimelineDialog, importBossTimelineDialog } from "@/persistence/storage";
 import { DuplicateNameError, useTimelineStore } from "@/state/timeline-store";
 import { CautionIcon } from "./CautionIcon";
+import { importErrorMessage } from "./import-error-message";
 import { parseNumericInput } from "./parse-number";
 import { TargetPicker } from "./TargetPicker";
 import { parseTimecode, secondsToTimecode } from "./timeline-constants";
@@ -93,6 +94,10 @@ export function BossAbilityPanel() {
       replaceBossTimeline(imported);
     } catch (e) {
       console.error("Boss-timeline import failed:", e);
+      await messageDialog(importErrorMessage(e, "boss_timeline"), {
+        title: "Import boss timeline failed",
+        kind: "error",
+      });
     }
   }, [timeline, replaceBossTimeline]);
 

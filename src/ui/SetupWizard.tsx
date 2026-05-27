@@ -88,7 +88,7 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
       if (imported) loadTimeline(imported);
     } catch (err) {
       console.error("Open Timeline failed:", err);
-      setImportError(importErrorMessage(err));
+      setImportError(importErrorMessage(err, "timeline"));
     }
   };
 

@@ -43,7 +43,7 @@ export function App() {
       if (imported) loadTimeline(imported);
     } catch (e) {
       console.error("Open Timeline failed:", e);
-      await messageDialog(importErrorMessage(e), {
+      await messageDialog(importErrorMessage(e, "timeline"), {
         title: "Open Timeline failed",
         kind: "error",
       });
