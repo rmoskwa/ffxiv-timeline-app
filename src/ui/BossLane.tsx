@@ -29,7 +29,7 @@ import {
   snapClientXToSecond,
 } from "./timeline-constants";
 import { useChipLayoutStore } from "./use-chip-layout";
-import { useDamageByInstance } from "./use-derived";
+import { useDamageByTime } from "./use-derived";
 import { useZoom } from "./use-zoom";
 
 const EMPTY_PHASES: readonly Phase[] = [];
@@ -46,7 +46,7 @@ export function BossLane() {
   );
   const selectBossInstance = useTimelineStore((s) => s.selectBossInstance);
   const deselectInstance = useTimelineStore((s) => s.deselectInstance);
-  const damageByInstance = useDamageByInstance();
+  const damageByTime = useDamageByTime();
   const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
   const chipPosition = useChipLayoutStore((s) => s.position);
 
@@ -163,7 +163,11 @@ export function BossLane() {
         {instances.map((inst) => {
           const type = typeMap.get(inst.type_id);
           if (!type) return null; // orphan instance — store cascade should prevent this
-          const results = damageByInstance.get(inst.id);
+          // Lethality is computed against the aggregate damage at this
+          // marker's effect_time — simultaneous hits sum, so two markers at
+          // the same time share a lethal verdict (and per-marker red styling)
+          // when their combined damage tips any player over.
+          const results = damageByTime.get(inst.effect_time);
           const lethal =
             results?.some((r) => r != null && r.damage_taken_to_hp >= r.max_hp) ?? false;
           const rowIndex = packed.rowByInstanceId.get(inst.id) ?? 0;

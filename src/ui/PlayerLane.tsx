@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 import { getMitsForJob } from "@/data/mit-library";
 import type { PerPlayerHitResult } from "@/domain/damage";
-import type { BossAbilityInstance, MitigationInstance, PlayerSlot } from "@/domain/types";
+import type { MitigationInstance, PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitSubLane } from "./MitSubLane";
 import { PhaseDividers } from "./PhaseDividers";
 import { jobColor } from "./role-color";
 import { CHIP_BAR_PX, JOB_GUTTER_PX } from "./timeline-constants";
-import { useDamageByInstance } from "./use-derived";
+import { useDamageByTime } from "./use-derived";
 import { useZoom } from "./use-zoom";
 
 interface PlayerLaneProps {
@@ -27,27 +27,23 @@ interface DamageMark {
 }
 
 const EMPTY_MITS: readonly MitigationInstance[] = [];
-const EMPTY_INSTANCES: readonly BossAbilityInstance[] = [];
 
-// Per-player damage marks: one entry per boss instance that targets this
-// player. Drives both the chip bar and the vertical guide lines. `maxHp` is
-// the engine-provided buffed cap at this hit's instant — not `slot.hp` —
-// so max-HP buffs (Thrill, Protraction, Great Nebula) widen lethality and
-// resize the HP fill correctly.
+// Per-player damage marks: one entry per effect_time that touches this
+// player, with damages summed across every boss hit landing at that second.
+// Drives both the chip bar and the vertical guide lines. `maxHp` is the
+// engine-provided buffed cap at this instant — not `slot.hp` — so max-HP
+// buffs (Thrill, Protraction, Great Nebula) widen lethality and resize the
+// HP fill correctly.
 function usePlayerDamageMarks(slotIndex: number): DamageMark[] {
-  const bossInstances = useTimelineStore(
-    (s) => s.timeline?.boss_ability_instances ?? EMPTY_INSTANCES,
-  );
-  const damageByInstance = useDamageByInstance();
+  const damageByTime = useDamageByTime();
   return useMemo<DamageMark[]>(() => {
     const marks: DamageMark[] = [];
-    for (const inst of bossInstances) {
-      const results = damageByInstance.get(inst.id);
-      const r = results?.[slotIndex] as PerPlayerHitResult | null | undefined;
+    for (const [t, results] of damageByTime) {
+      const r = results[slotIndex] as PerPlayerHitResult | null | undefined;
       if (r == null) continue;
       marks.push({
-        id: inst.id,
-        effectTime: inst.effect_time,
+        id: `t-${t}`,
+        effectTime: t,
         damage: r.damage_taken_to_hp,
         hpAfter: r.hp_after,
         shieldsAfter: r.active_shields_after,
@@ -56,7 +52,7 @@ function usePlayerDamageMarks(slotIndex: number): DamageMark[] {
       });
     }
     return marks;
-  }, [bossInstances, damageByInstance, slotIndex]);
+  }, [damageByTime, slotIndex]);
 }
 
 function useSlotMits(slot: PlayerSlot): readonly MitigationInstance[] {

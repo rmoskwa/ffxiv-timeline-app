@@ -15,6 +15,7 @@ import { useMemo } from "react";
 import { getMitById } from "@/data/mit-library";
 import { type Conflict, detectConflicts } from "@/domain/conflicts";
 import {
+  aggregateDamageByTime,
   computeDamageTimeline,
   type MitInstanceState,
   type PerPlayerHitResult,
@@ -75,13 +76,21 @@ function useDisplayResults(): {
   }, [timeline, conflictedIds]);
 }
 
-// Map<bossInstanceId, per-player results of length 8>. Players not targeted by
-// a hit get `null`; targeted players get a PerPlayerHitResult carrying the
-// post-shield damage to HP, current HP after the hit, and remaining shield total.
-// Mits in any active conflict are excluded — they exist on the canvas but do
-// not influence damage math until the user resolves the conflict.
-export function useDamageByInstance(): Map<string, (PerPlayerHitResult | null)[]> {
-  return useDisplayResults().perHit;
+// Map<effect_time, per-player results of length 8>. Damage from every boss
+// hit landing at the same second is summed per player — two simultaneous
+// raidwides at t=30 produce one entry at t=30 whose per-player damage is
+// their sum, and lethality is judged against that combined total (the
+// damage-chip rendering rule, see Damage chip in CONTEXT.md). Players not
+// touched by any hit at this time stay `null`. Mits in any active conflict
+// are excluded — they exist on the canvas but do not influence damage math
+// until the user resolves the conflict.
+export function useDamageByTime(): Map<number, (PerPlayerHitResult | null)[]> {
+  const timeline = useTimelineStore((s) => s.timeline);
+  const perHit = useDisplayResults().perHit;
+  return useMemo(() => {
+    if (!timeline) return new Map();
+    return aggregateDamageByTime(timeline.boss_ability_instances, perHit);
+  }, [timeline, perHit]);
 }
 
 // Display-pass per-instance state. MitBar reads this to compute the effective

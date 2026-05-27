@@ -567,3 +567,54 @@ function expireAt(pools: BarrierPool[][], t: number) {
     pools[i] = p.filter((x) => x.expires_at >= t);
   }
 }
+
+// Collapses the per-instance damage map into a per-effect-time map: every
+// boss hit landing at the same second is treated as one combined event for
+// display purposes. Per player, post-mit damages add together, lethality
+// applies against the summed total, and HP-after is recomputed from
+// `max_hp − total`. Shield state is carried from the engine's last-processed
+// hit at each time — the engine already drains pools sequentially across
+// simultaneous hits, so the final `active_shields_after` for any given time
+// is whatever the last hit at that time reported.
+export function aggregateDamageByTime(
+  hits: readonly BossAbilityInstance[],
+  damageByInstance: ReadonlyMap<string, (PerPlayerHitResult | null)[]>,
+): Map<number, (PerPlayerHitResult | null)[]> {
+  // Preserve input order within each time bucket — the engine processes
+  // simultaneous hits in input order (stable sort), so the bucket's last
+  // entry carries the post-all-hits shield state.
+  const buckets = new Map<number, string[]>();
+  for (const h of hits) {
+    const bucket = buckets.get(h.effect_time);
+    if (bucket) bucket.push(h.id);
+    else buckets.set(h.effect_time, [h.id]);
+  }
+
+  const out = new Map<number, (PerPlayerHitResult | null)[]>();
+  for (const [t, ids] of buckets) {
+    const aggregated: (PerPlayerHitResult | null)[] = new Array(8).fill(null);
+    for (let i = 0; i < 8; i++) {
+      let damageSum = 0;
+      let shieldsAfter = 0;
+      let cap = 0;
+      let any = false;
+      for (const id of ids) {
+        const r = damageByInstance.get(id)?.[i];
+        if (r == null) continue;
+        damageSum += r.damage_taken_to_hp;
+        shieldsAfter = r.active_shields_after;
+        cap = r.max_hp;
+        any = true;
+      }
+      if (!any) continue;
+      aggregated[i] = {
+        damage_taken_to_hp: damageSum,
+        hp_after: Math.max(0, cap - damageSum),
+        active_shields_after: shieldsAfter,
+        max_hp: cap,
+      };
+    }
+    out.set(t, aggregated);
+  }
+  return out;
+}
