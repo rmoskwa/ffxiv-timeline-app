@@ -11,6 +11,7 @@ import {
   type FreeformNote,
   type Job,
   type JobOrUnset,
+  MAX_DESC_LEN,
   MAX_NAME_LEN,
   type MitigationInstance,
   type ObservedDamageEntry,
@@ -296,7 +297,7 @@ function validateBossAbilityType(v: unknown, path: string): BossAbilityType {
     boss_targetable: asBoolean(o.boss_targetable, `${path}.boss_targetable`),
   };
   const description = asOptionalString(o.description, `${path}.description`);
-  if (description !== undefined) out.description = description;
+  if (description !== undefined) out.description = description.slice(0, MAX_DESC_LEN);
   return out;
 }
 

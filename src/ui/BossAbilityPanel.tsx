@@ -6,6 +6,7 @@ import {
   type BossAbilityType,
   type DamageType,
   MAX_BASE_DAMAGE,
+  MAX_DESC_LEN,
   MAX_NAME_LEN,
   type Phase,
   type Roster,
@@ -418,6 +419,7 @@ function DescriptionField({ type }: { type: BossAbilityType }) {
   return (
     <textarea
       rows={2}
+      maxLength={MAX_DESC_LEN}
       aria-label="Description"
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
@@ -744,7 +746,12 @@ function NewTypeForm({ onClose }: { onClose: () => void }) {
 
       <label className="field">
         <span>Description</span>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+        <textarea
+          value={description}
+          maxLength={MAX_DESC_LEN}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+        />
       </label>
 
       {error && <p className="form-error">{error}</p>}

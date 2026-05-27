@@ -396,6 +396,8 @@ export const MAX_BASE_DAMAGE = 999_999; // 6-digit cap on boss-ability base dama
 
 export const MAX_NAME_LEN = 80; // user-given name fields (fight name, boss name, type name, phase name, slot label) — prevents pasted-document overflow without constraining real names
 
+export const MAX_DESC_LEN = 1000; // user-given description fields (boss ability description, freeform notes) — room for a paragraph or two; newlines preserved
+
 export interface TimelineFile {
   schema_version: typeof TIMELINE_SCHEMA_VERSION;
   kind: "timeline";

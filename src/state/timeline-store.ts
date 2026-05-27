@@ -10,6 +10,7 @@ import {
   type BossTimelineFile,
   type JobOrUnset,
   MAX_BASE_DAMAGE,
+  MAX_DESC_LEN,
   MAX_FIGHT_DURATION_SEC,
   MAX_NAME_LEN,
   type MitigationInstance,
@@ -295,6 +296,9 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         ...input,
         name: clippedName,
         base_damage: clampBaseDamage(input.base_damage),
+        ...(input.description !== undefined
+          ? { description: input.description.slice(0, MAX_DESC_LEN) }
+          : {}),
       };
       return {
         timeline: touch({
@@ -323,6 +327,9 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         ...(clippedName !== undefined ? { name: clippedName } : {}),
         ...(patch.base_damage !== undefined
           ? { base_damage: clampBaseDamage(patch.base_damage) }
+          : {}),
+        ...(patch.description !== undefined
+          ? { description: patch.description.slice(0, MAX_DESC_LEN) }
           : {}),
       };
       return {
