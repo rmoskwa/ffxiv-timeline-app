@@ -6,6 +6,7 @@ import {
   MAX_BOSS_ABILITY_TYPES,
   MAX_DESC_LEN,
   MAX_FIGHT_DURATION_SEC,
+  MAX_IMPORT_CHARS,
   MAX_MITIGATION_INSTANCES,
   MAX_NAME_LEN,
   MAX_PHASES,
@@ -994,5 +995,125 @@ describe("deserialize — cross-reference integrity", () => {
     });
     const out = deserialize(json);
     expect(out.boss_ability_instances[0].target_slot_ids).toEqual(["nonexistent-slot-id"]);
+  });
+});
+
+// ─── persistence & file boundaries ────────────────────────────────────
+
+describe("deserialize — file-size cap", () => {
+  it("rejects an oversize JSON string before parsing", () => {
+    // A 100 MB-shaped string never reaches JSON.parse — the gate trips first
+    // so the UI does not freeze on an adversarial import.
+    const huge = `{"_": "${"x".repeat(MAX_IMPORT_CHARS + 10)}"}`;
+    try {
+      deserialize(huge);
+      expect.fail("expected TimelineValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TimelineValidationError);
+      expect((e as TimelineValidationError).path).toBe("$");
+      expect((e as Error).message).toContain("too large");
+    }
+  });
+
+  it("rejects an oversize boss-timeline JSON string before parsing", () => {
+    const huge = `{"_": "${"x".repeat(MAX_IMPORT_CHARS + 10)}"}`;
+    expect(() => deserializeBossTimeline(huge)).toThrow(TimelineValidationError);
+  });
+});
+
+describe("deserialize — malformed JSON", () => {
+  it("truncated JSON surfaces as a SyntaxError, store untouched", () => {
+    // A user picking a half-downloaded file should get a clean parse error,
+    // not a partially-applied timeline. The catch sites in App.tsx and
+    // useBossImportExport fall through to importErrorMessage's generic
+    // "Couldn't read this file" message for non-Schema/Kind/Validation errors.
+    const truncated = `{"schema_version": ${TIMELINE_SCHEMA_VERSION}, "kind": "timeline", "metadata": { "name": "test"`;
+    expect(() => deserialize(truncated)).toThrow(SyntaxError);
+  });
+
+  it("non-JSON content (random text) surfaces as a SyntaxError", () => {
+    expect(() => deserialize("not json at all")).toThrow(SyntaxError);
+  });
+});
+
+describe("deserialize — BOM and line endings", () => {
+  it("strips a leading UTF-8 BOM before parsing", () => {
+    // V8 JSON.parse rejects a leading BOM. Files hand-edited in Notepad or
+    // re-saved by Windows PowerShell can pick one up; strip so they parse.
+    const tl = newTimeline("fixture");
+    const json = `﻿${serialize(tl)}`;
+    const back = deserialize(json);
+    expect(back).toEqual(tl);
+  });
+
+  it("strips a leading BOM on the boss-timeline path", () => {
+    const tl = newTimeline("fixture");
+    const json = `﻿${serializeBossTimeline({ ...tl, metadata: { ...tl.metadata, boss_name: "Boss" } })}`;
+    expect(() => deserializeBossTimeline(json)).not.toThrow();
+  });
+
+  it("accepts CRLF line endings inside the JSON whitespace", () => {
+    // JSON.parse treats \r\n as whitespace between tokens — re-emit a
+    // serialized file with CRLF and confirm it still round-trips.
+    const tl = newTimeline("fixture");
+    const crlf = serialize(tl).replace(/\n/g, "\r\n");
+    expect(deserialize(crlf)).toEqual(tl);
+  });
+});
+
+describe("deserialize — hand-edit round-trip", () => {
+  it("accepts a roster slot job edited to 'unset'", () => {
+    const tl = newTimeline("fixture");
+    const edited = tl.roster.map((s, i) => (i === 0 ? { ...s, job: "PLD" } : s));
+    const json = JSON.stringify({ ...tl, roster: edited });
+    const back = deserialize(json);
+    expect(back.roster[0].job).toBe("PLD");
+    // And flip it back to unset by hand-edit
+    const edited2 = back.roster.map((s, i) => (i === 0 ? { ...s, job: "unset" } : s));
+    const json2 = JSON.stringify({ ...back, roster: edited2 });
+    expect(deserialize(json2).roster[0].job).toBe("unset");
+  });
+
+  it("accepts boss_targetable flipped between true and false", () => {
+    const tl = newTimeline("fixture");
+    const t: BossAbilityType = {
+      id: "t1",
+      name: "X",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: false,
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_types: [t] });
+    expect(deserialize(json).boss_ability_types[0].boss_targetable).toBe(false);
+  });
+
+  it("rejects a string field hand-edited to a number with the right path", () => {
+    const tl = newTimeline("fixture");
+    const json = JSON.stringify({
+      ...tl,
+      metadata: { ...tl.metadata, name: 42 },
+    });
+    try {
+      deserialize(json);
+      expect.fail("expected TimelineValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TimelineValidationError);
+      expect((e as TimelineValidationError).path).toBe("$.metadata.name");
+    }
+  });
+
+  it("rejects boss_targetable hand-edited to a string", () => {
+    const tl = newTimeline("fixture");
+    const t = {
+      id: "t1",
+      name: "X",
+      base_damage: 0,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: "true",
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_types: [t] });
+    expect(() => deserialize(json)).toThrowError(/boss_targetable/);
   });
 });
