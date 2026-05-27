@@ -474,7 +474,11 @@ function InstanceSubRow({
           ariaLabel="Timecode"
           className="boss-instance-timecode"
           validate={(n) => n <= fightDurationSec}
-          onCommit={(n) => updateInstance(instance.id, { effect_time: n })}
+          onCommit={(n) =>
+            updateInstance(instance.id, {
+              effect_time: Math.min(fightDurationSec, Math.max(0, n)),
+            })
+          }
           onClick={(e) => e.stopPropagation()}
         />
         <div className="boss-instance-actions">
