@@ -4,6 +4,8 @@
 
 Local desktop app for building FFXIV raid timelines with drag-and-drop boss abilities and per-player mitigation planning.
 
+![Screenshot of the FFXIV Raid Timeline app](docs/screenshot.png)
+
 ## Quickstart
 
 1. Download the latest installer from the [Releases page](https://github.com/rmoskwa/ffxiv-timeline-app/releases/latest)
