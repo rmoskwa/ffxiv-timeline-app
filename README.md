@@ -54,6 +54,5 @@ src/
 └── ui/             React components
 
 src-tauri/          Rust crate for the desktop shell
-CLAUDE.md           Working agreement with Claude Code
 CONTEXT.md          Project glossary — canonical vocabulary
 ```
