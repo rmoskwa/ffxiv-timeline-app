@@ -421,8 +421,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         timeline: touch({
           ...s.timeline,
           boss_ability_types: s.timeline.boss_ability_types.filter((t) => t.id !== id),
-          // Cascade: removing a type also removes its instances. Avoids the
-          // "dangling type_id" conflict category that's deferred to v0.2.
+          // Cascade: removing a type also removes its instances.
           boss_ability_instances: s.timeline.boss_ability_instances.filter((i) => i.type_id !== id),
         }),
         ...(clearSelection ? { selectedInstance: null } : {}),

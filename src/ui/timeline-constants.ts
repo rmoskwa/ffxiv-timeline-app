@@ -1,9 +1,3 @@
-// Timeline canvas geometry & zoom ladder.
-//
-// Zoom is reactive (see `use-zoom.ts`); the px/s value is read at render time
-// by every renderer that positions or sizes by time. Lane duration is fixed
-// per v0.1. Only px/s scales.
-
 // Zoom bounds. DEFAULT_PX_PER_SEC = 12 matches the prior fixed zoom so existing
 // layouts feel unchanged on first launch. The minimum is dynamic
 // (viewport_width / fight_duration_sec) and lives in use-zoom — see
@@ -41,8 +35,7 @@ export function clampZoom(pxPerSec: number, minPxPerSec: number = FALLBACK_MIN_P
   return Math.min(MAX_PX_PER_SEC, Math.max(minPxPerSec, pxPerSec));
 }
 
-// v0.1 heatmap: party-wide HP constant (real per-job HP deferred).
-// A hit is "lethal" if any player's post-mit damage ≥ PLAYER_MAX_HP.
+// Party-wide HP constant. A hit is "lethal" if any player's post-mit damage ≥ PLAYER_MAX_HP.
 export const PLAYER_MAX_HP = 100_000;
 
 // Damage chip stacked-bar width. Uniform across all players — segments inside

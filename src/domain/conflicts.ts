@@ -1,18 +1,3 @@
-// Conflict detection for the timeline.
-// v0.1 categories:
-//   - orphan_mit: mit bound to a slot whose job no longer matches the mit's job
-//     (e.g., after a job swap).
-//   - unset_target: a `targeted` boss instance or affects:target mit instance
-//     whose target hasn't been picked yet — its damage math returns 0 until
-//     the user resolves it.
-//   - missing_consumed_mit: a mit with a `consumes` relationship was placed
-//     when no instance of the consumed mit type is active on the caster slot
-//     at the placement's effect_time (e.g. PCT Tempera Grassa without
-//     Tempera Coat). Soft warning — the engine still runs but the in-game
-//     ability would be uncastable.
-//
-// Pure function — no React, no I/O.
-
 import type { MitInstanceState, MitTypeLookup } from "./damage";
 import { targetingForBoss, targetingForMit } from "./targeting";
 import type { BossAbilityInstance, BossAbilityType, MitigationInstance, Roster } from "./types";
@@ -56,9 +41,9 @@ export function detectConflicts(
   // ─── Orphan mits ──────────────────────────────────────────────────────────
   for (const m of mits) {
     const mt = lookupMitType(m.type_id);
-    if (!mt) continue; // schema/reference error — deferred to v0.2
+    if (!mt) continue;
     const slot = slotById.get(m.player_slot_id);
-    if (!slot) continue; // dangling FK — also v0.2
+    if (!slot) continue;
     if (slot.job !== mt.job) {
       conflicts.push({
         kind: "orphan_mit",

@@ -23,8 +23,7 @@ import {
   serializeBossTimeline,
 } from "./serialize";
 
-// Single working file. The app only edits one timeline at a time, so
-// per-file slots aren't needed in v0.1.
+// Single working file. The app only edits one timeline at a time.
 const WORKING_FILE = "working-timeline.json";
 const WORKING_FILE_OPTS = { baseDir: BaseDirectory.AppData } as const;
 

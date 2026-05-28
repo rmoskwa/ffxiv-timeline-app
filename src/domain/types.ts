@@ -80,7 +80,7 @@ export interface BossAbilityInstance {
   // User-picked targets for `targeted` instances; empty for `raidwide`.
   // Always present (defaults to []).
   target_slot_ids: string[];
-  observed_damage: ObservedDamageEntry[]; // empty in v0.1; populated by FFLogs later
+  observed_damage: ObservedDamageEntry[];
 }
 
 // ─── Mitigations ────────────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ export interface MitigationInstance {
   // re-flow surviving placements onto other rows. Omitted on load → derived
   // chronologically by domain/charges.ts. Always 0 for 1-charge mits.
   charge_row?: number;
-  coverage_overrides: CoverageOverride[]; // deferred to v0.2; empty in v0.1
+  coverage_overrides: CoverageOverride[];
   // Link to the specific parent MitigationInstance this child belongs to.
   // Set when a gated child is auto-spawned or re-added via the inspector.
   // Null/undefined for non-children.
@@ -376,7 +376,7 @@ export interface Phase {
   name: string; // user-given; defaults to "Phase {N}" at creation
 }
 
-// ─── Freeform Notes — data model from day 1, UI deferred to v0.2 ───────────
+// ─── Freeform Notes ─────────────────────────────────────────────────────────
 
 export interface FreeformNote {
   id: string;
@@ -402,7 +402,7 @@ export const MAX_DESC_LEN = 1000; // user-given description fields (boss ability
 // 5–10× a realistic L100 savage fight so a planner never bumps them, but a
 // malicious or runaway import is rejected before it can freeze the canvas.
 // Enforced at the store mutation boundary (throws LimitExceededError) and at
-// deserialize (throws TimelineValidationError). See docs/stress-test-plan.md §2.
+// deserialize (throws TimelineValidationError).
 export const MAX_BOSS_ABILITY_TYPES = 200;
 export const MAX_BOSS_ABILITY_INSTANCES = 1000;
 export const MAX_MITIGATION_INSTANCES = 2000;
@@ -432,7 +432,7 @@ export interface TimelineFile {
   // Phase list. [] = no phase UI; otherwise length >= 2 and first.start_time === 0
   // by invariant. See docs/phases.md §4.2.
   phases: Phase[];
-  freeform_notes: FreeformNote[]; // empty in v0.1 UI; populated in v0.2
+  freeform_notes: FreeformNote[];
 }
 
 // Boss-timeline export file: a scoped slice of a TimelineFile carrying only the

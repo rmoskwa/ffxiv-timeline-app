@@ -1,14 +1,3 @@
-// Right-sidebar conflict list.
-// v0.1 categories: orphan_mit, unset_target.
-// Each row gives enough context to act:
-//   - slot index + job icon + mit name  (or boss ability name)
-//   - times (placement, prior-cooldown end)
-//   - [→] flashes the offending bar or marker in the timeline
-//   - orphans get [×] for one-click delete
-//   - "Needs target" rows are also clickable: expanding the row inline opens
-//     a TargetPicker so the conflict can be resolved without hunting for the
-//     ? badge on the canvas (which can be hard to see when zoomed out).
-
 import { type ReactNode, useState } from "react";
 import { getMitById } from "@/data/mit-library";
 import { phaseOrdinalFor } from "@/domain/phases";
@@ -301,9 +290,6 @@ function SlotChip({ slot, index }: { slot: PlayerSlot; index: number }) {
   );
 }
 
-// Imperative DOM lookup is the lightest path for v0.1 — no per-bar/marker ref
-// forest or "selected" reducer. MitBar tags itself with data-mit-id; BossMarker
-// tags itself with data-boss-instance-id.
 function flashElement(selector: string): void {
   const el = document.querySelector<HTMLElement>(selector);
   if (!el) return;

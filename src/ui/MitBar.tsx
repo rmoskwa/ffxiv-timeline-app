@@ -39,8 +39,8 @@ interface MitBarProps {
 const DRAG_THRESHOLD_PX = 3;
 
 // Multi-charge gated children (today: SCH Consolation) must keep a 2s gap
-// between their casts — the SCH GCD floor. PRD §6.4 / §11. If a future child
-// adds itself with max_charges > 1, lift this into a type-level field.
+// between their casts — the SCH GCD floor. If a future child adds itself
+// with max_charges > 1, lift this into a type-level field.
 const GATED_CHILD_MIN_GAP_SECONDS = 2;
 
 // Solid segment for the active window (T → T+duration), faded segment for the
