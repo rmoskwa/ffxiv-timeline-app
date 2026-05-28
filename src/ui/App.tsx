@@ -22,10 +22,12 @@ import { SetupWizard } from "./SetupWizard";
 import { TimelineEditor } from "./TimelineEditor";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
 import { useBossImportExport } from "./use-boss-import-export";
+import { useUpdateCheck } from "./use-update-check";
 
 const GITHUB_URL = "https://github.com/rmoskwa/ffxiv-timeline-app";
 
 export function App() {
+  useUpdateCheck();
   const { hydrated, error: hydrateError } = useHydrate();
   const timeline = useTimelineStore((s) => s.timeline);
   const loadTimeline = useTimelineStore((s) => s.loadTimeline);

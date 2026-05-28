@@ -9,6 +9,14 @@
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/rmoskwa/ffxiv-timeline-app/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI3NEEyMURFMTUxNjVFQkMKUldTOFhoWVYzaUZLdDVPREZ5NE9CY3BWNGl2cHhzRzlRTGdXcitVaCtJMWdzRTl1aUJ5bTVReGwK"
+    }
+  },
   "app": {
     "windows": [
       {
@@ -25,8 +33,13 @@
     }
   },
   "bundle": {
-    "active": false,
-    "targets": "all",
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "FFXIV Timeline",
+    "copyright": "© 2026 rmoskwa",
+    "category": "Utility",
+    "shortDescription": "FFXIV raid timeline planner",
+    "longDescription": "Local desktop app for building FFXIV raid timelines with boss abilities and per-player mitigation planning.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
