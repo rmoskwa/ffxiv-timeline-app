@@ -2,7 +2,7 @@
 
 <img src="https://img.shields.io/badge/-React-61DAFB?style=for-the-badge&logo=react&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Vite-646CFF?style=for-the-badge&logo=vite&logoColor=FFD62E&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Tauri-FFC131?style=for-the-badge&logo=tauri&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Rust-CE422B?style=for-the-badge&logo=rust&logoColor=white&labelColor=555555" height="32">
 
-Local desktop app for building FFXIV raid timelines with drag-and-drop boss abilities and per-player mitigation planning.
+Local desktop app for building and planning FFXIV raid timelines with drag-and-drop mitigation and boss ability placement. Import timelines to plan a mit sheet for your static, or create your own and share.
 
 ![Screenshot of the FFXIV Raid Timeline app](docs/timeline-screenshot.png)
 
