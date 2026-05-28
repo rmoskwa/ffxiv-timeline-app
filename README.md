@@ -6,7 +6,7 @@ Local desktop app for building FFXIV raid timelines with drag-and-drop boss abil
 
 ## Quickstart
 
-1. Download the latest installer from the [Releases page](https://github.com/rmoskwa/ffxiv-timeline-app/releases/latest) — the `*.exe` asset
+1. Download the latest installer from the [Releases page](https://github.com/rmoskwa/ffxiv-timeline-app/releases/latest)
 2. Run the installer
 3. Launch from the Start menu. The app checks for updates on launch and prompts you when a new version is available.
 
