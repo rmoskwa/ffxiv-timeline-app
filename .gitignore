@@ -8,15 +8,15 @@ howling-blade-example-no-cast.csv
 docs/*
 !.gitkeep
 
-### Sample data fetched by scripts/fetch-fflogs-sample.mjs
+### Sample data
 scratch/
 scripts/
 
-### Local env (API keys etc.) — never commit
+### Local env
 .env.local
 .env.*.local
 
-### Cached fflogs v2 bearer token (refreshed by scripts/fetch-fflogs-sample.mjs)
+### Cached fflogs v2 bearer token
 .fflogs-token-cache.json
 
 ### Node / Vite
@@ -28,7 +28,6 @@ dist
 ### Tauri / Rust
 src-tauri/target
 src-tauri/gen
-src-tauri/Cargo.lock
 
 ### OS
 .DS_Store
