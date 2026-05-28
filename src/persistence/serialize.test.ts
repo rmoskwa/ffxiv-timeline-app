@@ -142,7 +142,7 @@ describe("serializeBossTimeline", () => {
 
 describe("deserializeBossTimeline — gates", () => {
   it("rejects wrong schema_version", () => {
-    const json = JSON.stringify({ schema_version: 1, kind: "boss_timeline" });
+    const json = JSON.stringify({ schema_version: 999, kind: "boss_timeline" });
     expect(() => deserializeBossTimeline(json)).toThrow(SchemaVersionError);
   });
 

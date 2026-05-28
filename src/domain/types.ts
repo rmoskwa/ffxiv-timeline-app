@@ -387,7 +387,7 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 13 as const;
+export const TIMELINE_SCHEMA_VERSION = 1 as const;
 
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 export const MAX_FIGHT_DURATION_SEC = 1800; // 30:00 hard cap on user-set length
