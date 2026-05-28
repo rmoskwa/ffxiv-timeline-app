@@ -7,6 +7,7 @@ howling-blade-example.csv
 howling-blade-example-no-cast.csv
 docs/*
 !.gitkeep
+!timeline-screenshot.png
 
 ### Sample data
 scratch/
