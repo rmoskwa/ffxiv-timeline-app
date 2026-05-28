@@ -33,6 +33,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "FFXIV Timeline ${{ github.ref_name }}"
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false
           updaterJsonPreferNsis: true
