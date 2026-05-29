@@ -744,8 +744,10 @@ button {
   text-align: left;
 }
 .simple-grid-cell {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.2rem;
   min-width: 44px;
 }
@@ -753,6 +755,11 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 3px;
 }
 .simple-grid-chip.is-coverage {
   opacity: 0.4;
@@ -760,12 +767,98 @@ button {
 .simple-grid-chip.is-gated {
   outline: 1px dashed #888;
   outline-offset: 1px;
+}
+.simple-grid-chip.is-selected {
+  box-shadow: 0 0 0 2px #6db3f2;
+}
+.simple-grid-cell-add {
+  flex: 1;
+  align-self: stretch;
+  min-width: 18px;
+  min-height: 22px;
+  border: 1px dashed transparent;
+  background: none;
+  color: #555;
   border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.simple-grid-cell:hover .simple-grid-cell-add {
+  color: #888;
+  border-color: #444;
+}
+.simple-grid-cell-add:hover,
+.simple-grid-cell-add:focus-visible {
+  color: #ddd;
+  border-color: #666;
+  background: #2a2a2a;
 }
 .simple-grid-empty-row {
   text-align: center;
   color: #777;
   padding: 1.5rem;
+}
+.simple-grid-picker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  min-width: 220px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #1c1c1c;
+  border: 1px solid #555;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: 0.3rem;
+}
+.simple-grid-picker-head {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #888;
+  padding: 0.25rem 0.4rem 0.35rem;
+}
+.simple-grid-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.simple-grid-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  border: none;
+  background: none;
+  color: #ddd;
+  cursor: pointer;
+  border-radius: 3px;
+  text-align: left;
+  font-size: 0.78rem;
+}
+.simple-grid-picker-item:hover:not(:disabled),
+.simple-grid-picker-item:focus-visible:not(:disabled) {
+  background: #2f2f2f;
+}
+.simple-grid-picker-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.simple-grid-picker-name {
+  flex: 1;
+}
+.simple-grid-picker-reason {
+  font-size: 0.68rem;
+  color: #c98;
+  white-space: nowrap;
+}
+.simple-grid-picker-empty {
+  padding: 0.4rem;
+  color: #777;
+  font-size: 0.76rem;
 }
 
 /* ─── Boss ability panel ─────────────────────────────────────────────── */

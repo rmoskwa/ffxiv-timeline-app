@@ -8,7 +8,7 @@
 // This pass is display-only; chip selection, the Mit picker, Add Row, and
 // inline edits land in PRD steps 5–6. See docs/adr/0002-simple-view-live-projection.md.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { getMitById } from "@/data/mit-library";
 import { phaseOrdinalFor } from "@/domain/phases";
 import {
@@ -19,6 +19,7 @@ import {
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitIcon } from "./MitIcon";
+import { SimpleGridMitPicker } from "./SimpleGridMitPicker";
 import { projectInstancesToHits } from "./simple-grid-projection";
 import { secondsToTimecode } from "./timeline-constants";
 import { useViewStore } from "./use-view";
@@ -28,10 +29,18 @@ const FIXED_COLUMN_COUNT = 4;
 interface ChipInfo {
   instanceId: string;
   name: string;
+  // Instance to select when the chip is clicked: the parent for a gated child
+  // (parent-driven editing), otherwise the chip's own instance.
+  selectId: string;
   // Home cell (First covered hit) vs a read-only Coverage marker at a later hit.
   isHome: boolean;
   // Gated child (auto-spawned with a parent); visually marked, parent-edited.
   isGated: boolean;
+}
+
+interface PickerCell {
+  slotId: string;
+  rowIndex: number;
 }
 
 type RenderItem =
@@ -44,7 +53,12 @@ export function SimpleTimelineGrid() {
   const bossTypes = useTimelineStore((s) => s.timeline?.boss_ability_types);
   const mitInstances = useTimelineStore((s) => s.timeline?.mitigation_instances);
   const phases = useTimelineStore((s) => s.timeline?.phases);
+  const selectMit = useTimelineStore((s) => s.selectMitInstance);
+  const selectedMitId = useTimelineStore((s) =>
+    s.selectedInstance?.kind === "mit" ? s.selectedInstance.id : null,
+  );
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
+  const [pickerCell, setPickerCell] = useState<PickerCell | null>(null);
 
   // Currently displayed slots — same hiddenSlotIds semantics as the canvas lanes.
   const displayedSlots = useMemo(
@@ -92,6 +106,7 @@ export function SimpleTimelineGrid() {
           chips.push({
             instanceId: instance.id,
             name,
+            selectId: instance.parent_instance_id ?? instance.id,
             isHome: hitIdx === p.homeHitIndex,
             isGated: instance.parent_instance_id != null,
           });
@@ -191,19 +206,43 @@ export function SimpleTimelineGrid() {
                 <td className="simple-grid-col-damage">{type?.base_damage ?? 0}</td>
                 {displayedSlots.map((slot) => {
                   const chips = chipsBySlotRow.get(slot.id)?.get(item.rowIndex) ?? [];
+                  const pickerOpen =
+                    pickerCell?.slotId === slot.id && pickerCell.rowIndex === item.rowIndex;
                   return (
                     <td key={slot.id} className="simple-grid-cell">
                       {chips.map((chip) => (
-                        <span
+                        <button
+                          type="button"
                           key={chip.instanceId}
                           className={`simple-grid-chip${chip.isHome ? "" : " is-coverage"}${
                             chip.isGated ? " is-gated" : ""
-                          }`}
+                          }${chip.selectId === selectedMitId ? " is-selected" : ""}`}
                           title={chip.name}
+                          onClick={() => selectMit(chip.selectId)}
                         >
                           <MitIcon name={chip.name} size={18} title={chip.name} />
-                        </span>
+                        </button>
                       ))}
+                      {slot.job !== "unset" && (
+                        <button
+                          type="button"
+                          className="simple-grid-cell-add"
+                          title="Add mitigation"
+                          aria-label="Add mitigation"
+                          onClick={() =>
+                            setPickerCell({ slotId: slot.id, rowIndex: item.rowIndex })
+                          }
+                        >
+                          +
+                        </button>
+                      )}
+                      {pickerOpen && (
+                        <SimpleGridMitPicker
+                          slot={slot}
+                          effectTime={item.inst.effect_time}
+                          onClose={() => setPickerCell(null)}
+                        />
+                      )}
                     </td>
                   );
                 })}
