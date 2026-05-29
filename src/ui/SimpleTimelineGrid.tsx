@@ -555,7 +555,11 @@ export function SimpleTimelineGrid() {
                     const pickerOpen =
                       pickerCell?.slotId === slot.id && pickerCell.rowIndex === item.rowIndex;
                     return (
-                      <td key={slot.id} className="simple-grid-cell">
+                      <td
+                        key={slot.id}
+                        className="simple-grid-cell"
+                        style={{ "--slot-tint": jobColor(slot.job) } as CSSProperties}
+                      >
                         {slot.job !== "unset" && (
                           <button
                             type="button"

@@ -793,6 +793,13 @@ button {
   color: #aaa;
   white-space: nowrap;
 }
+/* Each job's bold role-color header crowns a vertical lane that descends through
+   the body cells (.simple-grid-cell). A hairline drawn in shadow over the fill
+   separates adjacent same-role headers (e.g. two tanks) so each lane reads as
+   its own column rather than one merged block. */
+.simple-grid thead th.simple-grid-col-slot {
+  border-left: 1px solid rgba(0, 0, 0, 0.28);
+}
 .simple-grid-slot-head {
   display: flex;
   align-items: center;
@@ -831,11 +838,13 @@ button {
    Slot columns size to their content/width instead of stretching. */
 .simple-grid-col-filler {
   width: 100%;
+  /* Closes the rightmost lane with a rule on the dead-space filler's edge. */
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
 }
 .simple-grid tbody td,
 .simple-grid tbody th {
   padding: 0.3rem 0.6rem;
-  border-bottom: 1px solid #2a2a2a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   text-align: left;
   font-weight: 400;
   vertical-align: middle;
@@ -859,6 +868,10 @@ button {
 .simple-grid-col-damage {
   font-variant-numeric: tabular-nums;
   text-align: right;
+  /* Stronger rule splitting the fixed data block from the job lanes. Under
+     border-collapse it collapses with the first lane's lighter border-left,
+     and the heavier line wins — anchoring "data | lanes" without a double rule. */
+  border-right: 1px solid rgba(255, 255, 255, 0.13);
 }
 .simple-grid-phase-head {
   padding: 0.35rem 0.6rem;
@@ -874,6 +887,18 @@ button {
 }
 .simple-grid-cell {
   position: relative;
+  /* The job's role color (--slot-tint, set per cell from jobColor) bleeds down
+     from the bold header as a faint vertical wash, turning each column into a
+     scannable lane so grouped mits read at a glance. Hairline border-left rules
+     the lanes apart; under border-collapse the seam against the data block
+     collapses into the heavier .simple-grid-col-damage rule. */
+  background: color-mix(in srgb, var(--slot-tint, transparent) 13%, transparent);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+}
+/* Hover brightens the whole row but keeps each lane's tint (more specific than
+   the generic row-hover fill below) so the color coding survives the highlight. */
+.simple-grid-row:hover .simple-grid-cell {
+  background: color-mix(in srgb, var(--slot-tint, #2a2a2a) 24%, #262626);
 }
 .simple-grid-cell-inner {
   position: relative;
