@@ -894,6 +894,14 @@ button {
   border-radius: 3px;
   pointer-events: auto;
 }
+.simple-grid-chip-gap {
+  /* Empty sub-column spacer: holds a missing instance's column open so Coverage
+     markers stay aligned under their Home chip. Must not shrink, or alignment
+     would drift across cells. */
+  display: inline-flex;
+  flex: 0 0 auto;
+  pointer-events: none;
+}
 .simple-grid-chip.is-coverage {
   opacity: 0.4;
 }

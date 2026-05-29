@@ -96,11 +96,13 @@ export function SimpleTimelineGrid() {
 
   const typeById = useMemo(() => new Map((bossTypes ?? []).map((t) => [t.id, t])), [bossTypes]);
 
-  // Per slot: rowIndex → chips. Each slot's mits are resolved to scalar
-  // {effectTime, durationSec} at this seam (held-ability duration included),
-  // then projected onto the hit rows by the pure module.
+  // Per slot: rowIndex → chips positioned by sub-column (array index = column;
+  // holes are gaps). Each slot's mits are resolved to scalar {effectTime,
+  // durationSec} at this seam (held-ability duration included), then projected
+  // onto the hit rows by the pure module. Each instance is assigned a stable
+  // sub-column so its Coverage markers stack directly under its Home chip.
   const chipsBySlotRow = useMemo(() => {
-    const bySlot = new Map<string, Map<number, ChipInfo[]>>();
+    const bySlot = new Map<string, Map<number, (ChipInfo | null)[]>>();
     for (const slot of displayedSlots) {
       const resolved: { instance: MitigationInstance; name: string }[] = [];
       const inputs = [];
@@ -116,22 +118,64 @@ export function SimpleTimelineGrid() {
         resolved.push({ instance: m, name: type.name });
       }
       const projections = projectInstancesToHits(hitTimes, inputs);
-      const rowMap = new Map<number, ChipInfo[]>();
+
+      // Assign each visible instance a stable sub-column via greedy interval
+      // coloring over its covered-row range (home..last). Overlapping instances
+      // get distinct columns; non-overlapping ones reuse a column so cells stay
+      // narrow. The column is shared by an instance's Home chip and all its
+      // Coverage markers, keeping the marker stack vertically aligned.
+      const intervals: { i: number; start: number; end: number; effectTime: number; id: string }[] =
+        [];
+      projections.forEach((p, i) => {
+        if (p.homeHitIndex == null) return;
+        intervals.push({
+          i,
+          start: p.homeHitIndex,
+          end: p.coveredHitIndices[p.coveredHitIndices.length - 1] ?? p.homeHitIndex,
+          effectTime: resolved[i].instance.effect_time,
+          id: resolved[i].instance.id,
+        });
+      });
+      intervals.sort(
+        (a, b) =>
+          a.start - b.start ||
+          a.end - b.end ||
+          a.effectTime - b.effectTime ||
+          (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+      );
+      const colLastEnd: number[] = [];
+      const columnByProj = new Map<number, number>();
+      for (const iv of intervals) {
+        let col = colLastEnd.findIndex((end) => end < iv.start);
+        if (col === -1) col = colLastEnd.length;
+        colLastEnd[col] = iv.end;
+        columnByProj.set(iv.i, col);
+      }
+
+      const rowMap = new Map<number, (ChipInfo | null)[]>();
       projections.forEach((p, i) => {
         if (p.homeHitIndex == null) return;
         const { instance, name } = resolved[i];
+        const column = columnByProj.get(i) ?? 0;
         for (const hitIdx of p.coveredHitIndices) {
           const chips = rowMap.get(hitIdx) ?? [];
-          chips.push({
+          chips[column] = {
             instanceId: instance.id,
             name,
             selectId: instance.parent_instance_id ?? instance.id,
             isHome: hitIdx === p.homeHitIndex,
             isGated: instance.parent_instance_id != null,
-          });
+          };
           rowMap.set(hitIdx, chips);
         }
       });
+      // Densify: column assignment leaves holes for unoccupied sub-columns, but
+      // Array#map/#filter skip holes — fill them with null so gaps render.
+      for (const arr of rowMap.values()) {
+        for (let c = 0; c < arr.length; c++) {
+          if (!(c in arr)) arr[c] = null;
+        }
+      }
       bySlot.set(slot.id, rowMap);
     }
     return bySlot;
@@ -165,6 +209,20 @@ export function SimpleTimelineGrid() {
   }
 
   const totalColumns = FIXED_COLUMN_COUNT + displayedSlots.length;
+
+  const renderChip = (chip: ChipInfo) => (
+    <button
+      type="button"
+      key={chip.instanceId}
+      className={`simple-grid-chip${chip.isHome ? "" : " is-coverage"}${
+        chip.isGated ? " is-gated" : ""
+      }${chip.selectId === selectedMitId ? " is-selected" : ""}`}
+      title={chip.name}
+      onClick={() => selectMit(chip.selectId)}
+    >
+      <MitIcon name={chip.name} size={iconSize} title={chip.name} />
+    </button>
+  );
 
   return (
     <div
@@ -318,21 +376,27 @@ export function SimpleTimelineGrid() {
                           />
                         )}
                         <div className="simple-grid-cell-inner">
-                          {chips
-                            .filter((chip) => showCoverageMarkers || chip.isHome)
-                            .map((chip) => (
-                              <button
-                                type="button"
-                                key={chip.instanceId}
-                                className={`simple-grid-chip${chip.isHome ? "" : " is-coverage"}${
-                                  chip.isGated ? " is-gated" : ""
-                                }${chip.selectId === selectedMitId ? " is-selected" : ""}`}
-                                title={chip.name}
-                                onClick={() => selectMit(chip.selectId)}
-                              >
-                                <MitIcon name={chip.name} size={iconSize} title={chip.name} />
-                              </button>
-                            ))}
+                          {showCoverageMarkers
+                            ? // Positional render: each chip sits in its instance's
+                              // sub-column, with equal-sized gaps holding empty columns
+                              // open so Coverage markers stay aligned under their Home.
+                              chips.map((chip, col) =>
+                                chip ? (
+                                  renderChip(chip)
+                                ) : (
+                                  <span
+                                    // biome-ignore lint/suspicious/noArrayIndexKey: column position is the identity
+                                    key={`gap-${col}`}
+                                    className="simple-grid-chip-gap"
+                                    style={{ width: iconSize, height: iconSize }}
+                                    aria-hidden
+                                  />
+                                ),
+                              )
+                            : // Markers hidden: left-pack the Home chips only.
+                              chips
+                                .filter((chip): chip is ChipInfo => chip?.isHome ?? false)
+                                .map((chip) => renderChip(chip))}
                         </div>
                         {pickerOpen && (
                           <SimpleGridMitPicker
