@@ -838,11 +838,13 @@ button {
 }
 .simple-grid-cell {
   position: relative;
+  min-width: 44px;
+}
+.simple-grid-cell-inner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.2rem;
-  min-width: 44px;
 }
 .simple-grid-chip {
   display: inline-flex;

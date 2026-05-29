@@ -232,32 +232,34 @@ export function SimpleTimelineGrid() {
                       pickerCell?.slotId === slot.id && pickerCell.rowIndex === item.rowIndex;
                     return (
                       <td key={slot.id} className="simple-grid-cell">
-                        {chips.map((chip) => (
-                          <button
-                            type="button"
-                            key={chip.instanceId}
-                            className={`simple-grid-chip${chip.isHome ? "" : " is-coverage"}${
-                              chip.isGated ? " is-gated" : ""
-                            }${chip.selectId === selectedMitId ? " is-selected" : ""}`}
-                            title={chip.name}
-                            onClick={() => selectMit(chip.selectId)}
-                          >
-                            <MitIcon name={chip.name} size={18} title={chip.name} />
-                          </button>
-                        ))}
-                        {slot.job !== "unset" && (
-                          <button
-                            type="button"
-                            className="simple-grid-cell-add"
-                            title="Add mitigation"
-                            aria-label="Add mitigation"
-                            onClick={() =>
-                              setPickerCell({ slotId: slot.id, rowIndex: item.rowIndex })
-                            }
-                          >
-                            +
-                          </button>
-                        )}
+                        <div className="simple-grid-cell-inner">
+                          {chips.map((chip) => (
+                            <button
+                              type="button"
+                              key={chip.instanceId}
+                              className={`simple-grid-chip${chip.isHome ? "" : " is-coverage"}${
+                                chip.isGated ? " is-gated" : ""
+                              }${chip.selectId === selectedMitId ? " is-selected" : ""}`}
+                              title={chip.name}
+                              onClick={() => selectMit(chip.selectId)}
+                            >
+                              <MitIcon name={chip.name} size={18} title={chip.name} />
+                            </button>
+                          ))}
+                          {slot.job !== "unset" && (
+                            <button
+                              type="button"
+                              className="simple-grid-cell-add"
+                              title="Add mitigation"
+                              aria-label="Add mitigation"
+                              onClick={() =>
+                                setPickerCell({ slotId: slot.id, rowIndex: item.rowIndex })
+                              }
+                            >
+                              +
+                            </button>
+                          )}
+                        </div>
                         {pickerOpen && (
                           <SimpleGridMitPicker
                             slot={slot}
