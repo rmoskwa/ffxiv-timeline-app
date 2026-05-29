@@ -502,7 +502,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       if (!s.timeline) return s;
       const parent: MitigationInstance = { ...input, id, coverage_overrides: [] };
       const parentType = getMitById(parent.type_id);
-      const children = parentType ? autoSpawnChildren(parent, s.timeline) : [];
+      const children = parentType ? autoSpawnChildren(parent, parentType, s.timeline) : [];
       return {
         timeline: touch({
           ...s.timeline,
@@ -677,8 +677,13 @@ export function defaultChildPositions(parentEffectTime: number, charges: number)
 // placed parent. PRD §6.5. PCT special case: when a gated child also `consumes`
 // its parent, run the gating pass with the new parent inserted; if the parent
 // would already be absorbed before the default child position, skip that child.
+// SCH special case: a multi-charge child whose charges overwrite each other
+// (Consolation) spawns one charge per boss hit inside the parent's active zone
+// [parent+2, parent+execZone], capped at max_charges — extra charges over empty
+// stretches serve no purpose, and zero hits means no children at all.
 function autoSpawnChildren(
   parent: MitigationInstance,
+  parentType: import("@/domain/types").MitigationType,
   timeline: TimelineFile,
 ): MitigationInstance[] {
   const gatedChildren = getGatedChildrenOf(parent.type_id);
@@ -714,7 +719,20 @@ function autoSpawnChildren(
     ) {
       continue;
     }
-    for (let i = 0; i < childType.max_charges; i++) {
+    // Multi-charge overwriting children: cap the spawn count to the boss hits in
+    // the active zone (two Consolations overwrite, so one per hit is the most
+    // that helps); zero hits → no children. Single-charge children are unaffected.
+    let chargesToSpawn = childType.max_charges;
+    if (childType.max_charges > 1) {
+      const execZone = childType.execution_zone_seconds ?? parentType.duration_seconds;
+      const zoneStart = parent.effect_time + 2;
+      const zoneEnd = parent.effect_time + execZone;
+      const hitsInZone = timeline.boss_ability_instances.filter(
+        (b) => b.effect_time >= zoneStart && b.effect_time <= zoneEnd,
+      ).length;
+      chargesToSpawn = Math.min(childType.max_charges, hitsInZone);
+    }
+    for (let i = 0; i < chargesToSpawn; i++) {
       children.push({
         id: crypto.randomUUID(),
         type_id: childType.id,

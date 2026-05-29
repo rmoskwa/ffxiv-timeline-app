@@ -40,6 +40,24 @@ function mitsOfType(typeId: string): MitigationInstance[] {
   );
 }
 
+// Seed a raidwide boss hit at `time` (unique type per call to dodge the
+// duplicate-name guard). Used to populate a parent's active zone so multi-charge
+// overwriting children (SCH Consolation) auto-spawn one charge per hit.
+function addBossHitAt(time: number): void {
+  const typeId = useTimelineStore.getState().addBossAbilityType({
+    name: `Hit@${time}`,
+    base_damage: 1000,
+    damage_type: "magical",
+    target_pattern: "raidwide",
+    boss_targetable: true,
+  });
+  useTimelineStore.getState().addBossAbilityInstance({
+    type_id: typeId,
+    effect_time: time,
+    target_slot_ids: [],
+  });
+}
+
 describe("timeline-store — setFightDuration cascade", () => {
   beforeEach(freshTimeline);
 
@@ -186,9 +204,12 @@ describe("timeline-store — auto-spawn gated children", () => {
     expect(grassa[0].parent_instance_id).toBe(mitsOfType("pct.tempera_coat")[0].id);
   });
 
-  it("Summon Seraph → spawns Consolation #1 and #2 at +2 and +4", () => {
+  it("Summon Seraph → spawns Consolation #1 and #2 at +2 and +4 when 2 hits are in the zone", () => {
     freshTimelineForJob("SCH");
     const slotId = rosterSlotId(0);
+    // Two hits inside the [2, 22] active zone → both charges spawn.
+    addBossHitAt(5);
+    addBossHitAt(15);
     useTimelineStore.getState().addMitigationInstance({
       type_id: "sch.summon_seraph",
       player_slot_id: slotId,
@@ -202,6 +223,37 @@ describe("timeline-store — auto-spawn gated children", () => {
     // Anchored 2s after the cast, stepped by the 2s charge gap: 2 and 4.
     expect(consolations.map((c) => c.effect_time)).toEqual([2, 4]);
     expect(consolations.map((c) => c.charge_row)).toEqual([0, 1]);
+  });
+
+  it("Summon Seraph → spawns only one Consolation when a single hit is in the zone", () => {
+    freshTimelineForJob("SCH");
+    const slotId = rosterSlotId(0);
+    addBossHitAt(10);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "sch.summon_seraph",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    const consolations = mitsOfType("sch.consolation");
+    expect(consolations).toHaveLength(1);
+    expect(consolations[0].effect_time).toBe(2);
+    expect(consolations[0].charge_row).toBe(0);
+  });
+
+  it("Summon Seraph → spawns no Consolations when no hit is in the zone", () => {
+    freshTimelineForJob("SCH");
+    const slotId = rosterSlotId(0);
+    // Hits outside [2, 22]: one before the zone, one after.
+    addBossHitAt(1);
+    addBossHitAt(30);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "sch.summon_seraph",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+    expect(mitsOfType("sch.consolation")).toHaveLength(0);
   });
 
   it("Neutral Sect → spawns Sun Sign 2s after the cast", () => {
@@ -281,6 +333,8 @@ describe("timeline-store — cascade delete of gated children", () => {
   it("removing Summon Seraph cascade-removes both Consolations", () => {
     freshTimelineForJob("SCH");
     const slotId = rosterSlotId(0);
+    addBossHitAt(5);
+    addBossHitAt(15);
     useTimelineStore.getState().addMitigationInstance({
       type_id: "sch.summon_seraph",
       player_slot_id: slotId,
@@ -473,6 +527,8 @@ describe("timeline-store — offset-glued parent drag", () => {
   it("non-effect_time patches do not cascade to children", () => {
     freshTimelineForJob("SCH");
     const slotId = rosterSlotId(0);
+    addBossHitAt(5);
+    addBossHitAt(15);
     useTimelineStore.getState().addMitigationInstance({
       type_id: "sch.summon_seraph",
       player_slot_id: slotId,
