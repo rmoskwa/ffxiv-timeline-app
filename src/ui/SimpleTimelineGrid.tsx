@@ -27,6 +27,7 @@ import { SimpleGridAddRow } from "./SimpleGridAddRow";
 import { SimpleGridMitPicker } from "./SimpleGridMitPicker";
 import { projectInstancesToHits } from "./simple-grid-projection";
 import { COLUMN_WIDTH_MAX, COLUMN_WIDTH_MIN, useColumnWidthStore } from "./use-column-width";
+import { useCoverageMarkersStore } from "./use-coverage-markers";
 import {
   SIMPLE_ICON_SIZE_MAX,
   SIMPLE_ICON_SIZE_MIN,
@@ -74,6 +75,8 @@ export function SimpleTimelineGrid() {
   const setColumnWidth = useColumnWidthStore((s) => s.setColumnWidth);
   const iconSize = useSimpleIconSizeStore((s) => s.iconSize);
   const setIconSize = useSimpleIconSizeStore((s) => s.setIconSize);
+  const showCoverageMarkers = useCoverageMarkersStore((s) => s.showCoverageMarkers);
+  const toggleCoverageMarkers = useCoverageMarkersStore((s) => s.toggleCoverageMarkers);
   const [pickerCell, setPickerCell] = useState<PickerCell | null>(null);
 
   // Currently displayed slots — same hiddenSlotIds semantics as the canvas lanes.
@@ -197,6 +200,17 @@ export function SimpleTimelineGrid() {
           />
           <span className="row-size-readout">{iconSize}px</span>
         </div>
+        <span className="timeline-toolbar-title">Coverage Markers:</span>
+        <div className="timeline-toolbar-zoom">
+          <button
+            type="button"
+            className={`toolbar-toggle${showCoverageMarkers ? " is-selected" : ""}`}
+            onClick={toggleCoverageMarkers}
+            aria-pressed={showCoverageMarkers}
+          >
+            {showCoverageMarkers ? "Shown" : "Hidden"}
+          </button>
+        </div>
       </div>
       <div className="simple-grid-scroll">
         <table className="simple-grid">
@@ -304,19 +318,21 @@ export function SimpleTimelineGrid() {
                           />
                         )}
                         <div className="simple-grid-cell-inner">
-                          {chips.map((chip) => (
-                            <button
-                              type="button"
-                              key={chip.instanceId}
-                              className={`simple-grid-chip${chip.isHome ? "" : " is-coverage"}${
-                                chip.isGated ? " is-gated" : ""
-                              }${chip.selectId === selectedMitId ? " is-selected" : ""}`}
-                              title={chip.name}
-                              onClick={() => selectMit(chip.selectId)}
-                            >
-                              <MitIcon name={chip.name} size={iconSize} title={chip.name} />
-                            </button>
-                          ))}
+                          {chips
+                            .filter((chip) => showCoverageMarkers || chip.isHome)
+                            .map((chip) => (
+                              <button
+                                type="button"
+                                key={chip.instanceId}
+                                className={`simple-grid-chip${chip.isHome ? "" : " is-coverage"}${
+                                  chip.isGated ? " is-gated" : ""
+                                }${chip.selectId === selectedMitId ? " is-selected" : ""}`}
+                                title={chip.name}
+                                onClick={() => selectMit(chip.selectId)}
+                              >
+                                <MitIcon name={chip.name} size={iconSize} title={chip.name} />
+                              </button>
+                            ))}
                         </div>
                         {pickerOpen && (
                           <SimpleGridMitPicker
