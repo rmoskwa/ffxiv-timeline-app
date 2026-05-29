@@ -711,9 +711,6 @@ button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.45rem 0.75rem;
-  background: #1c1c1c;
-  border-top: 1px solid #333;
 }
 .simple-grid-addrow--empty {
   color: #777;
@@ -744,10 +741,10 @@ button {
 }
 .simple-grid-addrow-target-popover {
   position: absolute;
-  bottom: 100%;
+  top: 100%;
   left: 0;
   z-index: 10;
-  margin-bottom: 4px;
+  margin-top: 4px;
 }
 .simple-grid-addrow-submit {
   background: #2f5d8a;

@@ -230,6 +230,7 @@ export function SimpleTimelineGrid() {
       style={{ "--simple-col-width": `${columnWidth}px` } as CSSProperties}
     >
       <div className="timeline-toolbar">
+        <SimpleGridAddRow />
         <span className="timeline-toolbar-title">Column Width:</span>
         <div className="timeline-toolbar-zoom">
           <input
@@ -415,7 +416,6 @@ export function SimpleTimelineGrid() {
           </tbody>
         </table>
       </div>
-      <SimpleGridAddRow />
     </div>
   );
 }
