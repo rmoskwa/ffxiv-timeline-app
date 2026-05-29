@@ -123,6 +123,10 @@ export interface TimelineStore {
   addMitigationInstance: (input: MitInstanceInput) => string;
   updateMitigationInstance: (id: string, patch: Partial<MitInstanceInput>) => void;
   removeMitigationInstance: (id: string) => void;
+  applyGatedRestack: (
+    updates: readonly { id: string; effectTime: number }[],
+    removeId?: string,
+  ) => void;
 
   // Phase actions. See docs/phases.md §5.
   addPhase: (input: { start_time: number; name: string }) => void;
@@ -555,6 +559,32 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           ),
         }),
         ...(sel?.kind === "mit" && cascadedIds.has(sel.id) ? { selectedInstance: null } : {}),
+      };
+    }),
+
+  // Apply a precomputed batch of effect_time changes (optionally deleting one
+  // instance) with NO parent→child cascade — the inverse of updateMitigationInstance's
+  // gluing. The Simple view's gated-child re-anchor/remove uses this to move the
+  // parent and its co-located children together as one recomputed stack
+  // (restackGatedChildren). Canvas paths never call it. See simple-grid-placement.ts.
+  applyGatedRestack: (updates, removeId) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      const byId = new Map(updates.map((u) => [u.id, u.effectTime]));
+      const sel = s.selectedInstance;
+      return {
+        timeline: touch({
+          ...s.timeline,
+          mitigation_instances: s.timeline.mitigation_instances
+            .filter((m) => m.id !== removeId)
+            .map((m) => {
+              const et = byId.get(m.id);
+              return et != null ? { ...m, effect_time: et } : m;
+            }),
+        }),
+        ...(removeId != null && sel?.kind === "mit" && sel.id === removeId
+          ? { selectedInstance: null }
+          : {}),
       };
     }),
 

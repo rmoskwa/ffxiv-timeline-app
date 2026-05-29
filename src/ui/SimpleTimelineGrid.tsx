@@ -26,7 +26,7 @@ import { TimecodeField } from "./primitives/TimecodeField";
 import { jobColor } from "./role-color";
 import { SimpleGridAddRow } from "./SimpleGridAddRow";
 import { SimpleGridMitPicker } from "./SimpleGridMitPicker";
-import { legalChildAnchorRows } from "./simple-grid-placement";
+import { legalChildAnchorRows, restackGatedChildren } from "./simple-grid-placement";
 import { projectInstancesToHits } from "./simple-grid-projection";
 import { COLUMN_WIDTH_MAX, COLUMN_WIDTH_MIN, useColumnWidthStore } from "./use-column-width";
 import { useCoverageMarkersStore } from "./use-coverage-markers";
@@ -67,7 +67,7 @@ export function SimpleTimelineGrid() {
   const phases = useTimelineStore((s) => s.timeline?.phases);
   const fightDurationSec = useTimelineStore((s) => s.timeline?.metadata.fight_duration_sec);
   const updateBossInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
-  const updateMit = useTimelineStore((s) => s.updateMitigationInstance);
+  const applyGatedRestack = useTimelineStore((s) => s.applyGatedRestack);
   const removeMit = useTimelineStore((s) => s.removeMitigationInstance);
   const selectMit = useTimelineStore((s) => s.selectMitInstance);
   const selectedMitId = useTimelineStore((s) =>
@@ -204,15 +204,25 @@ export function SimpleTimelineGrid() {
     if (!childType || !parentType) return null;
     const execZone = childType.execution_zone_seconds ?? parentType.duration_seconds;
     const durationSec = instanceActiveDurationSeconds(childType, child);
-    const [proj] = projectInstancesToHits(hitTimes, [
+    const [childProj, parentProj] = projectInstancesToHits(hitTimes, [
+      { id: child.id, effectTime: child.effect_time, durationSec },
       {
-        id: child.id,
-        effectTime: child.effect_time,
-        durationSec,
+        id: parent.id,
+        effectTime: parent.effect_time,
+        durationSec: instanceActiveDurationSeconds(parentType, parent),
       },
     ]);
+    // The parent's Home hit T anchors everything: re-anchor zones are computed
+    // from the parent's NATURAL (un-shifted) position, which is T — so the rows
+    // reach the full execution zone the planner perceives, not the one hidden 2s
+    // per charge earlier by the co-location shift. Row T itself is the co-locate
+    // target, offered only when the child currently sits away from it.
+    const parentHomeIndex = parentProj.homeHitIndex;
+    if (parentHomeIndex == null) return null;
+    const parentHomeTime = hitTimes[parentHomeIndex];
+    if (parentHomeTime === undefined) return null;
     const rows = legalChildAnchorRows(hitTimes, {
-      parentEffectTime: parent.effect_time,
+      parentEffectTime: parentHomeTime,
       execZoneSeconds: execZone,
       durationSec,
       fightDurationSec: fightDurationSec ?? Number.POSITIVE_INFINITY,
@@ -222,16 +232,50 @@ export function SimpleTimelineGrid() {
             m.type_id === child.type_id && m.parent_instance_id === parent.id && m.id !== child.id,
         )
         .map((m) => m.effect_time),
-      homeHitIndex: proj.homeHitIndex,
+      homeHitIndex: childProj.homeHitIndex,
     });
+    const anchorRows =
+      childProj.homeHitIndex === parentHomeIndex
+        ? rows
+        : [...rows, { hitIndex: parentHomeIndex, effectTime: parentHomeTime }];
     return {
       childId: child.id,
       slotId: child.player_slot_id,
       column: columnById.get(child.id) ?? 0,
-      rows: new Set(rows.map((r) => r.hitIndex)),
-      effectTimeByRow: new Map(rows.map((r) => [r.hitIndex, r.effectTime])),
+      rows: new Set(anchorRows.map((r) => r.hitIndex)),
+      effectTimeByRow: new Map(anchorRows.map((r) => [r.hitIndex, r.effectTime])),
+      parentId: parent.id,
+      parentHomeTime,
+      charges: mitInstances
+        .filter((m) => m.type_id === child.type_id && m.parent_instance_id === parent.id)
+        .map((m) => ({ id: m.id, effectTime: m.effect_time })),
     };
   }, [selectedMitId, mitInstances, hitTimes, fightDurationSec, columnById]);
+
+  // Re-anchor / remove a gated child from the Simple view: recompute the parent
+  // + co-located-charge stack so the parent slides as charges enter/leave its
+  // row (restackGatedChildren), applied without the canvas's parent→child glue.
+  const reanchorChild = (effectTime: number) => {
+    if (!placement) return;
+    const updates = restackGatedChildren(
+      placement.parentId,
+      placement.parentHomeTime,
+      placement.charges.map((c) => (c.id === placement.childId ? { id: c.id, effectTime } : c)),
+    );
+    applyGatedRestack(updates);
+  };
+  const removeChild = (childId: string) => {
+    if (!placement || placement.childId !== childId) {
+      removeMit(childId);
+      return;
+    }
+    const updates = restackGatedChildren(
+      placement.parentId,
+      placement.parentHomeTime,
+      placement.charges.filter((c) => c.id !== childId),
+    );
+    applyGatedRestack(updates, childId);
+  };
 
   // Hit rows interleaved with a phase header at each boundary (when phases
   // exist); the "P{n}: " prefix tags each hit's Time cell. Flat list otherwise.
@@ -292,7 +336,7 @@ export function SimpleTimelineGrid() {
             aria-label="Remove this child"
             onClick={(e) => {
               e.stopPropagation();
-              removeMit(chip.instanceId);
+              removeChild(chip.instanceId);
             }}
           >
             ×
@@ -303,7 +347,7 @@ export function SimpleTimelineGrid() {
     return chipButton;
   };
 
-  const renderPlacementSlot = (childId: string, effectTime: number, key: string) => (
+  const renderPlacementSlot = (effectTime: number, key: string) => (
     <button
       type="button"
       key={key}
@@ -311,7 +355,7 @@ export function SimpleTimelineGrid() {
       style={{ width: iconSize, height: iconSize }}
       title="Move child here"
       aria-label="Move child mitigation here"
-      onClick={() => updateMit(childId, { effect_time: effectTime })}
+      onClick={() => reanchorChild(effectTime)}
     />
   );
 
@@ -334,7 +378,7 @@ export function SimpleTimelineGrid() {
       return (
         <>
           {homeChips.map((chip) => renderChip(chip))}
-          {place && renderPlacementSlot(place.childId, placeEffectTime, `place-${rowIndex}`)}
+          {place && renderPlacementSlot(placeEffectTime, `place-${rowIndex}`)}
         </>
       );
     }
@@ -351,7 +395,7 @@ export function SimpleTimelineGrid() {
       // that column is never displaced — the slot then trails the row (below).
       const isOwnMarker = chip != null && place != null && chip.instanceId === place.childId;
       if (place && col === placeCol && (chip == null || isOwnMarker)) {
-        nodes.push(renderPlacementSlot(place.childId, placeEffectTime, `place-${rowIndex}`));
+        nodes.push(renderPlacementSlot(placeEffectTime, `place-${rowIndex}`));
         placed = true;
       } else if (chip) {
         nodes.push(renderChip(chip));
@@ -367,7 +411,7 @@ export function SimpleTimelineGrid() {
       }
     }
     if (place && !placed) {
-      nodes.push(renderPlacementSlot(place.childId, placeEffectTime, `place-${rowIndex}`));
+      nodes.push(renderPlacementSlot(placeEffectTime, `place-${rowIndex}`));
     }
     return nodes;
   };

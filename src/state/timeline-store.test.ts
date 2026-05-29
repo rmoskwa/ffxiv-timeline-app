@@ -313,6 +313,56 @@ describe("timeline-store — auto-spawn gated children", () => {
   });
 });
 
+// The Simple view's gated-child re-anchor/remove drives this: a precomputed
+// batch of effect_times (restackGatedChildren) applied WITHOUT the parent→child
+// glue, optionally deleting the moved-out child.
+describe("timeline-store — applyGatedRestack", () => {
+  function seedSeraph() {
+    freshTimelineForJob("SCH");
+    const slotId = rosterSlotId(0);
+    addBossHitAt(5);
+    addBossHitAt(15);
+    useTimelineStore.getState().addMitigationInstance({
+      type_id: "sch.summon_seraph",
+      player_slot_id: slotId,
+      effect_time: 0,
+      target_slot_ids: [],
+    });
+  }
+
+  it("applies the batch without dragging unlisted children (no parent cascade)", () => {
+    seedSeraph();
+    const parent = mitsOfType("sch.summon_seraph")[0];
+    const child = mitsOfType("sch.consolation")[0];
+    const childTime = child.effect_time;
+    // Move only the parent. updateMitigationInstance would offset-glue the child;
+    // applyGatedRestack must leave it where it is.
+    useTimelineStore.getState().applyGatedRestack([{ id: parent.id, effectTime: 10 }]);
+    expect(mitsOfType("sch.summon_seraph")[0].effect_time).toBe(10);
+    expect(mitsOfType("sch.consolation").find((c) => c.id === child.id)?.effect_time).toBe(
+      childTime,
+    );
+  });
+
+  it("removeId deletes the moved-out child and clears its selection", () => {
+    seedSeraph();
+    const parent = mitsOfType("sch.summon_seraph")[0];
+    const [c1, c2] = mitsOfType("sch.consolation").sort((a, b) => a.effect_time - b.effect_time);
+    useTimelineStore.getState().selectMitInstance(c1.id);
+    useTimelineStore.getState().applyGatedRestack(
+      [
+        { id: parent.id, effectTime: 2 },
+        { id: c2.id, effectTime: 4 },
+      ],
+      c1.id,
+    );
+    expect(mitsOfType("sch.consolation").map((c) => c.id)).toEqual([c2.id]);
+    expect(useTimelineStore.getState().selectedInstance).toBeNull();
+    expect(mitsOfType("sch.summon_seraph")[0].effect_time).toBe(2);
+    expect(mitsOfType("sch.consolation")[0].effect_time).toBe(4);
+  });
+});
+
 describe("timeline-store — cascade delete of gated children", () => {
   it("removing Tempera Coat removes the auto-spawned Grassa", () => {
     freshTimelineForJob("PCT");

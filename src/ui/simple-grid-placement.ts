@@ -83,3 +83,36 @@ export function legalChildAnchorRows(
   }
   return rows;
 }
+
+// Recompute a gated child's co-located stack after a Simple-view re-anchor or
+// removal. The parent's Home hit T is the stable anchor: charges at or before it
+// (effectTime ≤ T) are "co-located" — they ride the parent's row — while charges
+// past it sit "away" on their own hit. The −2s-per-co-located-charge shift is
+// re-derived from how many charges remain co-located, so the parent slides up
+// as charges leave the stack and back down as they return (PRD §6.5; e.g. SCH
+// Summon Seraph rides T−4 with two Consolations and bumps to T−2 when one
+// leaves). The parent lands at T − 2·(co-located count); the co-located charges
+// fill the tight 2s stack ending exactly on T; away charges keep their time.
+//
+// `charges` is the POST-operation set of this child type under the parent — the
+// moved charge carries its new effectTime; a removed charge is simply absent.
+// Returns the effect_time each affected instance should be written to, parent
+// included. This is the Simple-view-only inverse of the store's parent→child
+// gluing; the canvas never calls it. Tests in simple-grid-placement.test.ts.
+export function restackGatedChildren(
+  parentId: string,
+  parentHomeTime: number,
+  charges: readonly { id: string; effectTime: number }[],
+): { id: string; effectTime: number }[] {
+  const away = charges.filter((c) => c.effectTime > parentHomeTime);
+  const coLocated = charges
+    .filter((c) => c.effectTime <= parentHomeTime)
+    .sort((a, b) => a.effectTime - b.effectTime);
+  const parentEffectTime = parentHomeTime - 2 * coLocated.length;
+  const updates = [{ id: parentId, effectTime: parentEffectTime }];
+  coLocated.forEach((c, i) => {
+    updates.push({ id: c.id, effectTime: parentEffectTime + 2 * (i + 1) });
+  });
+  for (const c of away) updates.push({ id: c.id, effectTime: c.effectTime });
+  return updates;
+}

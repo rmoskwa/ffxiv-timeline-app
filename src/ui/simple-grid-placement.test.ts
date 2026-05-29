@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { type ChildAnchorParams, legalChildAnchorRows } from "./simple-grid-placement";
+import {
+  type ChildAnchorParams,
+  legalChildAnchorRows,
+  restackGatedChildren,
+} from "./simple-grid-placement";
 
 function params(overrides: Partial<ChildAnchorParams> = {}): ChildAnchorParams {
   return {
@@ -96,5 +100,76 @@ describe("legalChildAnchorRows", () => {
     // 110 since [101, 131] reaches it.
     const rows = legalChildAnchorRows([110], params({ execZoneSeconds: 10, durationSec: 30 }));
     expect(rows).toEqual([{ hitIndex: 0, effectTime: 101 }]);
+  });
+});
+
+describe("restackGatedChildren", () => {
+  // Anchor T = 100 throughout (the parent's Home hit).
+  it("single charge co-located → away: parent un-shifts to its natural T", () => {
+    expect(restackGatedChildren("p", 100, [{ id: "c", effectTime: 130 }])).toEqual([
+      { id: "p", effectTime: 100 },
+      { id: "c", effectTime: 130 },
+    ]);
+  });
+
+  it("single charge away → home: parent re-applies the −2s shift", () => {
+    expect(restackGatedChildren("p", 100, [{ id: "c", effectTime: 100 }])).toEqual([
+      { id: "p", effectTime: 98 },
+      { id: "c", effectTime: 100 },
+    ]);
+  });
+
+  it("two charges both co-located: parent rides T−4, charges stack to T", () => {
+    expect(
+      restackGatedChildren("p", 100, [
+        { id: "c1", effectTime: 98 },
+        { id: "c2", effectTime: 100 },
+      ]),
+    ).toEqual([
+      { id: "p", effectTime: 96 },
+      { id: "c1", effectTime: 98 },
+      { id: "c2", effectTime: 100 },
+    ]);
+  });
+
+  it("removing Consolation #1 bumps Seraph up to T−2; the survivor holds T", () => {
+    expect(restackGatedChildren("p", 100, [{ id: "c2", effectTime: 100 }])).toEqual([
+      { id: "p", effectTime: 98 },
+      { id: "c2", effectTime: 100 },
+    ]);
+  });
+
+  it("removing Consolation #2 bumps both Seraph and the survivor up a slot", () => {
+    // Survivor was at T−2 (98); the stack re-tightens so it lands on T (100).
+    expect(restackGatedChildren("p", 100, [{ id: "c1", effectTime: 98 }])).toEqual([
+      { id: "p", effectTime: 98 },
+      { id: "c1", effectTime: 100 },
+    ]);
+  });
+
+  it("two charges, one moved away: shift halves and the survivor re-tightens to T", () => {
+    expect(
+      restackGatedChildren("p", 100, [
+        { id: "c1", effectTime: 98 },
+        { id: "c2", effectTime: 130 },
+      ]),
+    ).toEqual([
+      { id: "p", effectTime: 98 },
+      { id: "c1", effectTime: 100 },
+      { id: "c2", effectTime: 130 },
+    ]);
+  });
+
+  it("all charges away: parent sits at its natural T (no shift)", () => {
+    expect(
+      restackGatedChildren("p", 100, [
+        { id: "c1", effectTime: 120 },
+        { id: "c2", effectTime: 130 },
+      ]),
+    ).toEqual([
+      { id: "p", effectTime: 100 },
+      { id: "c1", effectTime: 120 },
+      { id: "c2", effectTime: 130 },
+    ]);
   });
 });
