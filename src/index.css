@@ -791,11 +791,23 @@ button {
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
+  /* Fixed width keeps the column from widening when a player's name is long;
+     the body cells (.simple-grid-cell-inner) share this width so they align. */
+  width: var(--simple-col-width);
 }
 .simple-grid-slot-label {
   text-transform: none;
   letter-spacing: 0;
   color: #ccc;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Soaks up the table's leftover width (table is width:100%) so the fixed and
+   Slot columns size to their content/width instead of stretching. */
+.simple-grid-col-filler {
+  width: 100%;
 }
 .simple-grid tbody td,
 .simple-grid tbody th {
@@ -839,7 +851,6 @@ button {
 }
 .simple-grid-cell {
   position: relative;
-  min-width: 44px;
 }
 .simple-grid-cell-inner {
   position: relative;
@@ -848,6 +859,10 @@ button {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.2rem;
+  /* Fixed width: chips that would overflow wrap onto a new row (growing the
+     cell's height) instead of widening the column. Shared with the header so
+     body and head columns stay aligned. */
+  width: var(--simple-col-width);
   /* Let clicks on empty space fall through to the full-cell add overlay below;
      chips re-enable pointer events for their own select handler. */
   pointer-events: none;

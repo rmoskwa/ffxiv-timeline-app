@@ -10,7 +10,7 @@
 // instance inline (re-sorts on commit); SimpleGridAddRow appends new rows.
 // See docs/adr/0002-simple-view-live-projection.md.
 
-import { useMemo, useState } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import { getMitById } from "@/data/mit-library";
 import { phaseOrdinalFor } from "@/domain/phases";
 import {
@@ -26,6 +26,7 @@ import { jobColor } from "./role-color";
 import { SimpleGridAddRow } from "./SimpleGridAddRow";
 import { SimpleGridMitPicker } from "./SimpleGridMitPicker";
 import { projectInstancesToHits } from "./simple-grid-projection";
+import { COLUMN_WIDTH_MAX, COLUMN_WIDTH_MIN, useColumnWidthStore } from "./use-column-width";
 import { useViewStore } from "./use-view";
 
 const FIXED_COLUMN_COUNT = 4;
@@ -64,6 +65,8 @@ export function SimpleTimelineGrid() {
     s.selectedInstance?.kind === "mit" ? s.selectedInstance.id : null,
   );
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
+  const columnWidth = useColumnWidthStore((s) => s.columnWidth);
+  const setColumnWidth = useColumnWidthStore((s) => s.setColumnWidth);
   const [pickerCell, setPickerCell] = useState<PickerCell | null>(null);
 
   // Currently displayed slots — same hiddenSlotIds semantics as the canvas lanes.
@@ -154,7 +157,26 @@ export function SimpleTimelineGrid() {
   const totalColumns = FIXED_COLUMN_COUNT + displayedSlots.length;
 
   return (
-    <div className="simple-grid-view">
+    <div
+      className="simple-grid-view"
+      style={{ "--simple-col-width": `${columnWidth}px` } as CSSProperties}
+    >
+      <div className="timeline-toolbar">
+        <span className="timeline-toolbar-title">Column Width:</span>
+        <div className="timeline-toolbar-zoom">
+          <input
+            type="range"
+            className="row-size-slider"
+            min={COLUMN_WIDTH_MIN}
+            max={COLUMN_WIDTH_MAX}
+            value={columnWidth}
+            onChange={(e) => setColumnWidth(Number(e.currentTarget.value))}
+            aria-label={`Slot column width, ${columnWidth} pixels`}
+            title={`Column width: ${columnWidth}px (${COLUMN_WIDTH_MIN}–${COLUMN_WIDTH_MAX})`}
+          />
+          <span className="row-size-readout">{columnWidth}px</span>
+        </div>
+      </div>
       <div className="simple-grid-scroll">
         <table className="simple-grid">
           <thead>
@@ -184,12 +206,15 @@ export function SimpleTimelineGrid() {
                   </div>
                 </th>
               ))}
+              {/* Greedy filler absorbs the table's leftover width so Slot
+                  columns stay at their fixed width instead of stretching. */}
+              <th scope="col" className="simple-grid-col-filler" />
             </tr>
           </thead>
           <tbody>
             {renderItems.length === 0 && (
               <tr>
-                <td className="simple-grid-empty-row" colSpan={totalColumns}>
+                <td className="simple-grid-empty-row" colSpan={totalColumns + 1}>
                   No boss abilities yet.
                 </td>
               </tr>
@@ -198,7 +223,11 @@ export function SimpleTimelineGrid() {
               if (item.kind === "phase") {
                 return (
                   <tr key={`phase-${item.ordinal}`} className="simple-grid-phase-row">
-                    <th scope="colgroup" colSpan={totalColumns} className="simple-grid-phase-head">
+                    <th
+                      scope="colgroup"
+                      colSpan={totalColumns + 1}
+                      className="simple-grid-phase-head"
+                    >
                       {`P${item.ordinal}: ${item.name}`}
                     </th>
                   </tr>
@@ -274,6 +303,7 @@ export function SimpleTimelineGrid() {
                       </td>
                     );
                   })}
+                  <td className="simple-grid-col-filler" />
                 </tr>
               );
             })}
