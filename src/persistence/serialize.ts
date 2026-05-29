@@ -1,6 +1,7 @@
 // JSON serialization for timeline files.
 // Pure functions — no I/O. Tauri FS wiring lives separately and calls these.
 
+import { type JobHpDefaults, resolveDefaultHp } from "@/domain/job-hp";
 import {
   normalizeNameForCompare,
   sanitizeDescription,
@@ -93,7 +94,12 @@ function preparseGate(json: string): string {
   return json.charCodeAt(0) === 0xfeff ? json.slice(1) : json;
 }
 
-export function deserialize(json: string): TimelineFile {
+// `defaults` seeds load-time normalization of pre-feature roster slots (a
+// job-holding slot with no `hp` materializes to the current Job HP default —
+// PRD §5.5). Files saved post-feature already carry concrete `hp` + `hp_manual`,
+// so the defaults only ever reach legacy files. Defaults to an empty map so
+// callers (and tests) that don't care get the 100k baseline.
+export function deserialize(json: string, defaults: JobHpDefaults = {}): TimelineFile {
   const parsed: unknown = JSON.parse(preparseGate(json));
   if (typeof parsed !== "object" || parsed === null) {
     throw new SchemaVersionError((parsed as { schema_version?: unknown } | null)?.schema_version);
@@ -106,7 +112,7 @@ export function deserialize(json: string): TimelineFile {
   if (fileKind !== "timeline") {
     throw new KindMismatchError(fileKind, "timeline");
   }
-  return validateTimelineFile(parsed);
+  return validateTimelineFile(parsed, defaults);
 }
 
 // ─── Boss-timeline export ──────────────────────────────────────────────────
@@ -270,6 +276,11 @@ function asOptionalString(v: unknown, path: string): string | undefined {
   return asString(v, path);
 }
 
+function asOptionalBoolean(v: unknown, path: string): boolean | undefined {
+  if (v === undefined) return undefined;
+  return asBoolean(v, path);
+}
+
 function asOptionalNumber(v: unknown, path: string): number | undefined {
   if (v === undefined) return undefined;
   return asNumber(v, path);
@@ -297,7 +308,16 @@ function asStringArray(v: unknown, path: string): string[] {
   return arr.map((el, i) => asString(el, `${path}[${i}]`));
 }
 
-function validatePlayerSlot(v: unknown, path: string): PlayerSlot {
+// Load-time HP normalization (PRD §5.5). Materializes a concrete `hp` and an
+// `hp_manual` flag for every job-holding slot:
+//   - `unset` → no HP, no flag (data-model invariant).
+//   - `hp_manual` present (post-feature file) → preserve the flag; the stored
+//     `hp` is authoritative (resolve a default only if it's somehow missing).
+//   - `hp_manual` absent (pre-feature file) → a set `hp` was always a hand-edit
+//     (hp_manual = true); a blank slot materializes to the current default
+//     (hp_manual = false). This is the one place a current Job HP default
+//     reaches an old file.
+function validatePlayerSlot(v: unknown, path: string, defaults: JobHpDefaults): PlayerSlot {
   const o = asObject(v, path);
   const slot: PlayerSlot = {
     id: asString(o.id, `${path}.id`),
@@ -309,19 +329,31 @@ function validatePlayerSlot(v: unknown, path: string): PlayerSlot {
     if (cleaned !== "") slot.name_label = cleaned;
   }
   const hp = asOptionalNumber(o.hp, `${path}.hp`);
-  if (hp !== undefined) {
-    if (hp < 0) throw new TimelineValidationError(`${path}.hp`, "must be >= 0");
+  if (hp !== undefined && hp < 0) throw new TimelineValidationError(`${path}.hp`, "must be >= 0");
+  const hpManual = asOptionalBoolean(o.hp_manual, `${path}.hp_manual`);
+
+  const job = slot.job;
+  if (job === "unset") return slot; // no HP / no flag on an unset slot
+  if (hpManual !== undefined) {
+    // Post-feature file: trust the stored flag and value.
+    slot.hp = hp ?? resolveDefaultHp(job, defaults);
+    slot.hp_manual = hpManual;
+  } else if (hp !== undefined) {
     slot.hp = hp;
+    slot.hp_manual = true;
+  } else {
+    slot.hp = resolveDefaultHp(job, defaults);
+    slot.hp_manual = false;
   }
   return slot;
 }
 
-function validateRoster(v: unknown, path: string): Roster {
+function validateRoster(v: unknown, path: string, defaults: JobHpDefaults): Roster {
   const arr = asArray(v, path);
   if (arr.length !== 8) {
     throw new TimelineValidationError(path, `must have exactly 8 slots (got ${arr.length})`);
   }
-  const slots = arr.map((el, i) => validatePlayerSlot(el, `${path}[${i}]`));
+  const slots = arr.map((el, i) => validatePlayerSlot(el, `${path}[${i}]`, defaults));
   return slots as unknown as Roster;
 }
 
@@ -468,7 +500,7 @@ function validateMetadata(v: unknown, path: string): TimelineFile["metadata"] {
   };
 }
 
-export function validateTimelineFile(parsed: unknown): TimelineFile {
+export function validateTimelineFile(parsed: unknown, defaults: JobHpDefaults = {}): TimelineFile {
   const o = asObject(parsed, "$");
   const typesArr = asArray(o.boss_ability_types, "$.boss_ability_types");
   assertCap(typesArr, MAX_BOSS_ABILITY_TYPES, "$.boss_ability_types");
@@ -506,7 +538,7 @@ export function validateTimelineFile(parsed: unknown): TimelineFile {
     schema_version: TIMELINE_SCHEMA_VERSION,
     kind: "timeline",
     metadata,
-    roster: validateRoster(o.roster, "$.roster"),
+    roster: validateRoster(o.roster, "$.roster", defaults),
     boss_ability_types,
     boss_ability_instances: culled.boss_ability_instances,
     mitigation_instances: culled.mitigation_instances,

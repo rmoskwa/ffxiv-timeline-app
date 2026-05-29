@@ -346,9 +346,16 @@ export interface PlayerSlot {
   job: JobOrUnset;
   name_label?: string;
   // Per-slot max HP, drives the per-player **Lethal** threshold. Omitted ⇒ the
-  // party-wide PLAYER_MAX_HP fallback applies. Bounded to a plausible FFXIV
-  // range at the store boundary (see timeline-store.setSlotHp).
+  // party-wide PLAYER_MAX_HP fallback applies (only for `unset` slots; a
+  // job-holding slot always materializes a concrete value). Bounded to a
+  // plausible FFXIV range at the store boundary (see timeline-store.setSlotHp).
   hp?: number;
+  // Whether `hp` was hand-typed by the user (true, **hand-tuned**, sticky) or
+  // seeded from a **Job HP default** (absent/false, **default-derived**).
+  // Hand-tuned HP survives "Apply to current roster" and resets only on a job
+  // change. Travels with the file so a recipient sees the same distinction.
+  // See docs/adr/0003-job-hp-is-baked-not-resolved.md.
+  hp_manual?: boolean;
   // role is DERIVED from job — not stored. See deriveRole() below.
 }
 

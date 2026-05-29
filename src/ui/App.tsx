@@ -8,13 +8,15 @@ import {
   exportTimelineDialog,
   importTimelineDialog,
 } from "@/persistence/storage";
-import { useAutoSave } from "@/persistence/use-auto-save";
+import { useAutoSave, useJobHpDefaultsAutoSave } from "@/persistence/use-auto-save";
 import { useHydrate } from "@/persistence/use-hydrate";
+import { useJobHpDefaultsStore } from "@/state/job-hp-defaults-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { AddPhaseModal } from "./AddPhaseModal";
 import { ClearTimelineModal, useClearTimelineModalStore } from "./ClearTimelineModal";
 import { HelpModals, useHelpModalStore } from "./HelpModals";
 import { importErrorMessage } from "./import-error-message";
+import { JobDefaultsModal } from "./JobDefaultsModal";
 import { type Menu, MenuBar } from "./MenuBar";
 import { OctocatIcon } from "./OctocatIcon";
 import { RosterPanel } from "./RosterPanel";
@@ -22,6 +24,7 @@ import { SetupWizard } from "./SetupWizard";
 import { TimelineEditor } from "./TimelineEditor";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
 import { useBossImportExport } from "./use-boss-import-export";
+import { useJobDefaultsModalStore } from "./use-job-defaults-modal";
 import { useUpdateCheck } from "./use-update-check";
 
 const GITHUB_URL = "https://github.com/rmoskwa/ffxiv-timeline-app";
@@ -35,13 +38,17 @@ export function App() {
   const setName = useTimelineStore((s) => s.setName);
   const openAddPhase = useAddPhaseModalStore((s) => s.open);
   const openClearTimeline = useClearTimelineModalStore((s) => s.open);
+  const openJobDefaults = useJobDefaultsModalStore((s) => s.open);
   const showHelp = useHelpModalStore((s) => s.show);
+  const jobHpDefaults = useJobHpDefaultsStore((s) => s.defaults);
   const { handleImport: handleBossImport, handleExport: handleBossExport } = useBossImportExport();
 
   // Auto-save only after hydration completes AND a timeline is loaded.
   // The hydration gate guarantees the loaded ref is treated as the baseline
   // and isn't echoed back to disk on mount.
   const { lastSavedAt, error: saveError } = useAutoSave(hydrated && timeline !== null);
+  // Job HP defaults persist independently of the working timeline.
+  useJobHpDefaultsAutoSave(hydrated);
 
   const handleSaveTimeline = useCallback(async () => {
     if (!timeline) return;
@@ -54,7 +61,7 @@ export function App() {
 
   const handleOpenTimeline = useCallback(async () => {
     try {
-      const imported = await importTimelineDialog();
+      const imported = await importTimelineDialog(jobHpDefaults);
       if (imported) loadTimeline(imported);
     } catch (e) {
       console.error("Open Timeline failed:", e);
@@ -63,7 +70,7 @@ export function App() {
         kind: "error",
       });
     }
-  }, [loadTimeline]);
+  }, [loadTimeline, jobHpDefaults]);
 
   const handleDiscard = useCallback(async () => {
     const ok = await confirmDialog(
@@ -140,6 +147,10 @@ export function App() {
         ],
       },
       {
+        label: "Settings",
+        items: [{ kind: "item", label: "Job HP Defaults…", onClick: openJobDefaults }],
+      },
+      {
         label: "Help",
         items: [
           { kind: "item", label: "Keyboard Shortcuts", onClick: () => showHelp("shortcuts") },
@@ -156,6 +167,7 @@ export function App() {
       handleExit,
       openAddPhase,
       openClearTimeline,
+      openJobDefaults,
       handleBossImport,
       handleBossExport,
       showHelp,
@@ -184,6 +196,7 @@ export function App() {
       <div className="app-root">
         <MenuBar menus={menus} rightSlot={menuBarRightSlot} />
         <SetupWizard hydrateError={hydrateError} />
+        <JobDefaultsModal />
         <HelpModals />
       </div>
     );
@@ -244,6 +257,7 @@ export function App() {
         </div>
         <AddPhaseModal />
         <ClearTimelineModal />
+        <JobDefaultsModal />
       </div>
       <HelpModals />
     </div>

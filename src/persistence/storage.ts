@@ -15,6 +15,7 @@ import {
   remove,
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
+import type { JobHpDefaults } from "@/domain/job-hp";
 import type { BossTimelineFile, TimelineFile } from "@/domain/types";
 import {
   deserialize,
@@ -39,10 +40,13 @@ function ensureAppDataDir(): Promise<void> {
 
 const JSON_FILTER = [{ name: "Timeline JSON", extensions: ["json"] }];
 
-export async function loadWorkingTimeline(): Promise<TimelineFile | null> {
+// `defaults` feeds load-time HP normalization of pre-feature files (serialize.ts).
+export async function loadWorkingTimeline(
+  defaults: JobHpDefaults = {},
+): Promise<TimelineFile | null> {
   if (!(await exists(WORKING_FILE, WORKING_FILE_OPTS))) return null;
   const text = await readTextFile(WORKING_FILE, WORKING_FILE_OPTS);
-  return deserialize(text);
+  return deserialize(text, defaults);
 }
 
 export async function saveWorkingTimeline(timeline: TimelineFile): Promise<void> {
@@ -75,8 +79,11 @@ export async function exportTimelineDialog(timeline: TimelineFile): Promise<bool
   return true;
 }
 
-// Returns the loaded timeline, or null if the user cancelled.
-export async function importTimelineDialog(): Promise<TimelineFile | null> {
+// Returns the loaded timeline, or null if the user cancelled. `defaults` feeds
+// load-time HP normalization of a pre-feature imported file (serialize.ts).
+export async function importTimelineDialog(
+  defaults: JobHpDefaults = {},
+): Promise<TimelineFile | null> {
   const picked = await openDialog({
     title: "Import timeline",
     multiple: false,
@@ -85,7 +92,7 @@ export async function importTimelineDialog(): Promise<TimelineFile | null> {
   });
   if (!picked || typeof picked !== "string") return null;
   const text = await readTextFile(picked);
-  return deserialize(text);
+  return deserialize(text, defaults);
 }
 
 // Returns true if the user picked a path and the file was written; false if

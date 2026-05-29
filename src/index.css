@@ -373,13 +373,23 @@ button {
   position: relative;
   z-index: 10;
 }
+.roster-panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.4rem;
+}
 .roster-panel h3 {
-  margin: 0 0 0.4rem;
+  margin: 0;
   font-size: 0.8rem;
   color: #888;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 600;
+}
+.roster-panel-header .link-button {
+  font-size: 0.75rem;
 }
 .roster-list {
   list-style: none;
@@ -3464,6 +3474,116 @@ button {
   cursor: pointer;
 }
 .add-phase-modal .form-actions button:not(.link-button):disabled {
+  background: #333;
+  color: #777;
+  cursor: not-allowed;
+}
+
+/* ─── Job HP Defaults modal ──────────────────────────────────────────── */
+
+.job-defaults-modal {
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  width: min(560px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.job-defaults-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.job-defaults-modal h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #e0e0e0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.job-defaults-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+.job-defaults-close:hover {
+  color: #e0e0e0;
+}
+.job-defaults-hint {
+  margin: 0;
+  color: #888;
+  font-size: 0.8rem;
+}
+.job-defaults-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.25rem;
+}
+.job-defaults-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.job-defaults-role {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #aaa;
+  font-weight: 600;
+}
+.job-defaults-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.job-defaults-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.job-defaults-job {
+  font-size: 0.8rem;
+  color: #ccc;
+  width: 2.5rem;
+}
+.job-defaults-input {
+  flex: 1;
+  min-width: 0;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 0.3rem 0.45rem;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.job-defaults-input.is-invalid {
+  border-color: #c66;
+  color: #f88;
+}
+.job-defaults-apply-note {
+  margin: 0;
+  color: #888;
+  font-size: 0.75rem;
+}
+.job-defaults-modal .form-actions button:not(.link-button) {
+  background: #4a8;
+  color: #111;
+  border: none;
+  border-radius: 3px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.job-defaults-modal .form-actions button:not(.link-button):disabled {
   background: #333;
   color: #777;
   cursor: not-allowed;

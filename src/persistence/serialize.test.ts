@@ -337,6 +337,55 @@ describe("deserialize — field validation", () => {
     const json = JSON.stringify({ ...tl, phases: [badPhase] });
     expect(deserialize(json).phases[0].name.length).toBe(MAX_NAME_LEN);
   });
+});
+
+describe("deserialize — Job HP default migration", () => {
+  // Build a one-slot-with-job roster from a fresh timeline.
+  function withSlot0(slot: Record<string, unknown>): string {
+    const tl = newTimeline("fixture");
+    const roster = tl.roster.map((s, i) => (i === 0 ? { id: s.id, job: "WAR", ...slot } : s));
+    return JSON.stringify({ ...tl, roster });
+  }
+
+  it("pre-feature: a set hp with no hp_manual becomes hand-tuned", () => {
+    const slot = deserialize(withSlot0({ hp: 250_000 })).roster[0];
+    expect(slot.hp).toBe(250_000);
+    expect(slot.hp_manual).toBe(true);
+  });
+
+  it("pre-feature: a blank job-holding slot materializes to the current default", () => {
+    const slot = deserialize(withSlot0({}), { WAR: 200_000 }).roster[0];
+    expect(slot.hp).toBe(200_000);
+    expect(slot.hp_manual).toBe(false);
+  });
+
+  it("pre-feature: a blank slot with no matching default falls back to 100k", () => {
+    const slot = deserialize(withSlot0({})).roster[0];
+    expect(slot.hp).toBe(100_000);
+    expect(slot.hp_manual).toBe(false);
+  });
+
+  it("post-feature: an explicit hp_manual=false is preserved (not flipped)", () => {
+    const slot = deserialize(withSlot0({ hp: 148_000, hp_manual: false })).roster[0];
+    expect(slot.hp).toBe(148_000);
+    expect(slot.hp_manual).toBe(false);
+  });
+
+  it("post-feature: an explicit hp_manual=true round-trips", () => {
+    const slot = deserialize(withSlot0({ hp: 300_000, hp_manual: true })).roster[0];
+    expect(slot.hp).toBe(300_000);
+    expect(slot.hp_manual).toBe(true);
+  });
+
+  it("unset slots get neither hp nor hp_manual", () => {
+    const slot = deserialize(JSON.stringify(newTimeline("fixture")), { WAR: 200_000 }).roster[0];
+    expect(slot.hp).toBeUndefined();
+    expect(slot.hp_manual).toBeUndefined();
+  });
+
+  it("rejects a non-boolean hp_manual", () => {
+    expect(() => deserialize(withSlot0({ hp: 1000, hp_manual: "yes" }))).toThrowError(/hp_manual/);
+  });
 
   it("truncates boss_ability_types[].description to MAX_DESC_LEN on deserialize", () => {
     const tl = newTimeline("fixture");

@@ -5,6 +5,7 @@ import { JobPicker } from "./JobPicker";
 import { NumberInput } from "./primitives/NumberInput";
 import { jobColor } from "./role-color";
 import { PLAYER_MAX_HP } from "./timeline-constants";
+import { useJobDefaultsModalStore } from "./use-job-defaults-modal";
 import { useViewStore } from "./use-view";
 
 export function RosterPanel() {
@@ -12,6 +13,7 @@ export function RosterPanel() {
   const mits = useTimelineStore((s) => s.timeline?.mitigation_instances ?? []);
   const setSlotJob = useTimelineStore((s) => s.setSlotJob);
   const setSlotHp = useTimelineStore((s) => s.setSlotHp);
+  const openJobDefaults = useJobDefaultsModalStore((s) => s.open);
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
   const toggleSlot = useViewStore((s) => s.toggleSlot);
   const [openPickerIdx, setOpenPickerIdx] = useState<number | null>(null);
@@ -26,7 +28,12 @@ export function RosterPanel() {
 
   return (
     <section className="roster-panel">
-      <h3>Roster</h3>
+      <div className="roster-panel-header">
+        <h3>Roster</h3>
+        <button type="button" className="link-button" onClick={openJobDefaults}>
+          Configure defaults…
+        </button>
+      </div>
       <ol className="roster-list">
         {roster.map((slot, i) => {
           const isUnset = slot.job === "unset";
@@ -69,6 +76,7 @@ export function RosterPanel() {
                 hp={slot.hp}
                 disabled={isUnset}
                 onCommit={(next) => setSlotHp(i, next)}
+                onClear={() => setSlotHp(i, undefined)}
               />
               <button
                 type="button"
@@ -116,11 +124,13 @@ function SlotHpInput({
   hp,
   disabled,
   onCommit,
+  onClear,
 }: {
   slotIdx: number;
   hp: number | undefined;
   disabled: boolean;
   onCommit: (hp: number) => void;
+  onClear: () => void;
 }) {
   const committed = hp ?? PLAYER_MAX_HP;
   const labelText = `HP for slot ${slotIdx + 1}`;
@@ -144,6 +154,7 @@ function SlotHpInput({
         formatDisplay={formatHp}
         validate={(n) => n >= SLOT_HP_MIN && n <= SLOT_HP_MAX}
         onCommit={onCommit}
+        onClear={onClear}
       />
     </label>
   );

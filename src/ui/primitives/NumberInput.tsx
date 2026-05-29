@@ -25,6 +25,10 @@ export type NumberInputProps = {
   disabled?: boolean;
   formatDisplay?: (n: number) => string;
   id?: string;
+  // Optional: called when the user blurs with the field cleared (truly empty,
+  // not merely unparseable). Lets a caller treat "emptied" as a distinct
+  // gesture (e.g. reset-to-default) instead of the default revert-to-value.
+  onClear?: () => void;
 };
 
 export function NumberInput({
@@ -36,6 +40,7 @@ export function NumberInput({
   disabled,
   formatDisplay,
   id,
+  onClear,
 }: NumberInputProps) {
   const [draft, setDraft] = useState(() => String(value));
   const [focused, setFocused] = useState(false);
@@ -87,6 +92,13 @@ export function NumberInput({
       onBlur={() => {
         setFocused(false);
         if (disabled) return;
+        // A cleared field is a distinct gesture when the caller opts in via
+        // onClear (e.g. reset-to-default); otherwise fall through to revert.
+        if (onClear && draft.trim() === "") {
+          setInvalid(false);
+          onClear();
+          return;
+        }
         const parsed = parseNumericInput(draft);
         if (parsed === null) {
           setDraft(String(value));

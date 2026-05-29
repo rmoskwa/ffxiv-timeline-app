@@ -4,6 +4,7 @@
 import { create } from "zustand";
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
 import { computeDamageTimeline, type MitInstanceState } from "@/domain/damage";
+import { clampSlotHp, resolveDefaultHp } from "@/domain/job-hp";
 import {
   normalizeNameForCompare,
   sanitizeDescription,
@@ -27,6 +28,7 @@ import {
   type TimelineFile,
 } from "@/domain/types";
 import { newTimeline as makeNewTimeline } from "@/persistence/serialize";
+import { useJobHpDefaultsStore } from "./job-hp-defaults-store";
 
 type BossTypeInput = Omit<BossAbilityType, "id">;
 type BossInstanceInput = Omit<BossAbilityInstance, "id" | "observed_damage">;
@@ -69,10 +71,10 @@ export class LimitExceededError extends Error {
   }
 }
 
-// Plausible FFXIV per-slot HP range. Endgame falls comfortably inside this
-// bracket today; widen if a future expansion pushes ceilings past 999k.
-export const SLOT_HP_MIN = 1_000;
-export const SLOT_HP_MAX = 999_000;
+// Plausible FFXIV per-slot HP range — defined in the pure domain layer so the
+// Job HP defaults config and the timeline store share one source. Re-exported
+// here for existing importers (RosterPanel).
+export { SLOT_HP_MAX, SLOT_HP_MIN } from "@/domain/job-hp";
 
 function clampBaseDamage(n: number): number {
   return Math.min(MAX_BASE_DAMAGE, Math.max(0, Math.round(n)));
@@ -107,6 +109,10 @@ export interface TimelineStore {
   setSlotJob: (slotIdx: number, job: JobOrUnset) => void;
   setSlotLabel: (slotIdx: number, label: string | undefined) => void;
   setSlotHp: (slotIdx: number, hp: number | undefined) => void;
+  // Re-seed every default-derived, job-holding slot from the current Job HP
+  // defaults. Skips hand-tuned (`hp_manual`) and `unset` slots; HP-only batch
+  // that never routes through setSlotJob (so it cannot wipe mits).
+  applyJobDefaultsToRoster: () => void;
 
   addBossAbilityType: (input: BossTypeInput) => string;
   updateBossAbilityType: (id: string, patch: Partial<BossTypeInput>) => void;
@@ -287,9 +293,16 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       if (!s.timeline) return s;
       const existing = s.timeline.roster[slotIdx];
       if (!existing || existing.job === job) return s;
-      const roster = s.timeline.roster.map((slot, i) =>
-        i === slotIdx ? { ...slot, job } : slot,
-      ) as unknown as TimelineFile["roster"];
+      const defaults = useJobHpDefaultsStore.getState().defaults;
+      const roster = s.timeline.roster.map((slot, i) => {
+        if (i !== slotIdx) return slot;
+        // Re-seed HP from the Job HP default and clear the hand-tuned flag — a
+        // job change is the one reset point. An `unset` slot carries no HP
+        // (data-model invariant), so drop both fields.
+        const { hp: _hp, hp_manual: _manual, ...rest } = slot;
+        if (job === "unset") return { ...rest, job };
+        return { ...rest, job, hp: resolveDefaultHp(job, defaults), hp_manual: false };
+      }) as unknown as TimelineFile["roster"];
       // A job change orphans the slot's mits — the mit library is keyed by
       // job, so existing entries would no longer surface in any sub-lane.
       // Cascade them out (mirrors setFightDuration's instance cascade).
@@ -325,18 +338,33 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   setSlotHp: (slotIdx, hp) =>
     set((s) => {
       if (!s.timeline) return s;
-      // Clamp inside the plausible FFXIV range. Anything below the floor or
-      // above the ceiling is rejected; the UI surfaces the live-validation
-      // signal but the store is the last line of defense.
-      const clamped =
-        hp === undefined ? undefined : Math.min(SLOT_HP_MAX, Math.max(SLOT_HP_MIN, Math.round(hp)));
+      const defaults = useJobHpDefaultsStore.getState().defaults;
       const roster = s.timeline.roster.map((slot, i) => {
         if (i !== slotIdx) return slot;
-        if (clamped === undefined) {
-          const { hp: _drop, ...rest } = slot;
-          return rest;
+        const { hp: _hp, hp_manual: _manual, ...rest } = slot;
+        const job = slot.job;
+        if (hp === undefined) {
+          // Reset gesture: clearing the input reverts a job-holding slot to its
+          // Job HP default (default-derived). An `unset` slot drops HP entirely.
+          if (job === "unset") return { ...rest, job };
+          return { ...rest, job, hp: resolveDefaultHp(job, defaults), hp_manual: false };
         }
-        return { ...slot, hp: clamped };
+        // Hand-typed value: clamp inside the plausible FFXIV range and mark the
+        // slot sticky. The UI surfaces the live-validation signal but the store
+        // is the last line of defense.
+        return { ...rest, job, hp: clampSlotHp(hp), hp_manual: true };
+      }) as unknown as TimelineFile["roster"];
+      return { timeline: touch({ ...s.timeline, roster }) };
+    }),
+
+  applyJobDefaultsToRoster: () =>
+    set((s) => {
+      if (!s.timeline) return s;
+      const defaults = useJobHpDefaultsStore.getState().defaults;
+      const roster = s.timeline.roster.map((slot) => {
+        // Skip hand-tuned and unset slots; re-seed only default-derived ones.
+        if (slot.job === "unset" || slot.hp_manual) return slot;
+        return { ...slot, hp: resolveDefaultHp(slot.job, defaults), hp_manual: false };
       }) as unknown as TimelineFile["roster"];
       return { timeline: touch({ ...s.timeline, roster }) };
     }),

@@ -3,7 +3,9 @@
 // assignment itself is never echoed back to disk.
 
 import { useEffect, useState } from "react";
+import { useJobHpDefaultsStore } from "@/state/job-hp-defaults-store";
 import { useTimelineStore } from "@/state/timeline-store";
+import { saveJobHpDefaults } from "./job-hp-defaults-storage";
 import { saveWorkingTimeline } from "./storage";
 
 const DEBOUNCE_MS = 1500;
@@ -59,4 +61,40 @@ export function useAutoSave(enabled: boolean): AutoSaveStatus {
   }, [enabled]);
 
   return { lastSavedAt, error };
+}
+
+// Mirror of useAutoSave for the app-global Job HP defaults. Mounted only after
+// hydration completes (the load via setAll is treated as the baseline, never
+// echoed back to disk). Runs independently of the working timeline — config can
+// be edited from the Settings menu even with no timeline open.
+export function useJobHpDefaultsAutoSave(enabled: boolean): void {
+  useEffect(() => {
+    if (!enabled) return;
+
+    let timeoutId: number | null = null;
+    let baseline = useJobHpDefaultsStore.getState().defaults;
+
+    const unsubscribe = useJobHpDefaultsStore.subscribe((state) => {
+      const next = state.defaults;
+      if (next === baseline) return;
+      baseline = next;
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        timeoutId = null;
+        void saveJobHpDefaults(next).catch((e: unknown) => {
+          console.error("Job HP defaults save failed:", e);
+        });
+      }, DEBOUNCE_MS);
+    });
+
+    return () => {
+      unsubscribe();
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        void saveJobHpDefaults(useJobHpDefaultsStore.getState().defaults).catch((e: unknown) => {
+          console.error("Job HP defaults save failed:", e);
+        });
+      }
+    };
+  }, [enabled]);
 }

@@ -4,7 +4,9 @@
 // back to disk.
 
 import { useEffect, useState } from "react";
+import { useJobHpDefaultsStore } from "@/state/job-hp-defaults-store";
 import { useTimelineStore } from "@/state/timeline-store";
+import { loadJobHpDefaults } from "./job-hp-defaults-storage";
 import { loadWorkingTimeline } from "./storage";
 
 export interface HydrateState {
@@ -22,7 +24,12 @@ export function useHydrate(): HydrateState {
     let cancelled = false;
     (async () => {
       try {
-        const tl = await loadWorkingTimeline();
+        // Load Job HP defaults first so the timeline's load-time HP
+        // normalization (pre-feature files) sees the user's current config.
+        const defaults = await loadJobHpDefaults();
+        if (cancelled) return;
+        useJobHpDefaultsStore.getState().setAll(defaults);
+        const tl = await loadWorkingTimeline(defaults);
         if (cancelled) return;
         if (tl) useTimelineStore.getState().loadTimeline(tl);
         setState({ hydrated: true, error: null });
