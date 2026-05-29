@@ -4,6 +4,12 @@
 // the instance at that time and selects it, so MitInspectorPanel takes over
 // (incl. the recipient TargetPicker for affects:target / target_or_self).
 //
+// A parent mit (one with gated children) is instead dropped 2s earlier so its
+// auto-spawned child (parent+2) lands on the clicked hit — the child carries the
+// mitigation the planner is placing the row for. This grid-only shift falls back
+// to the clicked time when the earlier spot is out of bounds or on cooldown
+// (see chooseParentPlacement); the canvas placement path is unaffected.
+//
 // Availability reuses the canvas's snap-free legality core (isPlacementLegal)
 // plus the same charge-row bucketing and effective-footprint/cooldown
 // resolution MitSubLane uses, so the grid and canvas can never disagree about
@@ -11,7 +17,12 @@
 // a pure view module — it resolves domain values before calling the core.
 
 import { useEffect, useRef } from "react";
-import { getMitById, getMitsForJob, getSharedRecastPartners } from "@/data/mit-library";
+import {
+  getGatedChildrenOf,
+  getMitById,
+  getMitsForJob,
+  getSharedRecastPartners,
+} from "@/data/mit-library";
 import { assignChargeRows } from "@/domain/charges";
 import {
   effectiveBarFootprintSeconds,
@@ -105,6 +116,28 @@ function computeMitAvailability(
   };
 }
 
+export interface ParentPlacement {
+  effectTime: number;
+  chargeRow: number;
+}
+
+// Where a parent (gated-children) mit lands when added from a Simple-view cell.
+// To anchor the CHILD on the clicked hit, the parent drops 2s earlier so its
+// auto-spawned child (parent+2) lands at `clickedSec` — but only when that
+// earlier spot is in-bounds (>= 0) and a legal placement (`shifted.available`).
+// Otherwise (no children → `shifted` is null, out of bounds, or a cooldown
+// collision) the parent lands at `clickedSec` and the child spawns at +2s.
+export function chooseParentPlacement(
+  clickedSec: number,
+  clickedChargeRow: number,
+  shifted: { available: boolean; chargeRow: number } | null,
+): ParentPlacement {
+  if (clickedSec - 2 >= 0 && shifted?.available) {
+    return { effectTime: clickedSec - 2, chargeRow: shifted.chargeRow };
+  }
+  return { effectTime: clickedSec, chargeRow: clickedChargeRow };
+}
+
 interface SimpleGridMitPickerProps {
   slot: PlayerSlot;
   effectTime: number;
@@ -144,12 +177,19 @@ export function SimpleGridMitPicker({ slot, effectTime, onClose }: SimpleGridMit
     slot.job === "unset" ? [] : getMitsForJob(slot.job).filter((mt) => mt.gated_by == null);
 
   const handlePick = (mt: MitigationType, chargeRow: number) => {
+    // For a parent mit, recheck legality at the 2s-earlier spot; chooseParentPlacement
+    // shifts there when legal so the auto-spawned child lands on the clicked hit.
+    const shifted =
+      getGatedChildrenOf(mt.id).length > 0 && effectTime - 2 >= 0
+        ? computeMitAvailability(mt, slot.id, effectTime - 2, allMits, mitStates)
+        : null;
+    const placement = chooseParentPlacement(effectTime, chargeRow, shifted);
     const id = addMit({
       type_id: mt.id,
       player_slot_id: slot.id,
-      effect_time: effectTime,
+      effect_time: placement.effectTime,
       target_slot_ids: [],
-      charge_row: chargeRow,
+      charge_row: placement.chargeRow,
     });
     selectMit(id);
     onClose();

@@ -502,7 +502,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       if (!s.timeline) return s;
       const parent: MitigationInstance = { ...input, id, coverage_overrides: [] };
       const parentType = getMitById(parent.type_id);
-      const children = parentType ? autoSpawnChildren(parent, parentType, s.timeline) : [];
+      const children = parentType ? autoSpawnChildren(parent, s.timeline) : [];
       return {
         timeline: touch({
           ...s.timeline,
@@ -660,14 +660,15 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
     }),
 }));
 
-// Default positions for a child's N charges, centered on `middle` with the 2s
-// gap PRD §6.5 calls for (representing the SCH GCD floor). For N=1: [middle].
-// For N=2: [middle-1, middle+1]. For N=3: [middle-2, middle, middle+2].
-// Exported for the inspector's re-add affordance (PRD §6.7).
-export function defaultChildPositions(middle: number, charges: number): number[] {
+// Default positions for a child's N charges, anchored 2s after the parent's
+// cast and stepped by the 2s gap PRD §6.5 calls for (the SCH GCD floor). For
+// N=1: [parent+2]. For N=2: [parent+2, parent+4]. The 2s offset separates the
+// child icon from its parent on the canvas and lands the child on the parent's
+// hit row in the Simple view. Exported for the inspector's re-add affordance.
+export function defaultChildPositions(parentEffectTime: number, charges: number): number[] {
   const positions: number[] = [];
   for (let i = 0; i < charges; i++) {
-    positions.push(middle - (charges - 1) + 2 * i);
+    positions.push(parentEffectTime + 2 * (i + 1));
   }
   return positions;
 }
@@ -678,7 +679,6 @@ export function defaultChildPositions(middle: number, charges: number): number[]
 // would already be absorbed before the default child position, skip that child.
 function autoSpawnChildren(
   parent: MitigationInstance,
-  parentType: import("@/domain/types").MitigationType,
   timeline: TimelineFile,
 ): MitigationInstance[] {
   const gatedChildren = getGatedChildrenOf(parent.type_id);
@@ -706,16 +706,14 @@ function autoSpawnChildren(
   }
   const children: MitigationInstance[] = [];
   for (const childType of gatedChildren) {
-    const execZone = childType.execution_zone_seconds ?? parentType.duration_seconds;
-    const middle = parent.effect_time + execZone / 2;
+    const positions = defaultChildPositions(parent.effect_time, childType.max_charges);
     if (
       childType.consumes === parent.type_id &&
       parentAbsorbedAt != null &&
-      parentAbsorbedAt < middle
+      parentAbsorbedAt < positions[0]
     ) {
       continue;
     }
-    const positions = defaultChildPositions(middle, childType.max_charges);
     for (let i = 0; i < childType.max_charges; i++) {
       children.push({
         id: crypto.randomUUID(),

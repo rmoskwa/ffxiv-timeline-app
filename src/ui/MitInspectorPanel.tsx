@@ -177,8 +177,7 @@ function ChildSlotList({ parent, parentType, childType, allMits }: ChildSlotList
     (m) => m.type_id === childType.id && m.parent_instance_id === parent.id,
   );
   const execZone = childType.execution_zone_seconds ?? parentType.duration_seconds;
-  const middle = parent.effect_time + execZone / 2;
-  const canonicalPositions = defaultChildPositions(middle, childType.max_charges);
+  const canonicalPositions = defaultChildPositions(parent.effect_time, childType.max_charges);
   // Match the drag-time clamp: +1s from parent's cast, -1s from the zone end,
   // and never past the timeline edge.
   const zoneMin = parent.effect_time + 1;

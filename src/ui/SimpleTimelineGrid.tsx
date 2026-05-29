@@ -5,12 +5,13 @@
 // First covered hit, faded Coverage markers at later covered hits — computed by
 // the pure projectInstancesToHits module. No survival/lethality math (PRD §2).
 //
-// Chip click drives selectMitInstance (gated children route to their parent);
-// the per-cell add button opens SimpleGridMitPicker; the Time cell edits the
+// Chip click drives selectMitInstance; selecting a gated child reveals dashed
+// placement slots at its legal re-anchor rows (and an × to delete it). The
+// per-cell add button opens SimpleGridMitPicker; the Time cell edits the
 // instance inline (re-sorts on commit); SimpleGridAddRow appends new rows.
 // See docs/adr/0002-simple-view-live-projection.md.
 
-import { type CSSProperties, useMemo, useState } from "react";
+import { type CSSProperties, type ReactNode, useMemo, useState } from "react";
 import { getMitById } from "@/data/mit-library";
 import { phaseOrdinalFor } from "@/domain/phases";
 import {
@@ -25,6 +26,7 @@ import { TimecodeField } from "./primitives/TimecodeField";
 import { jobColor } from "./role-color";
 import { SimpleGridAddRow } from "./SimpleGridAddRow";
 import { SimpleGridMitPicker } from "./SimpleGridMitPicker";
+import { legalChildAnchorRows } from "./simple-grid-placement";
 import { projectInstancesToHits } from "./simple-grid-projection";
 import { COLUMN_WIDTH_MAX, COLUMN_WIDTH_MIN, useColumnWidthStore } from "./use-column-width";
 import { useCoverageMarkersStore } from "./use-coverage-markers";
@@ -38,14 +40,13 @@ import { useViewStore } from "./use-view";
 const FIXED_COLUMN_COUNT = 4;
 
 interface ChipInfo {
+  // The chip's own instance — selected on click (a gated child selecting itself
+  // opens its placement slots).
   instanceId: string;
   name: string;
-  // Instance to select when the chip is clicked: the parent for a gated child
-  // (parent-driven editing), otherwise the chip's own instance.
-  selectId: string;
   // Home cell (First covered hit) vs a read-only Coverage marker at a later hit.
   isHome: boolean;
-  // Gated child (auto-spawned with a parent); visually marked, parent-edited.
+  // Gated child (auto-spawned with a parent); visually marked with a dashed outline.
   isGated: boolean;
 }
 
@@ -66,6 +67,8 @@ export function SimpleTimelineGrid() {
   const phases = useTimelineStore((s) => s.timeline?.phases);
   const fightDurationSec = useTimelineStore((s) => s.timeline?.metadata.fight_duration_sec);
   const updateBossInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
+  const updateMit = useTimelineStore((s) => s.updateMitigationInstance);
+  const removeMit = useTimelineStore((s) => s.removeMitigationInstance);
   const selectMit = useTimelineStore((s) => s.selectMitInstance);
   const selectedMitId = useTimelineStore((s) =>
     s.selectedInstance?.kind === "mit" ? s.selectedInstance.id : null,
@@ -101,8 +104,11 @@ export function SimpleTimelineGrid() {
   // durationSec} at this seam (held-ability duration included), then projected
   // onto the hit rows by the pure module. Each instance is assigned a stable
   // sub-column so its Coverage markers stack directly under its Home chip.
-  const chipsBySlotRow = useMemo(() => {
+  const { chipsBySlotRow, columnById } = useMemo(() => {
     const bySlot = new Map<string, Map<number, (ChipInfo | null)[]>>();
+    // Each visible instance's stable sub-column, keyed by instance id — used to
+    // align a selected child's placement slots under its Home chip's column.
+    const colById = new Map<string, number>();
     for (const slot of displayedSlots) {
       const resolved: { instance: MitigationInstance; name: string }[] = [];
       const inputs = [];
@@ -157,12 +163,12 @@ export function SimpleTimelineGrid() {
         if (p.homeHitIndex == null) return;
         const { instance, name } = resolved[i];
         const column = columnByProj.get(i) ?? 0;
+        colById.set(instance.id, column);
         for (const hitIdx of p.coveredHitIndices) {
           const chips = rowMap.get(hitIdx) ?? [];
           chips[column] = {
             instanceId: instance.id,
             name,
-            selectId: instance.parent_instance_id ?? instance.id,
             isHome: hitIdx === p.homeHitIndex,
             isGated: instance.parent_instance_id != null,
           };
@@ -178,8 +184,49 @@ export function SimpleTimelineGrid() {
       }
       bySlot.set(slot.id, rowMap);
     }
-    return bySlot;
+    return { chipsBySlotRow: bySlot, columnById: colById };
   }, [displayedSlots, mitInstances, hitTimes]);
+
+  // When the selected mit is a gated child, compute where it may be re-anchored:
+  // legal boss-hit rows in the parent's execution zone (mirrors the canvas drag
+  // clamp + 2s charge gap), minus the rows it already covers. The grid draws a
+  // dashed placement slot at each, in the child's own sub-column.
+  const placement = useMemo(() => {
+    if (!selectedMitId || !mitInstances) return null;
+    const child = mitInstances.find((m) => m.id === selectedMitId);
+    if (!child?.parent_instance_id) return null;
+    const parent = mitInstances.find((m) => m.id === child.parent_instance_id);
+    if (!parent) return null;
+    const childType = getMitById(child.type_id);
+    const parentType = getMitById(parent.type_id);
+    if (!childType || !parentType) return null;
+    const execZone = childType.execution_zone_seconds ?? parentType.duration_seconds;
+    const [proj] = projectInstancesToHits(hitTimes, [
+      {
+        id: child.id,
+        effectTime: child.effect_time,
+        durationSec: instanceActiveDurationSeconds(childType, child),
+      },
+    ]);
+    const rows = legalChildAnchorRows(hitTimes, {
+      parentEffectTime: parent.effect_time,
+      execZoneSeconds: execZone,
+      fightDurationSec: fightDurationSec ?? Number.POSITIVE_INFINITY,
+      siblingEffectTimes: mitInstances
+        .filter(
+          (m) =>
+            m.type_id === child.type_id && m.parent_instance_id === parent.id && m.id !== child.id,
+        )
+        .map((m) => m.effect_time),
+      homeHitIndex: proj.homeHitIndex,
+    });
+    return {
+      childId: child.id,
+      slotId: child.player_slot_id,
+      column: columnById.get(child.id) ?? 0,
+      rows: new Set(rows),
+    };
+  }, [selectedMitId, mitInstances, hitTimes, fightDurationSec, columnById]);
 
   // Hit rows interleaved with a phase header at each boundary (when phases
   // exist); the "P{n}: " prefix tags each hit's Time cell. Flat list otherwise.
@@ -210,19 +257,112 @@ export function SimpleTimelineGrid() {
 
   const totalColumns = FIXED_COLUMN_COUNT + displayedSlots.length;
 
-  const renderChip = (chip: ChipInfo) => (
+  const renderChip = (chip: ChipInfo) => {
+    const isPlacingChild = placement?.childId === chip.instanceId;
+    const chipButton = (
+      <button
+        type="button"
+        key={chip.instanceId}
+        className={`simple-grid-chip${chip.isHome ? "" : " is-coverage"}${
+          chip.isGated ? " is-gated" : ""
+        }${chip.instanceId === selectedMitId ? " is-selected" : ""}${
+          isPlacingChild && !chip.isHome ? " is-dimmed" : ""
+        }`}
+        title={chip.name}
+        onClick={() => selectMit(chip.instanceId)}
+      >
+        <MitIcon name={chip.name} size={iconSize} title={chip.name} />
+      </button>
+    );
+    // The selected child's Home chip carries an × to delete it (mirrors the
+    // canvas child overlay); the parent's inspector is no longer the only path.
+    if (isPlacingChild && chip.isHome) {
+      return (
+        <span className="simple-grid-chip-wrap" key={chip.instanceId}>
+          {chipButton}
+          <button
+            type="button"
+            className="simple-grid-chip-x"
+            title="Remove this child"
+            aria-label="Remove this child"
+            onClick={(e) => {
+              e.stopPropagation();
+              removeMit(chip.instanceId);
+            }}
+          >
+            ×
+          </button>
+        </span>
+      );
+    }
+    return chipButton;
+  };
+
+  const renderPlacementSlot = (childId: string, effectTime: number, key: string) => (
     <button
       type="button"
-      key={chip.instanceId}
-      className={`simple-grid-chip${chip.isHome ? "" : " is-coverage"}${
-        chip.isGated ? " is-gated" : ""
-      }${chip.selectId === selectedMitId ? " is-selected" : ""}`}
-      title={chip.name}
-      onClick={() => selectMit(chip.selectId)}
-    >
-      <MitIcon name={chip.name} size={iconSize} title={chip.name} />
-    </button>
+      key={key}
+      className="simple-grid-placement-slot"
+      style={{ width: iconSize, height: iconSize }}
+      title="Move child here"
+      aria-label="Move child mitigation here"
+      onClick={() => updateMit(childId, { effect_time: effectTime })}
+    />
   );
+
+  // One slot cell's chips. While a child is selected, legal re-anchor rows show
+  // a dashed placement slot: aligned to the child's sub-column when that column
+  // is free there, otherwise trailing the row so no other chip is hidden.
+  const renderCellInner = (slotId: string, rowIndex: number, hitTime: number): ReactNode => {
+    const chips = chipsBySlotRow.get(slotId)?.get(rowIndex) ?? [];
+    const place =
+      placement != null && placement.slotId === slotId && placement.rows.has(rowIndex)
+        ? placement
+        : null;
+
+    if (!showCoverageMarkers) {
+      // Markers hidden: left-pack the Home chips; the placement slot trails them.
+      const homeChips = chips.filter((chip): chip is ChipInfo => chip?.isHome ?? false);
+      return (
+        <>
+          {homeChips.map((chip) => renderChip(chip))}
+          {place && renderPlacementSlot(place.childId, hitTime, `place-${rowIndex}`)}
+        </>
+      );
+    }
+
+    const placeCol = place ? place.column : -1;
+    const length = placeCol >= 0 ? Math.max(chips.length, placeCol + 1) : chips.length;
+    const nodes: ReactNode[] = [];
+    let placed = false;
+    for (let col = 0; col < length; col++) {
+      const chip = chips[col] ?? null;
+      // The placement slot takes the child's own sub-column, replacing the
+      // child's Coverage marker there (a covered, non-Home row is still a valid
+      // re-anchor target) or filling the empty column. Another instance's chip in
+      // that column is never displaced — the slot then trails the row (below).
+      const isOwnMarker = chip != null && place != null && chip.instanceId === place.childId;
+      if (place && col === placeCol && (chip == null || isOwnMarker)) {
+        nodes.push(renderPlacementSlot(place.childId, hitTime, `place-${rowIndex}`));
+        placed = true;
+      } else if (chip) {
+        nodes.push(renderChip(chip));
+      } else {
+        nodes.push(
+          <span
+            key={`gap-${col}`}
+            className="simple-grid-chip-gap"
+            style={{ width: iconSize, height: iconSize }}
+            aria-hidden
+          />,
+        );
+      }
+    }
+    if (place && !placed) {
+      nodes.push(renderPlacementSlot(place.childId, hitTime, `place-${rowIndex}`));
+    }
+    return nodes;
+  };
 
   return (
     <div
@@ -360,7 +500,6 @@ export function SimpleTimelineGrid() {
                   <td className="simple-grid-col-type">{type?.damage_type ?? "—"}</td>
                   <td className="simple-grid-col-damage">{type?.base_damage ?? 0}</td>
                   {displayedSlots.map((slot) => {
-                    const chips = chipsBySlotRow.get(slot.id)?.get(item.rowIndex) ?? [];
                     const pickerOpen =
                       pickerCell?.slotId === slot.id && pickerCell.rowIndex === item.rowIndex;
                     return (
@@ -377,27 +516,7 @@ export function SimpleTimelineGrid() {
                           />
                         )}
                         <div className="simple-grid-cell-inner">
-                          {showCoverageMarkers
-                            ? // Positional render: each chip sits in its instance's
-                              // sub-column, with equal-sized gaps holding empty columns
-                              // open so Coverage markers stay aligned under their Home.
-                              chips.map((chip, col) =>
-                                chip ? (
-                                  renderChip(chip)
-                                ) : (
-                                  <span
-                                    // biome-ignore lint/suspicious/noArrayIndexKey: column position is the identity
-                                    key={`gap-${col}`}
-                                    className="simple-grid-chip-gap"
-                                    style={{ width: iconSize, height: iconSize }}
-                                    aria-hidden
-                                  />
-                                ),
-                              )
-                            : // Markers hidden: left-pack the Home chips only.
-                              chips
-                                .filter((chip): chip is ChipInfo => chip?.isHome ?? false)
-                                .map((chip) => renderChip(chip))}
+                          {renderCellInner(slot.id, item.rowIndex, item.inst.effect_time)}
                         </div>
                         {pickerOpen && (
                           <SimpleGridMitPicker

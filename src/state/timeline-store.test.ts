@@ -170,7 +170,7 @@ describe("timeline-store — §7 spam add", () => {
 // pre-absorbed Tempera Coat.
 
 describe("timeline-store — auto-spawn gated children", () => {
-  it("Tempera Coat → spawns Grassa at the middle of Coat's active window", () => {
+  it("Tempera Coat → spawns Grassa 2s after Coat's cast", () => {
     freshTimelineForJob("PCT");
     const slotId = rosterSlotId(0);
     useTimelineStore.getState().addMitigationInstance({
@@ -181,12 +181,12 @@ describe("timeline-store — auto-spawn gated children", () => {
     });
     const grassa = mitsOfType("pct.tempera_grassa");
     expect(grassa).toHaveLength(1);
-    // execution_zone defaults to parent duration (10s) → middle = 5.
-    expect(grassa[0].effect_time).toBe(5);
+    // Single charge anchored 2s after the parent's cast.
+    expect(grassa[0].effect_time).toBe(2);
     expect(grassa[0].parent_instance_id).toBe(mitsOfType("pct.tempera_coat")[0].id);
   });
 
-  it("Summon Seraph → spawns Consolation #1 and #2 at +10 and +12", () => {
+  it("Summon Seraph → spawns Consolation #1 and #2 at +2 and +4", () => {
     freshTimelineForJob("SCH");
     const slotId = rosterSlotId(0);
     useTimelineStore.getState().addMitigationInstance({
@@ -199,12 +199,12 @@ describe("timeline-store — auto-spawn gated children", () => {
       (a, b) => a.effect_time - b.effect_time,
     );
     expect(consolations).toHaveLength(2);
-    // Middle of 22s exec zone = 11; with 2s gap centered: 10 and 12.
-    expect(consolations.map((c) => c.effect_time)).toEqual([10, 12]);
+    // Anchored 2s after the cast, stepped by the 2s charge gap: 2 and 4.
+    expect(consolations.map((c) => c.effect_time)).toEqual([2, 4]);
     expect(consolations.map((c) => c.charge_row)).toEqual([0, 1]);
   });
 
-  it("Neutral Sect → spawns Sun Sign at the middle of the 30s execution zone", () => {
+  it("Neutral Sect → spawns Sun Sign 2s after the cast", () => {
     freshTimelineForJob("AST");
     const slotId = rosterSlotId(0);
     useTimelineStore.getState().addMitigationInstance({
@@ -215,11 +215,11 @@ describe("timeline-store — auto-spawn gated children", () => {
     });
     const sunSign = mitsOfType("ast.sun_sign");
     expect(sunSign).toHaveLength(1);
-    // execution_zone 30s → middle = 15.
-    expect(sunSign[0].effect_time).toBe(15);
+    // Single charge anchored 2s after the cast.
+    expect(sunSign[0].effect_time).toBe(2);
   });
 
-  it("Temperance → spawns Divine Caress at the middle of the 10s execution zone", () => {
+  it("Temperance → spawns Divine Caress 2s after the cast", () => {
     freshTimelineForJob("WHM");
     const slotId = rosterSlotId(0);
     useTimelineStore.getState().addMitigationInstance({
@@ -230,8 +230,8 @@ describe("timeline-store — auto-spawn gated children", () => {
     });
     const dc = mitsOfType("whm.divine_caress");
     expect(dc).toHaveLength(1);
-    // execution_zone 10s → middle = 5.
-    expect(dc[0].effect_time).toBe(5);
+    // Single charge anchored 2s after the cast.
+    expect(dc[0].effect_time).toBe(2);
   });
 
   it("PCT special case: Coat absorbed before default Grassa position skips auto-spawn", () => {
@@ -248,7 +248,7 @@ describe("timeline-store — auto-spawn gated children", () => {
     });
     useTimelineStore.getState().addBossAbilityInstance({
       type_id: bossTypeId,
-      effect_time: 2, // absorbs Coat at t=2, before default Grassa at t=5
+      effect_time: 1, // absorbs Coat at t=1, before default Grassa at t=2
       target_slot_ids: [],
     });
     useTimelineStore.getState().addMitigationInstance({
@@ -464,10 +464,10 @@ describe("timeline-store — offset-glued parent drag", () => {
       target_slot_ids: [],
     });
     const coatId = mitsOfType("pct.tempera_coat")[0].id;
-    expect(mitsOfType("pct.tempera_grassa")[0].effect_time).toBe(15); // 10 + 5
+    expect(mitsOfType("pct.tempera_grassa")[0].effect_time).toBe(12); // 10 + 2
     useTimelineStore.getState().updateMitigationInstance(coatId, { effect_time: 20 });
     expect(mitsOfType("pct.tempera_coat")[0].effect_time).toBe(20);
-    expect(mitsOfType("pct.tempera_grassa")[0].effect_time).toBe(25); // shifted +10
+    expect(mitsOfType("pct.tempera_grassa")[0].effect_time).toBe(22); // shifted +10
   });
 
   it("non-effect_time patches do not cascade to children", () => {
@@ -1235,14 +1235,14 @@ describe("timeline-store — §5.7 offset-glue preserves child zone membership",
       target_slot_ids: [],
     });
     const parentId = mitsOfType("ast.neutral_sect")[0].id;
-    // Default Sun Sign auto-spawn position: parent + 15 (middle of 30s zone).
+    // Default Sun Sign auto-spawn position: parent + 2.
     const before = mitsOfType("ast.sun_sign")[0];
-    expect(before.effect_time).toBe(215);
+    expect(before.effect_time).toBe(202);
     // Drag the parent all the way to 0. The child must move by the same delta.
     useTimelineStore.getState().updateMitigationInstance(parentId, { effect_time: 0 });
     const after = mitsOfType("ast.sun_sign")[0];
-    expect(after.effect_time).toBe(15);
-    // Zone membership preserved: child sits at parent+15 inside parent..parent+30.
+    expect(after.effect_time).toBe(2);
+    // Zone membership preserved: child sits at parent+2 inside parent..parent+30.
     const parentNow = mitsOfType("ast.neutral_sect")[0];
     expect(after.effect_time).toBeGreaterThan(parentNow.effect_time);
     expect(after.effect_time).toBeLessThan(parentNow.effect_time + 30);
@@ -1268,6 +1268,6 @@ describe("timeline-store — §5.7 offset-glue preserves child zone membership",
     const grassa = mitsOfType("pct.tempera_grassa")[0];
     // Child rides the same delta (10_000); the rendering layer is what would
     // hide it past the lane edge.
-    expect(grassa.effect_time).toBe(10_005);
+    expect(grassa.effect_time).toBe(10_002);
   });
 });
