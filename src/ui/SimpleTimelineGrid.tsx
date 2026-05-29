@@ -5,8 +5,10 @@
 // First covered hit, faded Coverage markers at later covered hits — computed by
 // the pure projectInstancesToHits module. No survival/lethality math (PRD §2).
 //
-// This pass is display-only; chip selection, the Mit picker, Add Row, and
-// inline edits land in PRD steps 5–6. See docs/adr/0002-simple-view-live-projection.md.
+// Chip click drives selectMitInstance (gated children route to their parent);
+// the per-cell add button opens SimpleGridMitPicker; the Time cell edits the
+// instance inline (re-sorts on commit); SimpleGridAddRow appends new rows.
+// See docs/adr/0002-simple-view-live-projection.md.
 
 import { useMemo, useState } from "react";
 import { getMitById } from "@/data/mit-library";
@@ -19,9 +21,10 @@ import {
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitIcon } from "./MitIcon";
+import { TimecodeField } from "./primitives/TimecodeField";
+import { SimpleGridAddRow } from "./SimpleGridAddRow";
 import { SimpleGridMitPicker } from "./SimpleGridMitPicker";
 import { projectInstancesToHits } from "./simple-grid-projection";
-import { secondsToTimecode } from "./timeline-constants";
 import { useViewStore } from "./use-view";
 
 const FIXED_COLUMN_COUNT = 4;
@@ -53,6 +56,8 @@ export function SimpleTimelineGrid() {
   const bossTypes = useTimelineStore((s) => s.timeline?.boss_ability_types);
   const mitInstances = useTimelineStore((s) => s.timeline?.mitigation_instances);
   const phases = useTimelineStore((s) => s.timeline?.phases);
+  const fightDurationSec = useTimelineStore((s) => s.timeline?.metadata.fight_duration_sec);
+  const updateBossInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
   const selectMit = useTimelineStore((s) => s.selectMitInstance);
   const selectedMitId = useTimelineStore((s) =>
     s.selectedInstance?.kind === "mit" ? s.selectedInstance.id : null,
@@ -148,109 +153,128 @@ export function SimpleTimelineGrid() {
   const totalColumns = FIXED_COLUMN_COUNT + displayedSlots.length;
 
   return (
-    <div className="simple-grid-scroll">
-      <table className="simple-grid">
-        <thead>
-          <tr>
-            <th scope="col" className="simple-grid-col-time">
-              Time
-            </th>
-            <th scope="col" className="simple-grid-col-name">
-              Ability
-            </th>
-            <th scope="col" className="simple-grid-col-type">
-              Type
-            </th>
-            <th scope="col" className="simple-grid-col-damage">
-              Damage
-            </th>
-            {displayedSlots.map((slot) => (
-              <th scope="col" key={slot.id} className="simple-grid-col-slot">
-                <div className="simple-grid-slot-head">
-                  <JobIcon job={slot.job} size={20} title={slot.name_label ?? slot.job} />
-                  <span className="simple-grid-slot-label">{slot.name_label ?? slot.job}</span>
-                </div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {renderItems.length === 0 && (
+    <div className="simple-grid-view">
+      <div className="simple-grid-scroll">
+        <table className="simple-grid">
+          <thead>
             <tr>
-              <td className="simple-grid-empty-row" colSpan={totalColumns}>
-                No boss abilities yet.
-              </td>
+              <th scope="col" className="simple-grid-col-time">
+                Time
+              </th>
+              <th scope="col" className="simple-grid-col-name">
+                Ability
+              </th>
+              <th scope="col" className="simple-grid-col-type">
+                Type
+              </th>
+              <th scope="col" className="simple-grid-col-damage">
+                Damage
+              </th>
+              {displayedSlots.map((slot) => (
+                <th scope="col" key={slot.id} className="simple-grid-col-slot">
+                  <div className="simple-grid-slot-head">
+                    <JobIcon job={slot.job} size={20} title={slot.name_label ?? slot.job} />
+                    <span className="simple-grid-slot-label">{slot.name_label ?? slot.job}</span>
+                  </div>
+                </th>
+              ))}
             </tr>
-          )}
-          {renderItems.map((item) => {
-            if (item.kind === "phase") {
+          </thead>
+          <tbody>
+            {renderItems.length === 0 && (
+              <tr>
+                <td className="simple-grid-empty-row" colSpan={totalColumns}>
+                  No boss abilities yet.
+                </td>
+              </tr>
+            )}
+            {renderItems.map((item) => {
+              if (item.kind === "phase") {
+                return (
+                  <tr key={`phase-${item.ordinal}`} className="simple-grid-phase-row">
+                    <th scope="colgroup" colSpan={totalColumns} className="simple-grid-phase-head">
+                      {`P${item.ordinal}: ${item.name}`}
+                    </th>
+                  </tr>
+                );
+              }
+              const type = typeById.get(item.inst.type_id);
               return (
-                <tr key={`phase-${item.ordinal}`} className="simple-grid-phase-row">
-                  <th scope="colgroup" colSpan={totalColumns} className="simple-grid-phase-head">
-                    {`P${item.ordinal}: ${item.name}`}
+                <tr key={item.inst.id} className="simple-grid-row">
+                  <td className="simple-grid-col-time">
+                    {item.phasePrefix && (
+                      <span className="simple-grid-phase-prefix">{item.phasePrefix}</span>
+                    )}
+                    <TimecodeField
+                      value={item.inst.effect_time}
+                      ariaLabel="Effect time"
+                      className="simple-grid-time-input"
+                      validate={(n) => fightDurationSec == null || n <= fightDurationSec}
+                      onCommit={(n) =>
+                        updateBossInstance(item.inst.id, {
+                          effect_time:
+                            fightDurationSec != null
+                              ? Math.min(fightDurationSec, Math.max(0, n))
+                              : Math.max(0, n),
+                        })
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </td>
+                  <th scope="row" className="simple-grid-col-name">
+                    {type?.name ?? "—"}
                   </th>
+                  <td className="simple-grid-col-type">{type?.damage_type ?? "—"}</td>
+                  <td className="simple-grid-col-damage">{type?.base_damage ?? 0}</td>
+                  {displayedSlots.map((slot) => {
+                    const chips = chipsBySlotRow.get(slot.id)?.get(item.rowIndex) ?? [];
+                    const pickerOpen =
+                      pickerCell?.slotId === slot.id && pickerCell.rowIndex === item.rowIndex;
+                    return (
+                      <td key={slot.id} className="simple-grid-cell">
+                        {chips.map((chip) => (
+                          <button
+                            type="button"
+                            key={chip.instanceId}
+                            className={`simple-grid-chip${chip.isHome ? "" : " is-coverage"}${
+                              chip.isGated ? " is-gated" : ""
+                            }${chip.selectId === selectedMitId ? " is-selected" : ""}`}
+                            title={chip.name}
+                            onClick={() => selectMit(chip.selectId)}
+                          >
+                            <MitIcon name={chip.name} size={18} title={chip.name} />
+                          </button>
+                        ))}
+                        {slot.job !== "unset" && (
+                          <button
+                            type="button"
+                            className="simple-grid-cell-add"
+                            title="Add mitigation"
+                            aria-label="Add mitigation"
+                            onClick={() =>
+                              setPickerCell({ slotId: slot.id, rowIndex: item.rowIndex })
+                            }
+                          >
+                            +
+                          </button>
+                        )}
+                        {pickerOpen && (
+                          <SimpleGridMitPicker
+                            slot={slot}
+                            effectTime={item.inst.effect_time}
+                            onClose={() => setPickerCell(null)}
+                          />
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
-            }
-            const type = typeById.get(item.inst.type_id);
-            return (
-              <tr key={item.inst.id} className="simple-grid-row">
-                <td className="simple-grid-col-time">
-                  {item.phasePrefix}
-                  {secondsToTimecode(item.inst.effect_time)}
-                </td>
-                <th scope="row" className="simple-grid-col-name">
-                  {type?.name ?? "—"}
-                </th>
-                <td className="simple-grid-col-type">{type?.damage_type ?? "—"}</td>
-                <td className="simple-grid-col-damage">{type?.base_damage ?? 0}</td>
-                {displayedSlots.map((slot) => {
-                  const chips = chipsBySlotRow.get(slot.id)?.get(item.rowIndex) ?? [];
-                  const pickerOpen =
-                    pickerCell?.slotId === slot.id && pickerCell.rowIndex === item.rowIndex;
-                  return (
-                    <td key={slot.id} className="simple-grid-cell">
-                      {chips.map((chip) => (
-                        <button
-                          type="button"
-                          key={chip.instanceId}
-                          className={`simple-grid-chip${chip.isHome ? "" : " is-coverage"}${
-                            chip.isGated ? " is-gated" : ""
-                          }${chip.selectId === selectedMitId ? " is-selected" : ""}`}
-                          title={chip.name}
-                          onClick={() => selectMit(chip.selectId)}
-                        >
-                          <MitIcon name={chip.name} size={18} title={chip.name} />
-                        </button>
-                      ))}
-                      {slot.job !== "unset" && (
-                        <button
-                          type="button"
-                          className="simple-grid-cell-add"
-                          title="Add mitigation"
-                          aria-label="Add mitigation"
-                          onClick={() =>
-                            setPickerCell({ slotId: slot.id, rowIndex: item.rowIndex })
-                          }
-                        >
-                          +
-                        </button>
-                      )}
-                      {pickerOpen && (
-                        <SimpleGridMitPicker
-                          slot={slot}
-                          effectTime={item.inst.effect_time}
-                          onClose={() => setPickerCell(null)}
-                        />
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            })}
+          </tbody>
+        </table>
+      </div>
+      <SimpleGridAddRow />
     </div>
   );
 }

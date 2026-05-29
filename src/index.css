@@ -668,10 +668,103 @@ button {
   color: #888;
   font-size: 0.9rem;
 }
+.simple-grid-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .simple-grid-scroll {
   flex: 1;
   min-height: 0;
   overflow: auto;
+}
+.simple-grid-phase-prefix {
+  color: #888;
+  margin-right: 0.25rem;
+}
+.simple-grid-time-input {
+  width: 4.5rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #bbb;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  padding: 0.1rem 0.25rem;
+}
+.simple-grid-time-input:hover {
+  border-color: #444;
+}
+.simple-grid-time-input:focus {
+  border-color: #666;
+  background: #2a2a2a;
+  color: #eee;
+  outline: none;
+}
+.simple-grid-time-input.is-invalid {
+  border-color: #c0504d;
+  color: #e88;
+}
+.simple-grid-addrow {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  background: #1c1c1c;
+  border-top: 1px solid #333;
+}
+.simple-grid-addrow--empty {
+  color: #777;
+  font-size: 0.78rem;
+}
+.simple-grid-addrow-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #888;
+}
+.simple-grid-addrow-type,
+.simple-grid-addrow-time {
+  background: #2a2a2a;
+  color: #ddd;
+  border: 1px solid #444;
+  border-radius: 3px;
+  height: 26px;
+  font-size: 0.78rem;
+  padding: 0 0.4rem;
+}
+.simple-grid-addrow-time {
+  width: 4.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.simple-grid-addrow-target {
+  position: relative;
+}
+.simple-grid-addrow-target-popover {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: 10;
+  margin-bottom: 4px;
+}
+.simple-grid-addrow-submit {
+  background: #2f5d8a;
+  color: #fff;
+  border: 1px solid #3d6fa0;
+  border-radius: 3px;
+  height: 26px;
+  padding: 0 0.7rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.simple-grid-addrow-submit:hover:not(:disabled) {
+  background: #366aa0;
+}
+.simple-grid-addrow-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .simple-grid {
   border-collapse: collapse;
