@@ -4,11 +4,14 @@
 // the instance at that time and selects it, so MitInspectorPanel takes over
 // (incl. the recipient TargetPicker for affects:target / target_or_self).
 //
-// A parent mit (one with gated children) is instead dropped 2s earlier so its
-// auto-spawned child (parent+2) lands on the clicked hit — the child carries the
-// mitigation the planner is placing the row for. This grid-only shift falls back
-// to the clicked time when the earlier spot is out of bounds or on cooldown
-// (see chooseParentPlacement); the canvas placement path is unaffected.
+// A parent mit (one with gated children) is instead dropped back so its LAST
+// auto-spawned child lands on the clicked hit — 2s per child charge (2s for a
+// single-charge child, 4s for SCH Consolation's two charges). The child carries
+// the mitigation the planner is placing the row for. This grid-only shift falls
+// back to the clicked time when the earlier spot is out of bounds, on cooldown,
+// or when a boss hit sits between the shifted spot and the clicked hit (which
+// would drag the parent's Home onto an unintended row) — see chooseParentPlacement.
+// The canvas placement path is unaffected.
 //
 // Availability reuses the canvas's snap-free legality core (isPlacementLegal)
 // plus the same charge-row bucketing and effective-footprint/cooldown
@@ -122,18 +125,26 @@ export interface ParentPlacement {
 }
 
 // Where a parent (gated-children) mit lands when added from a Simple-view cell.
-// To anchor the CHILD on the clicked hit, the parent drops 2s earlier so its
-// auto-spawned child (parent+2) lands at `clickedSec` — but only when that
-// earlier spot is in-bounds (>= 0) and a legal placement (`shifted.available`).
-// Otherwise (no children → `shifted` is null, out of bounds, or a cooldown
-// collision) the parent lands at `clickedSec` and the child spawns at +2s.
+// To anchor the LAST child on the clicked hit, the parent drops back `shiftSec`
+// (2s per child charge) so its latest auto-spawned child lands at `clickedSec`.
+// The shift only happens when ALL hold:
+//   • shiftSec > 0 (the mit has gated children),
+//   • the shifted spot is in-bounds (>= 0),
+//   • no boss hit lies in [shiftedSec, clickedSec) — an intermediate hit would
+//     pull the parent's Home onto a row the planner didn't click,
+//   • the shifted spot is a legal placement (`shiftedLegal.available`).
+// Otherwise the parent lands at `clickedSec` and the child(ren) spawn at +2s…+2Ns.
 export function chooseParentPlacement(
   clickedSec: number,
   clickedChargeRow: number,
-  shifted: { available: boolean; chargeRow: number } | null,
+  shiftSec: number,
+  bossHitTimes: readonly number[],
+  shiftedLegal: { available: boolean; chargeRow: number } | null,
 ): ParentPlacement {
-  if (clickedSec - 2 >= 0 && shifted?.available) {
-    return { effectTime: clickedSec - 2, chargeRow: shifted.chargeRow };
+  const shiftedSec = clickedSec - shiftSec;
+  const intervalClear = !bossHitTimes.some((t) => t >= shiftedSec && t < clickedSec);
+  if (shiftSec > 0 && shiftedSec >= 0 && intervalClear && shiftedLegal?.available) {
+    return { effectTime: shiftedSec, chargeRow: shiftedLegal.chargeRow };
   }
   return { effectTime: clickedSec, chargeRow: clickedChargeRow };
 }
@@ -148,6 +159,7 @@ export function SimpleGridMitPicker({ slot, effectTime, onClose }: SimpleGridMit
   const addMit = useTimelineStore((s) => s.addMitigationInstance);
   const selectMit = useTimelineStore((s) => s.selectMitInstance);
   const allMits = useTimelineStore((s) => s.timeline?.mitigation_instances) ?? NO_MITS;
+  const bossInstances = useTimelineStore((s) => s.timeline?.boss_ability_instances);
   const mitStates = useMitInstanceStates();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -177,13 +189,25 @@ export function SimpleGridMitPicker({ slot, effectTime, onClose }: SimpleGridMit
     slot.job === "unset" ? [] : getMitsForJob(slot.job).filter((mt) => mt.gated_by == null);
 
   const handlePick = (mt: MitigationType, chargeRow: number) => {
-    // For a parent mit, recheck legality at the 2s-earlier spot; chooseParentPlacement
-    // shifts there when legal so the auto-spawned child lands on the clicked hit.
-    const shifted =
-      getGatedChildrenOf(mt.id).length > 0 && effectTime - 2 >= 0
-        ? computeMitAvailability(mt, slot.id, effectTime - 2, allMits, mitStates)
+    // Parent shift = 2s per child charge, so the LAST auto-spawned child lands on
+    // the clicked hit. Recheck legality at the shifted spot; chooseParentPlacement
+    // shifts there only when in-bounds, cooldown-legal, and no boss hit sits
+    // between the shifted spot and the clicked hit.
+    const children = getGatedChildrenOf(mt.id);
+    const shiftSec =
+      children.length > 0 ? Math.max(...children.map((c) => 2 * Math.max(1, c.max_charges))) : 0;
+    const shiftedSec = effectTime - shiftSec;
+    const shiftedLegal =
+      shiftSec > 0 && shiftedSec >= 0
+        ? computeMitAvailability(mt, slot.id, shiftedSec, allMits, mitStates)
         : null;
-    const placement = chooseParentPlacement(effectTime, chargeRow, shifted);
+    const placement = chooseParentPlacement(
+      effectTime,
+      chargeRow,
+      shiftSec,
+      (bossInstances ?? []).map((b) => b.effect_time),
+      shiftedLegal,
+    );
     const id = addMit({
       type_id: mt.id,
       player_slot_id: slot.id,
