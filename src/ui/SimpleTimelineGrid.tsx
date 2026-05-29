@@ -189,8 +189,10 @@ export function SimpleTimelineGrid() {
 
   // When the selected mit is a gated child, compute where it may be re-anchored:
   // legal boss-hit rows in the parent's execution zone (mirrors the canvas drag
-  // clamp + 2s charge gap), minus the rows it already covers. The grid draws a
-  // dashed placement slot at each, in the child's own sub-column.
+  // clamp + 2s charge gap), plus coverage-only rows just past the zone that the
+  // child's active window can still reach (placed at hit − durationSec), minus
+  // the rows it already covers. The grid draws a dashed placement slot at each,
+  // in the child's own sub-column; clicking writes effectTimeByRow's value.
   const placement = useMemo(() => {
     if (!selectedMitId || !mitInstances) return null;
     const child = mitInstances.find((m) => m.id === selectedMitId);
@@ -201,16 +203,18 @@ export function SimpleTimelineGrid() {
     const parentType = getMitById(parent.type_id);
     if (!childType || !parentType) return null;
     const execZone = childType.execution_zone_seconds ?? parentType.duration_seconds;
+    const durationSec = instanceActiveDurationSeconds(childType, child);
     const [proj] = projectInstancesToHits(hitTimes, [
       {
         id: child.id,
         effectTime: child.effect_time,
-        durationSec: instanceActiveDurationSeconds(childType, child),
+        durationSec,
       },
     ]);
     const rows = legalChildAnchorRows(hitTimes, {
       parentEffectTime: parent.effect_time,
       execZoneSeconds: execZone,
+      durationSec,
       fightDurationSec: fightDurationSec ?? Number.POSITIVE_INFINITY,
       siblingEffectTimes: mitInstances
         .filter(
@@ -224,7 +228,8 @@ export function SimpleTimelineGrid() {
       childId: child.id,
       slotId: child.player_slot_id,
       column: columnById.get(child.id) ?? 0,
-      rows: new Set(rows),
+      rows: new Set(rows.map((r) => r.hitIndex)),
+      effectTimeByRow: new Map(rows.map((r) => [r.hitIndex, r.effectTime])),
     };
   }, [selectedMitId, mitInstances, hitTimes, fightDurationSec, columnById]);
 
@@ -313,12 +318,15 @@ export function SimpleTimelineGrid() {
   // One slot cell's chips. While a child is selected, legal re-anchor rows show
   // a dashed placement slot: aligned to the child's sub-column when that column
   // is free there, otherwise trailing the row so no other chip is hidden.
-  const renderCellInner = (slotId: string, rowIndex: number, hitTime: number): ReactNode => {
+  const renderCellInner = (slotId: string, rowIndex: number): ReactNode => {
     const chips = chipsBySlotRow.get(slotId)?.get(rowIndex) ?? [];
     const place =
       placement != null && placement.slotId === slotId && placement.rows.has(rowIndex)
         ? placement
         : null;
+    // The effect_time to write when this row's placement slot is clicked: the
+    // hit itself for activation rows, or hit − durationSec for coverage-only rows.
+    const placeEffectTime = place?.effectTimeByRow.get(rowIndex) ?? 0;
 
     if (!showCoverageMarkers) {
       // Markers hidden: left-pack the Home chips; the placement slot trails them.
@@ -326,7 +334,7 @@ export function SimpleTimelineGrid() {
       return (
         <>
           {homeChips.map((chip) => renderChip(chip))}
-          {place && renderPlacementSlot(place.childId, hitTime, `place-${rowIndex}`)}
+          {place && renderPlacementSlot(place.childId, placeEffectTime, `place-${rowIndex}`)}
         </>
       );
     }
@@ -343,7 +351,7 @@ export function SimpleTimelineGrid() {
       // that column is never displaced — the slot then trails the row (below).
       const isOwnMarker = chip != null && place != null && chip.instanceId === place.childId;
       if (place && col === placeCol && (chip == null || isOwnMarker)) {
-        nodes.push(renderPlacementSlot(place.childId, hitTime, `place-${rowIndex}`));
+        nodes.push(renderPlacementSlot(place.childId, placeEffectTime, `place-${rowIndex}`));
         placed = true;
       } else if (chip) {
         nodes.push(renderChip(chip));
@@ -359,7 +367,7 @@ export function SimpleTimelineGrid() {
       }
     }
     if (place && !placed) {
-      nodes.push(renderPlacementSlot(place.childId, hitTime, `place-${rowIndex}`));
+      nodes.push(renderPlacementSlot(place.childId, placeEffectTime, `place-${rowIndex}`));
     }
     return nodes;
   };
@@ -516,7 +524,7 @@ export function SimpleTimelineGrid() {
                           />
                         )}
                         <div className="simple-grid-cell-inner">
-                          {renderCellInner(slot.id, item.rowIndex, item.inst.effect_time)}
+                          {renderCellInner(slot.id, item.rowIndex)}
                         </div>
                         {pickerOpen && (
                           <SimpleGridMitPicker

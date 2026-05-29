@@ -46,7 +46,7 @@ export const WHM_MITS: MitigationType[] = [
     job: "WHM",
     // vestigial — `gated_by` handles placement; CD mirrors parent for legacy consumers.
     cooldown_seconds: 120,
-    duration_seconds: 0,
+    duration_seconds: 10,
     mitigation_per_type: {},
     affects: "party",
     max_charges: 1,
