@@ -790,12 +790,28 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
   /* Fixed width keeps the column from widening when a player's name is long;
      the body cells (.simple-grid-cell-inner) share this width so they align. */
   width: var(--simple-col-width);
 }
+/* The label sizes to the job text and is centered within the column; the icon
+   is absolutely positioned to its left so it doesn't shift the text off-center. */
 .simple-grid-slot-label {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+}
+.simple-grid-slot-icon {
+  position: absolute;
+  right: 100%;
+  margin-right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+.simple-grid-slot-text {
   text-transform: none;
   letter-spacing: 0;
   color: #ccc;

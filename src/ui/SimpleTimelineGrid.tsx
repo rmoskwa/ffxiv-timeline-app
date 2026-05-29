@@ -201,8 +201,12 @@ export function SimpleTimelineGrid() {
                   style={{ backgroundColor: jobColor(slot.job) }}
                 >
                   <div className="simple-grid-slot-head">
-                    <JobIcon job={slot.job} size={20} title={slot.name_label ?? slot.job} />
-                    <span className="simple-grid-slot-label">{slot.name_label ?? slot.job}</span>
+                    <span className="simple-grid-slot-label">
+                      <span className="simple-grid-slot-icon">
+                        <JobIcon job={slot.job} size={20} title={slot.name_label ?? slot.job} />
+                      </span>
+                      <span className="simple-grid-slot-text">{slot.name_label ?? slot.job}</span>
+                    </span>
                   </div>
                 </th>
               ))}
