@@ -470,7 +470,7 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
 // Renders one gated child instance on its parent's bar: optional duration band
 // (split into inner-of-parent-active and hashed extension-past-active),
 // draggable icon clamped to the execution zone, and an X-affordance when
-// selected. PRD §6.2-§6.4.
+// selected.
 
 interface ChildOverlayProps {
   child: MitigationInstance;
@@ -638,7 +638,7 @@ function ChildOverlay({
           style={{
             left: geo.extensionBand.leftPx,
             width: geo.extensionBand.widthPx,
-            // 45° hashed pattern in child's color. ~3px line spacing per PRD §6.2.
+            // 45° hashed pattern in child's color. ~3px line spacing.
             background: `repeating-linear-gradient(45deg, ${childColor} 0 3px, transparent 3px 6px)`,
           }}
           onPointerDown={handleExtensionPointerDown}

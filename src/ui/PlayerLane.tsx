@@ -69,7 +69,7 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
 
   const label = slot.name_label ?? (slot.job === "unset" ? "Unset" : slot.job);
   // Gated children render on their parent's bar (see MitBar) and do not get
-  // their own sub-lane. PRD §6.1.
+  // their own sub-lane.
   const mits =
     slot.job === "unset" ? [] : getMitsForJob(slot.job).filter((mt) => mt.gated_by == null);
   const isUnset = slot.job === "unset";

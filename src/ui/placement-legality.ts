@@ -1,6 +1,6 @@
 // Snap-free placement-legality core, shared by the canvas sub-lane
 // (MitSubLane) and the Simple Timeline View's Mit picker so the two surfaces
-// can never disagree about what is legal. See the PRD §6 refactor note and
+// can never disagree about what is legal. See
 // docs/adr/0002-simple-view-live-projection.md.
 //
 // Pure scalar function: the candidate placement occupies [candidateSec,

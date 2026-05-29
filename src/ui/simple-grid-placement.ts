@@ -89,7 +89,7 @@ export function legalChildAnchorRows(
 // (effectTime ≤ T) are "co-located" — they ride the parent's row — while charges
 // past it sit "away" on their own hit. The −2s-per-co-located-charge shift is
 // re-derived from how many charges remain co-located, so the parent slides up
-// as charges leave the stack and back down as they return (PRD §6.5; e.g. SCH
+// as charges leave the stack and back down as they return (e.g. SCH
 // Summon Seraph rides T−4 with two Consolations and bumps to T−2 when one
 // leaves). The parent lands at T − 2·(co-located count); the co-located charges
 // fill the tight 2s stack ending exactly on T; away charges keep their time.

@@ -16,7 +16,7 @@
 // Availability reuses the canvas's snap-free legality core (isPlacementLegal)
 // plus the same charge-row bucketing and effective-footprint/cooldown
 // resolution MitSubLane uses, so the grid and canvas can never disagree about
-// what is legal at a given second (PRD §6). This is React-shell seam code, not
+// what is legal at a given second. This is React-shell seam code, not
 // a pure view module — it resolves domain values before calling the core.
 
 import { useEffect, useRef } from "react";

@@ -514,7 +514,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   // legal effect_time.
   // When the placed type has gated children in the library, this action also
   // auto-spawns them at the middle of each child's execution zone (one-shot;
-  // never re-runs). PRD §6.5.
+  // never re-runs).
   addMitigationInstance: (input) => {
     const id = crypto.randomUUID();
     // Check against the cap including the child auto-spawn cost so a parent
@@ -546,7 +546,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   },
 
   // When a parent's effect_time changes, all attached children move by the
-  // same delta — they are offset-glued. PRD §6.4. Other patches do not cascade.
+  // same delta — they are offset-glued. Other patches do not cascade.
   updateMitigationInstance: (id, patch) =>
     set((s) => {
       if (!s.timeline) return s;
@@ -569,8 +569,8 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       };
     }),
 
-  // Removing a parent cascades to every instance with parent_instance_id === id
-  // (PRD §6.6). No tombstone — pure removal.
+  // Removing a parent cascades to every instance with parent_instance_id === id.
+  // No tombstone — pure removal.
   removeMitigationInstance: (id) =>
     set((s) => {
       if (!s.timeline) return s;
@@ -719,7 +719,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
 }));
 
 // Default positions for a child's N charges, anchored 2s after the parent's
-// cast and stepped by the 2s gap PRD §6.5 calls for (the SCH GCD floor). For
+// cast and stepped by the 2s gap of the SCH GCD floor. For
 // N=1: [parent+2]. For N=2: [parent+2, parent+4]. The 2s offset separates the
 // child icon from its parent on the canvas and lands the child on the parent's
 // hit row in the Simple view. Exported for the inspector's re-add affordance.
@@ -732,7 +732,7 @@ export function defaultChildPositions(parentEffectTime: number, charges: number)
 }
 
 // Build the child MitigationInstance records to materialize alongside a newly-
-// placed parent. PRD §6.5. PCT special case: when a gated child also `consumes`
+// placed parent. PCT special case: when a gated child also `consumes`
 // its parent, run the gating pass with the new parent inserted; if the parent
 // would already be absorbed before the default child position, skip that child.
 // SCH special case: a multi-charge child whose charges overwrite each other

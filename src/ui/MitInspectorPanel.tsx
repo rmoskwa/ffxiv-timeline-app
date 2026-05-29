@@ -1,7 +1,7 @@
 // Right-sidebar inspector for the currently-selected mit. Renders when:
 //   (a) the mit needs a target (affects:target / target_or_self), OR
 //   (b) the mit is a parent type with at least one gated child in the library
-//       (PRD §6.7) — exposes a Children section to delete/re-add children.
+//       exposes a Children section to delete/re-add children.
 // For non-target leaf mits, nothing is exposed and the panel stays hidden.
 
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";

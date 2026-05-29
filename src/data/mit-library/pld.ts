@@ -47,7 +47,7 @@ export const PLD_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     // Cure-potency barrier approximated as flat 15% max HP — revisit when
-    // potency shields are properly modeled (PRD line 33).
+    // potency shields are properly modeled.
     barrier: { kind: "max_hp_pct", value: 15 },
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Guardian",
   },

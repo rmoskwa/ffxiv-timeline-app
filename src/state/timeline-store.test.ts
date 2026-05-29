@@ -182,7 +182,7 @@ describe("timeline-store — §7 spam add", () => {
 });
 
 // ─── Gated-child behaviors ──────────────────────────────────────────────────
-// PRD §6.5 / §6.6 / §10. Parent-placement auto-spawns gated children at the
+// Parent-placement auto-spawns gated children at the
 // middle of each child's execution zone. Parent-delete cascades. Parent drag
 // carries children by offset. The PCT pair has a special-case skip for
 // pre-absorbed Tempera Coat.

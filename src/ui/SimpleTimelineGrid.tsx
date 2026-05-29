@@ -3,7 +3,7 @@
 // tiebreak), 4 fixed columns + one Slot column per displayed roster slot.
 // Each cell shows a slot's mit chips by TEMPORAL presence: the Home chip at the
 // First covered hit, faded Coverage markers at later covered hits — computed by
-// the pure projectInstancesToHits module. No survival/lethality math (PRD §2).
+// the pure projectInstancesToHits module. No survival/lethality math.
 //
 // Chip click drives selectMitInstance; selecting a gated child reveals dashed
 // placement slots at its legal re-anchor rows (and an × to delete it). The

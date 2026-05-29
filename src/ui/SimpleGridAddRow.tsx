@@ -1,6 +1,6 @@
 // Add Row footer for the Simple Timeline View: creates a BossAbilityInstance
-// from an EXISTING BossAbilityType (new-type creation stays in BossAbilityPanel,
-// PRD §2-out). Pick a type, enter an effect_time, and — when the type's pattern
+// from an EXISTING BossAbilityType (new-type creation stays in
+// BossAbilityPanel). Pick a type, enter an effect_time, and — when the type's pattern
 // needs it (targeted/stack) — pick recipients, then Add. Mirrors
 // BossAbilityPanel's AddPlacementForm so the two entry points behave the same.
 
