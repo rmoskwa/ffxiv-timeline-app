@@ -651,6 +651,122 @@ button {
   display: flex;
   flex-direction: column;
 }
+.editor-view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.75rem;
+  background: #1c1c1c;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+.simple-grid-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 0.9rem;
+}
+.simple-grid-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.simple-grid {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.8rem;
+  color: #ddd;
+}
+.simple-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #1c1c1c;
+  border-bottom: 1px solid #444;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #aaa;
+  white-space: nowrap;
+}
+.simple-grid-slot-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.simple-grid-slot-label {
+  text-transform: none;
+  letter-spacing: 0;
+  color: #ccc;
+}
+.simple-grid tbody td,
+.simple-grid tbody th {
+  padding: 0.3rem 0.6rem;
+  border-bottom: 1px solid #2a2a2a;
+  text-align: left;
+  font-weight: 400;
+  vertical-align: middle;
+}
+.simple-grid-row:hover td,
+.simple-grid-row:hover th {
+  background: #232323;
+}
+.simple-grid-col-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #bbb;
+}
+.simple-grid-col-name {
+  color: #eee;
+}
+.simple-grid-col-type {
+  text-transform: capitalize;
+  color: #aaa;
+}
+.simple-grid-col-damage {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.simple-grid-phase-head {
+  padding: 0.35rem 0.6rem;
+  background: #242424;
+  border-top: 1px solid #444;
+  border-bottom: 1px solid #444;
+  color: #ddd;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+.simple-grid-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  min-width: 44px;
+}
+.simple-grid-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.simple-grid-chip.is-coverage {
+  opacity: 0.4;
+}
+.simple-grid-chip.is-gated {
+  outline: 1px dashed #888;
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+.simple-grid-empty-row {
+  text-align: center;
+  color: #777;
+  padding: 1.5rem;
+}
 
 /* ─── Boss ability panel ─────────────────────────────────────────────── */
 

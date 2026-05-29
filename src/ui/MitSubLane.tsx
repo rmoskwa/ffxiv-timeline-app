@@ -13,6 +13,7 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { MitBar } from "./MitBar";
 import { MitIcon } from "./MitIcon";
 import { PhaseDividers } from "./PhaseDividers";
+import { type BlockingInterval, isPlacementLegal } from "./placement-legality";
 import { snapClientXToSecond } from "./timeline-constants";
 import { useMitInstanceStates } from "./use-derived";
 import { useRowSize } from "./use-row-size";
@@ -139,19 +140,20 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
 
   const legalHoverSec = (raw: number): number | null => {
     if (raw < 0 || raw > laneDurationSec) return null;
+    const blockers: BlockingInterval[] = [];
     for (let i = 0; i < instances.length; i++) {
       const n = instances[i];
       const nEnd = neighborEnds[i];
       if (!n || nEnd == null) continue;
-      if (raw < nEnd && raw + ghostFootprintSec > n.effect_time) return null;
+      blockers.push({ startSec: n.effect_time, endSec: nEnd });
     }
     for (let i = 0; i < partnerInstances.length; i++) {
       const p = partnerInstances[i];
       const pEnd = partnerCdEnds[i];
       if (!p || pEnd == null) continue;
-      if (raw < pEnd && raw + ghostFootprintSec > p.effect_time) return null;
+      blockers.push({ startSec: p.effect_time, endSec: pEnd });
     }
-    return raw;
+    return isPlacementLegal(raw, ghostFootprintSec, blockers) ? raw : null;
   };
 
   const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {

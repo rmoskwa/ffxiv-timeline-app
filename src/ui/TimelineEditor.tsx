@@ -4,10 +4,13 @@ import { BossAbilityPanel } from "./BossAbilityPanel";
 import { ConflictsPanel } from "./ConflictsPanel";
 import { MitInspectorPanel } from "./MitInspectorPanel";
 import { PhasesPanel } from "./PhasesPanel";
+import { SimpleTimelineGrid } from "./SimpleTimelineGrid";
 import { TimelineCanvas } from "./TimelineCanvas";
+import { type EditorView, useEditorViewStore } from "./use-editor-view";
 
 export function TimelineEditor() {
   useSelectionKeyboardHandlers();
+  const view = useEditorViewStore((s) => s.view);
   return (
     <div className="editor-layout">
       <aside className="editor-sidebar">
@@ -15,12 +18,40 @@ export function TimelineEditor() {
         <BossAbilityPanel />
       </aside>
       <main className="editor-main">
-        <TimelineCanvas />
+        <EditorViewToggle />
+        {view === "canvas" ? <TimelineCanvas /> : <SimpleTimelineGrid />}
       </main>
       <aside className="editor-right">
         <MitInspectorPanel />
         <ConflictsPanel />
       </aside>
+    </div>
+  );
+}
+
+const VIEW_OPTIONS: ReadonlyArray<{ value: EditorView; label: string }> = [
+  { value: "canvas", label: "Canvas" },
+  { value: "simple", label: "Simple" },
+];
+
+// Always-visible segmented control at the top of editor-main. Swaps only the
+// content below it; the side panels are unaffected.
+function EditorViewToggle() {
+  const view = useEditorViewStore((s) => s.view);
+  const setView = useEditorViewStore((s) => s.setView);
+  return (
+    <div className="editor-view-toggle">
+      {VIEW_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          className={`toolbar-toggle${view === opt.value ? " is-selected" : ""}`}
+          onClick={() => setView(opt.value)}
+          aria-pressed={view === opt.value}
+        >
+          {opt.label}
+        </button>
+      ))}
     </div>
   );
 }
