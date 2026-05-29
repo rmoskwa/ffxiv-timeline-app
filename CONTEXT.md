@@ -59,7 +59,7 @@ A user-annotated contiguous segment of the timeline, defined by a `start_time` a
 _Avoid_: act, segment, section, stage
 
 **Phase ordinal**:
-The 1-indexed position of a **Phase** in the timeline's ordered phase list. Drives the `P?:` prefix rendered on the boss-lane **Label** chip, **BossAbilityPanel** sub-rows, and **ConflictsPanel** rows that reference a boss instance. Derived from list position — never stored, never affected by the user-given phase name (renaming a phase from `"Phase 2"` to `"Adds"` does not change its prefix). Re-numbers automatically when phases are added, deleted (via merge-into-previous), or have their boundaries slid.
+The 1-indexed position of a **Phase** in the timeline's ordered phase list. Drives the `P?:` prefix rendered on the boss-lane **Label** chip, **BossAbilityPanel** sub-rows, **ConflictsPanel** rows that reference a boss instance, and **Simple Timeline View** rows (which also gain phase header/separator rows at each boundary; flat list when there are zero phases). Derived from list position — never stored, never affected by the user-given phase name (renaming a phase from `"Phase 2"` to `"Adds"` does not change its prefix). Re-numbers automatically when phases are added, deleted (via merge-into-previous), or have their boundaries slid.
 _Avoid_: phase number, phase index, phase id (in user-facing prose)
 
 ### Targeting & effects
@@ -256,26 +256,42 @@ _Avoid_: phase boundary line, phase break, separator
 
 ### Imports
 
-**Bank**:
-A standalone document holding one or more **Import Sessions**, all for the **same encounter**. The encounter is fixed when the bank is first created — set from the user's pick in the encounter-selection screen — and is immutable for the bank's lifetime; a bank never mixes data from multiple bosses. Banks are independent of the Timeline: a user can open a Bank with no Timeline, a Timeline with no Bank, or both. Banks exist to make Type creation easier through cross-pull pattern detection; once a row is **promoted** the resulting Type is self-contained and no longer depends on the Bank.
-_Avoid_: catalog, library, import list
-
 **Import** / **Export**:
-Scoped data movement *into* or *out of* an already-open document — a subset of the document's contents, not the document itself. Examples: fetching an fflogs report into a **Bank** as a new **Import Session**; loading a **boss timeline** into the current Timeline. Distinct from **Open** / **Save**, which apply to whole-document file operations on standalone artifacts (Timelines, Banks).
-_Avoid_: fetch, ingest, sync; never use "import" for opening a full Timeline or Bank from disk (use "Open" there)
+Scoped data movement *into* or *out of* an already-open document — a subset of the document's contents, not the document itself. The live example is loading a **boss timeline** into the current Timeline (`useBossImportExport`). Distinct from **Open** / **Save**, which apply to whole-document file operations on standalone artifacts (Timelines).
+_Avoid_: fetch, ingest, sync; never use "import" for opening a full Timeline from disk (use "Open" there)
 
-**Import Session**:
-One act of fetching a single fflogs report's pulls of the bank's encounter. Records source provenance (`report_code`, `imported_at`) and the rolled-up Bank Rows. A bank holds at most one Session per `report_code`: re-importing the same report **refreshes** (overwrites) the existing session for that report — it does not append. The encounter is implicit from the parent Bank and not stored on the session.
-_Avoid_: import (already taken), fetch
+### Simple Timeline View
 
-**Bank Row**:
-One `(enemyNPC.gameID, ability.gameID)` summary within an Import Session. Identity is structural, not user-given. Read-only — the user never edits a Bank Row.
-_Avoid_: ability, entry, item
+An alternate, grid-shaped render of the **same** Timeline — a lens, not a separate document. Switching between it and the **canvas** (the "advanced" view) never copies or stages data: every edit made in either view mutates the one shared store immediately. The toggle swaps **only** the central editor region (`editor-main`, where `TimelineCanvas` lives); the left sidebar (`PhasesPanel`, `BossAbilityPanel`) and right sidebar (`MitInspectorPanel`, `ConflictsPanel`) stay mounted in both views, so **Selection**, the inspector, target picking, and conflict reporting behave identically regardless of view. Within this section only, "row" and "column" are canonical (a grid genuinely has them) — this is a deliberate exception to the **Lane** entry's _Avoid_ of "row", and the two never apply to the same surface (the canvas has Lanes; the Simple Timeline View has rows).
 
-**Promotion**:
-The user action of converting a Bank Row into a `BossAbilityType` on the currently-open Timeline. Distinct from **Placement** — promotion creates the Type; placement creates Instances of the Type on the boss lane.
-_Avoid_: import (already taken), accept, materialize
+**Simple Timeline View**:
+The grid lens on a Timeline. Fixed left columns — **Ability Time**, **Ability Cast Name**, **Type** (damage type), **Damage** — followed by one **Slot column** per *currently displayed* roster slot (respecting the same hide/show state as the canvas). Each row is one **Boss ability instance**, sorted by `effect_time` ascending and tiebroken by position in `boss_ability_instances` (insertion order) for simultaneous hits; each **Cell** at (row × slot) holds that slot's mitigations for that **hit**. The Damage column always shows the type's raw `base_damage` verbatim — never split for a `stack`, never reduced by mits. No **Lethal** styling or survival math appears here: the canvas is "advanced mode" where mitigations are planned to actually survive damage, and the Simple Timeline View is the cliff-notes that communicate *where* mitigations are expected to be present. Purpose: an at-a-glance view of which mitigations cover which hits, in discrete events rather than the canvas's second-by-second detail.
+_Avoid_: simple view (acceptable colloquially), simplified viewer, excel view, table view, grid view
 
-**Presence rate**:
-`pulls_seen / pulls_reaching` — the fraction of pulls that lived long enough to have seen an ability where it actually fired. 1.000 = scripted/unavoidable; below 1.000 = avoidable, RNG-targeted, or conditional. The primary "is this real" signal in the bank UI.
-_Avoid_: frequency, prevalence
+**Slot column**:
+One column in the **Simple Timeline View** per currently displayed roster **player slot**, headed by the slot's job/label. Appears and disappears with the same lane visibility state that hides canvas lanes.
+_Avoid_: job column, player column, mitigation column
+
+**Cell** (Simple Timeline View):
+The intersection of one row (a **Boss ability instance**) and one **Slot column**. A chip appears in the column of its **caster** (`player_slot_id`) — *not* its recipient — so the grid reads as "what each player presses and when," consistent with the per-slot **Mit picker**. A mit is *present* at a hit by **active window** alone (`hit.effect_time ∈ [effect_time, effect_time + duration_seconds]`), a purely temporal test — *not* the full `coverage()` check (no damage-type or reach requirement). Consequently **Utility entries** (no %mit, no barrier) and active-but-off-type mits still render as present. Each present chip is shown as the **Home cell** (editable) or a **Coverage marker** (read-only). Adding a mitigation to a cell creates a real `MitigationInstance` bound to that slot at the row's **effect time**. A **child mit** appears as its own chip (in its own **First covered hit** cell, which may differ from the parent's), visually marked as gated and edited *only* through the parent's `MitInspectorPanel` (`ChildSlotList`) — never the **Mit picker** (which offers only parents) and never dragged/deleted directly; deleting the parent cascades. Children come into being solely by `autoSpawnChildren` when the parent is added.
+_Avoid_: grid cell, tile
+
+**Home cell**:
+The single editable **Cell** for a mitigation instance in the **Simple Timeline View**: the cell of its **First covered hit** on the instance's slot column. For a **Mit picker** placement this is the row the mit was added to (its `effect_time` already equals a hit time); for a canvas-placed *off-hit* mit (one whose `effect_time` falls between hits) it is the first hit its **active window** reaches — a display-only projection that never rewrites the instance's real `effect_time`. An instance whose active window covers *no* hit has no home cell and is invisible in the grid (it protects nothing). Exactly one home cell per visible instance.
+_Avoid_: owner cell, source cell
+
+**First covered hit**:
+The earliest **Boss ability instance** whose `effect_time` falls inside a mitigation instance's **active window** `[effect_time, effect_time + duration_seconds]`. Computed by a standalone projection module dedicated to the **Simple Timeline View** — deliberately separate from the core damage/coverage and placement code so the grid's "snap-to-hit for editing" never leaks into actual timeline timings. Determines an instance's **Home cell**.
+_Avoid_: nearest hit, snapped hit, anchor hit
+
+**Coverage marker**:
+The faded, read-only rendering of a mitigation instance in the cells of the *later* hits its **active window** covers — every covered hit after its **First covered hit**. Shows "this hit is also protected" without being a second editable copy.
+_Avoid_: ghost chip, shadow mit, coverage chip
+
+**Mit picker**:
+The transient, per-**Cell** picker opened from a slot's cell in the **Simple Timeline View**. Lists that slot's job mitigations (`getMitsForJob`), each annotated by availability *at the row's `effect_time`*. Unlike the canvas — which **snaps** an illegal click to the earliest legal whole-second — the picker never snaps: it places at *exactly* the hit's `effect_time` or not at all. An entry is selectable iff placing at that exact time is legal under the canvas's existing rules (a free charge per `max_charges`/`assignChargeRows`, no footprint overlap with a same-`(slot, type)` neighbor via `effectiveBarFootprintSeconds`, and no **shared recast** partner blocking that time). Unavailable entries stay *visible but greyed* with a reason ("on cooldown until 1:18", "no charges", "shared recast with Nascent Flash") rather than being hidden. Selecting one creates a `MitigationInstance` bound to the slot at the row's effect time. Not a stored document — it holds nothing and accumulates nothing; parallels `BossPlacementPicker` and `JobPicker`. (The word "bank" is deliberately *not* used — it carries a misleading "saved reservoir" connotation.)
+_Avoid_: bank, mitigation bank, mit bank, library, reservoir
+
+**Add Row**:
+The **Simple Timeline View** action that creates one new **Boss ability instance** from an *existing* `BossAbilityType` — pick a stored type (its Name/Type/Damage come along, read-only), enter the `effect_time`, and pick a target if the **target pattern** requires it. Minting a brand-new type stays in the Boss Abilities panel's `NewTypeForm`; Add Row never creates a type. In the grid, only instance-level fields are editable inline — the **Time** cell (moves the instance, re-sorts the row) and the target — while the type-level Name/Type/Damage cells are read-only and edited in the Boss Abilities panel, so a single edit can never silently ripple across every instance of a type.
+_Avoid_: new row, insert row, add ability (as the button)
