@@ -27,6 +27,11 @@ import { SimpleGridAddRow } from "./SimpleGridAddRow";
 import { SimpleGridMitPicker } from "./SimpleGridMitPicker";
 import { projectInstancesToHits } from "./simple-grid-projection";
 import { COLUMN_WIDTH_MAX, COLUMN_WIDTH_MIN, useColumnWidthStore } from "./use-column-width";
+import {
+  SIMPLE_ICON_SIZE_MAX,
+  SIMPLE_ICON_SIZE_MIN,
+  useSimpleIconSizeStore,
+} from "./use-simple-icon-size";
 import { useViewStore } from "./use-view";
 
 const FIXED_COLUMN_COUNT = 4;
@@ -67,6 +72,8 @@ export function SimpleTimelineGrid() {
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
   const columnWidth = useColumnWidthStore((s) => s.columnWidth);
   const setColumnWidth = useColumnWidthStore((s) => s.setColumnWidth);
+  const iconSize = useSimpleIconSizeStore((s) => s.iconSize);
+  const setIconSize = useSimpleIconSizeStore((s) => s.setIconSize);
   const [pickerCell, setPickerCell] = useState<PickerCell | null>(null);
 
   // Currently displayed slots — same hiddenSlotIds semantics as the canvas lanes.
@@ -175,6 +182,20 @@ export function SimpleTimelineGrid() {
             title={`Column width: ${columnWidth}px (${COLUMN_WIDTH_MIN}–${COLUMN_WIDTH_MAX})`}
           />
           <span className="row-size-readout">{columnWidth}px</span>
+        </div>
+        <span className="timeline-toolbar-title">Timeline Icon Size:</span>
+        <div className="timeline-toolbar-zoom">
+          <input
+            type="range"
+            className="row-size-slider"
+            min={SIMPLE_ICON_SIZE_MIN}
+            max={SIMPLE_ICON_SIZE_MAX}
+            value={iconSize}
+            onChange={(e) => setIconSize(Number(e.currentTarget.value))}
+            aria-label={`Mit icon size, ${iconSize} pixels`}
+            title={`Icon size: ${iconSize}px (${SIMPLE_ICON_SIZE_MIN}–${SIMPLE_ICON_SIZE_MAX})`}
+          />
+          <span className="row-size-readout">{iconSize}px</span>
         </div>
       </div>
       <div className="simple-grid-scroll">
@@ -293,7 +314,7 @@ export function SimpleTimelineGrid() {
                               title={chip.name}
                               onClick={() => selectMit(chip.selectId)}
                             >
-                              <MitIcon name={chip.name} size={18} title={chip.name} />
+                              <MitIcon name={chip.name} size={iconSize} title={chip.name} />
                             </button>
                           ))}
                         </div>
