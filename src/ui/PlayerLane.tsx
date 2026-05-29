@@ -236,6 +236,10 @@ function DamageChip({
 
   const variant =
     mark.damage === 0 ? " damage-chip--zero" : mark.lethal ? " damage-chip--lethal" : "";
+  // No-Full-heal is an independent visual channel (dashed border + violet glow)
+  // layered on top of the border *color* set by variant, so a carried chip
+  // composes with lethal/zero (e.g. a lethal carried chip = red dashed border).
+  const carried = mark.noFullHeal ? " damage-chip--carried" : "";
   // Chip width is uniform across all players — segments are percentage fills,
   // so a tank's chip and a caster's chip are the same physical size and the
   // bar segments speak in fractions of each player's own max HP.
@@ -257,7 +261,7 @@ function DamageChip({
   return (
     <button
       type="button"
-      className={`damage-chip${variant}`}
+      className={`damage-chip${variant}${carried}`}
       style={{ left: mark.effectTime * pxPerSec, width: CHIP_BAR_PX }}
       title={title}
       aria-pressed={mark.noFullHeal}
@@ -268,7 +272,6 @@ function DamageChip({
       {shieldFrac > 0 && (
         <div className="damage-chip-shield" style={{ width: `${shieldFrac * 100}%` }} aria-hidden />
       )}
-      {mark.noFullHeal && <span className="damage-chip-link" aria-hidden />}
       <span className="damage-chip-label">{formatDamage(mark.damage)}</span>
     </button>
   );

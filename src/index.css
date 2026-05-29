@@ -1720,7 +1720,9 @@ button {
 .player-header-track {
   position: relative;
   flex-shrink: 0;
-  background: #181818;
+  /* True black sets the damage-chip lanes apart from the mit sub-lanes and
+     gives the chip fills + the violet carried-HP glow maximum contrast. */
+  background: #000000;
 }
 .sub-lane {
   display: flex;
@@ -2451,20 +2453,15 @@ button {
 .damage-chip--zero {
   border-color: #ddd;
 }
-/* No-heal run: a chain glyph hugging the left (previous-chip-facing) edge, so a
-   contiguous run of carried chips reads as visually linked. Purely visual. */
-.damage-chip-link {
-  position: absolute;
-  left: 1px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 5px;
-  height: 9px;
-  z-index: 2;
-  border: 1.5px solid #b25fd6;
-  border-radius: 3px;
-  background: transparent;
-  pointer-events: none;
+/* No-Full-heal (carried HP): a crisp opaque violet ring just outside the
+   variant border, plus a soft outer glow. The ring is its own visual channel,
+   so a carried chip still shows its lethal/zero border color inside the ring
+   and the green/pink fills underneath, while reading unmistakably as "carried
+   HP" against the black chip lane. Purely visual. */
+.damage-chip--carried {
+  box-shadow:
+    0 0 0 2px #c46fe6,
+    0 0 8px 2px rgba(178, 95, 214, 0.7);
 }
 
 /* ─── Mit-bar flash-on-jump ───────────────────────────────────────────── */
@@ -2589,6 +2586,12 @@ button {
 .lane-scroll.theme-light .damage-chip--zero {
   border-color: #888;
 }
+/* Deepen the violet so the carried-HP glow stays legible against white. */
+.lane-scroll.theme-light .damage-chip--carried {
+  box-shadow:
+    0 0 0 2px #9b3cc8,
+    0 0 8px 2px rgba(155, 60, 200, 0.75);
+}
 
 /* ─── Chip-layout: separated modes (Top / Bottom) ─────────────────────── */
 /* The job gutter is a sticky 28px column to the LEFT of the existing 140px
@@ -2667,7 +2670,7 @@ button {
   background: #1c1c1c;
 }
 .chip-row-track {
-  background: #181818;
+  background: #000000;
 }
 
 /* Mit canvas: single flex column wrapping every slot's mit group. Leftover
