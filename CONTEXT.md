@@ -31,7 +31,7 @@ The user action of dropping an **instance** onto the timeline — clicking the b
 _Avoid_: drop, drag, add
 
 **Player slot**:
-One of exactly eight positions in the roster. Holds a **job** (or `unset`) and an optional name label. Mitigation instances bind to a slot, not to a job.
+One of exactly eight positions in the roster. Holds a **job** (or `unset`), an optional name label, a max-HP value (`hp`), and an `hp_manual` flag. Mitigation instances bind to a slot, not to a job. A slot's `hp` is always concrete in the saved file — it travels with the timeline on **Export**, so a shared plan carries its HP pools rather than recomputing them on the recipient's machine. `hp_manual` distinguishes a **hand-tuned** slot (HP the user typed directly) from a **default-derived** slot (HP seeded from a **Job HP default**). Hand-tuned HP is *sticky*: it survives until the slot's **job** changes, and is never overwritten by a Job HP default re-apply.
 _Avoid_: player, character, member, party member
 
 **Roster**:
@@ -53,6 +53,10 @@ _Avoid_: damage dealer, attacker, striker
 **Support**:
 The colloquial role group covering **roles** that primarily keep the party alive: `tank` and `healer`. Not a value in the Role enum. Pairs with **DPS** when describing a support/DPS split — the most likely first role-based targeting axis.
 _Avoid_: utility, sustain, frontline
+
+**Job HP default**:
+An app-global, per-**job** max-HP value the user configures once (e.g. `WAR` → 148000) so a newly assigned **player slot** doesn't fall back to the 100,000 baseline. Stored with the app, never in a timeline file — it's a personal authoring convenience representing the user's *typical* roster baseline; per-roster deviations are **hand-tuned** slot overrides. When a job is assigned to a slot, its Job HP default seeds the slot's `hp` as **default-derived**. No Job HP default for a job ⇒ that job's slots fall back to the 100,000 baseline. Distinct from a slot's `hp`: the Job HP default is the *template*, while `hp` is the concrete per-slot value that feeds the damage math and travels with the timeline file.
+_Avoid_: HP preset, saved HP, base HP, HP profile, locked HP
 
 **Phase**:
 A user-annotated contiguous segment of the timeline, defined by a `start_time` and a name. Phases tile `[0, fight_duration_sec]` — every moment of the fight belongs to exactly one phase; phases never overlap or leave gaps. **Organizational only**: phase membership is a derived label on instances, not a container that owns them. Boss instances and mit instances store absolute **effect time**; their phase is computed from which `[phase.start_time, next_phase.start_time)` interval contains it. Sliding a phase's `start_time` re-labels instances, never relocates them — cooldowns and **active windows** are agnostic to phase boundaries and span them freely. When a Timeline has zero user-added phases, the phase UI is hidden entirely (single-row ruler, no **Phase divider**, no **Phase ordinal** prefix). The first phase's `start_time` is structurally `0` and is read-only.
