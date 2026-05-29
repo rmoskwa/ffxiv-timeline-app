@@ -421,6 +421,7 @@ describe("timeline-store — replaceBossTimeline", () => {
           type_id: "imp-type-1",
           effect_time: 30,
           target_slot_ids: [],
+          no_full_heal_slot_ids: [],
           observed_damage: [],
         },
         {
@@ -428,6 +429,7 @@ describe("timeline-store — replaceBossTimeline", () => {
           type_id: "imp-type-1",
           effect_time: 90,
           target_slot_ids: [],
+          no_full_heal_slot_ids: [],
           observed_damage: [],
         },
       ],
@@ -517,6 +519,7 @@ describe("timeline-store — replaceBossTimeline", () => {
             type_id: "imp-type-1",
             effect_time: 1000,
             target_slot_ids: [],
+            no_full_heal_slot_ids: [],
             observed_damage: [],
           },
           {
@@ -524,6 +527,7 @@ describe("timeline-store — replaceBossTimeline", () => {
             type_id: "imp-type-1",
             effect_time: 1800,
             target_slot_ids: [],
+            no_full_heal_slot_ids: [],
             observed_damage: [],
           },
           {
@@ -531,6 +535,7 @@ describe("timeline-store — replaceBossTimeline", () => {
             type_id: "imp-type-1",
             effect_time: 5000,
             target_slot_ids: [],
+            no_full_heal_slot_ids: [],
             observed_damage: [],
           },
         ],
@@ -1072,6 +1077,7 @@ describe("timeline-store — quantity caps", () => {
           type_id: "t0",
           effect_time: i,
           target_slot_ids: [],
+          no_full_heal_slot_ids: [],
           observed_damage: [],
         })),
       },
@@ -1375,5 +1381,86 @@ describe("timeline-store — §5.7 offset-glue preserves child zone membership",
     // Child rides the same delta (10_000); the rendering layer is what would
     // hide it past the lane edge.
     expect(grassa.effect_time).toBe(10_002);
+  });
+});
+
+describe("timeline-store — Full heal flag (toggleChipNoFullHeal)", () => {
+  beforeEach(freshTimeline);
+
+  // Raidwide hit at `time`; unique type per call to dodge the duplicate-name guard.
+  function addRaidwideAt(time: number): string {
+    const typeId = useTimelineStore.getState().addBossAbilityType({
+      name: `RW@${time}-${Math.random()}`,
+      base_damage: 50_000,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    return useTimelineStore.getState().addBossAbilityInstance({
+      type_id: typeId,
+      effect_time: time,
+      target_slot_ids: [],
+    });
+  }
+
+  function flagsOf(instId: string): string[] {
+    return (
+      useTimelineStore.getState().timeline?.boss_ability_instances.find((i) => i.id === instId)
+        ?.no_full_heal_slot_ids ?? []
+    );
+  }
+
+  it("toggle marks then clears the slot on the hitting raidwide instance", () => {
+    const s0 = rosterSlotId(0);
+    const instId = addRaidwideAt(10);
+    useTimelineStore.getState().toggleChipNoFullHeal(10, s0);
+    expect(flagsOf(instId)).toEqual([s0]);
+    useTimelineStore.getState().toggleChipNoFullHeal(10, s0);
+    expect(flagsOf(instId)).toEqual([]);
+  });
+
+  it("a targeted hit only accepts the toggle on a slot it actually hits", () => {
+    const s0 = rosterSlotId(0);
+    const s2 = rosterSlotId(2);
+    const typeId = useTimelineStore.getState().addBossAbilityType({
+      name: "TB",
+      base_damage: 80_000,
+      damage_type: "physical",
+      target_pattern: "targeted",
+      boss_targetable: true,
+    });
+    const instId = useTimelineStore.getState().addBossAbilityInstance({
+      type_id: typeId,
+      effect_time: 20,
+      target_slot_ids: [s0],
+    });
+    // s2 isn't hit → no-op.
+    useTimelineStore.getState().toggleChipNoFullHeal(20, s2);
+    expect(flagsOf(instId)).toEqual([]);
+    // s0 is hit → flagged.
+    useTimelineStore.getState().toggleChipNoFullHeal(20, s0);
+    expect(flagsOf(instId)).toEqual([s0]);
+  });
+
+  it("writes the flag to every instance in a simultaneous bucket (OR-merge consistency)", () => {
+    const s0 = rosterSlotId(0);
+    const a = addRaidwideAt(30);
+    const b = addRaidwideAt(30);
+    useTimelineStore.getState().toggleChipNoFullHeal(30, s0);
+    expect(flagsOf(a)).toEqual([s0]);
+    expect(flagsOf(b)).toEqual([s0]);
+    // Toggling again clears both.
+    useTimelineStore.getState().toggleChipNoFullHeal(30, s0);
+    expect(flagsOf(a)).toEqual([]);
+    expect(flagsOf(b)).toEqual([]);
+  });
+
+  it("toggling a (time, slot) with no hitting instance is a no-op", () => {
+    const s0 = rosterSlotId(0);
+    const instId = addRaidwideAt(10);
+    const before = useTimelineStore.getState().timeline;
+    useTimelineStore.getState().toggleChipNoFullHeal(999, s0);
+    expect(useTimelineStore.getState().timeline).toBe(before);
+    expect(flagsOf(instId)).toEqual([]);
   });
 });

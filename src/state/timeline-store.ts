@@ -3,6 +3,7 @@
 
 import { create } from "zustand";
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
+import { hitLandsOn, resolveHit } from "@/domain/coverage";
 import { computeDamageTimeline, type MitInstanceState } from "@/domain/damage";
 import { clampSlotHp, resolveDefaultHp } from "@/domain/job-hp";
 import {
@@ -31,7 +32,10 @@ import { newTimeline as makeNewTimeline } from "@/persistence/serialize";
 import { useJobHpDefaultsStore } from "./job-hp-defaults-store";
 
 type BossTypeInput = Omit<BossAbilityType, "id">;
-type BossInstanceInput = Omit<BossAbilityInstance, "id" | "observed_damage">;
+type BossInstanceInput = Omit<
+  BossAbilityInstance,
+  "id" | "observed_damage" | "no_full_heal_slot_ids"
+>;
 type MitInstanceInput = Omit<MitigationInstance, "id" | "coverage_overrides">;
 
 // Boss ability type names are unique within a timeline. Compared
@@ -125,6 +129,13 @@ export interface TimelineStore {
   selectBossInstance: (id: string) => void;
   selectMitInstance: (id: string) => void;
   deselectInstance: () => void;
+
+  // Full heal flag (ADR 0004). Per (boss-hit effect_time × player slot): flip
+  // whether the slot is topped to full HP before the chip at that time, or
+  // carries its HP forward from the previous chip. Writes the negative-sense
+  // flag to every boss instance that lands a hit on the slot at that time, so
+  // a multi-instance bucket stays consistent under the engine's OR-merge.
+  toggleChipNoFullHeal: (effectTime: number, slotId: string) => void;
 
   addMitigationInstance: (input: MitInstanceInput) => string;
   updateMitigationInstance: (id: string, patch: Partial<MitInstanceInput>) => void;
@@ -468,7 +479,12 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
     }
     set((s) => {
       if (!s.timeline) return s;
-      const instance: BossAbilityInstance = { ...input, id, observed_damage: [] };
+      const instance: BossAbilityInstance = {
+        ...input,
+        id,
+        no_full_heal_slot_ids: [],
+        observed_damage: [],
+      };
       return {
         timeline: touch({
           ...s.timeline,
@@ -508,6 +524,18 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   selectBossInstance: (id) => set({ selectedInstance: { kind: "boss", id } }),
   selectMitInstance: (id) => set({ selectedInstance: { kind: "mit", id } }),
   deselectInstance: () => set({ selectedInstance: null }),
+
+  toggleChipNoFullHeal: (effectTime, slotId) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      const hitting = instancesHittingSlot(s.timeline, effectTime, slotId);
+      if (hitting.length === 0) return s;
+      // Merged state = any hitting instance already flags the slot (OR-merge).
+      const merged = hitting.some((i) => i.no_full_heal_slot_ids.includes(slotId));
+      return {
+        timeline: applyChipFlag(s.timeline, hitting, slotId, !merged),
+      };
+    }),
 
   // The UI gates placement (hover ghost hides over occupied space) and
   // clamps drag against neighbors, so the store trusts callers to supply a
@@ -717,6 +745,53 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       return { timeline: touch({ ...s.timeline, phases }) };
     }),
 }));
+
+// Boss instances at `effectTime` that actually land a hit on `slotId` — the
+// set whose no_full_heal_slot_ids the chip-toggle writes to. A chip exists for
+// (time, slot) only when at least one such instance hits, so a toggle on a
+// non-hitting (time, slot) is a no-op. Reuses the engine's coverage resolution
+// (raidwide hits everyone; targeted/stack only listed slots).
+function instancesHittingSlot(
+  tl: TimelineFile,
+  effectTime: number,
+  slotId: string,
+): BossAbilityInstance[] {
+  const slotIdx = tl.roster.findIndex((sl) => sl.id === slotId);
+  if (slotIdx < 0) return [];
+  const typeById = new Map(tl.boss_ability_types.map((t) => [t.id, t]));
+  return tl.boss_ability_instances.filter((inst) => {
+    if (inst.effect_time !== effectTime) return false;
+    const type = typeById.get(inst.type_id);
+    if (!type) return false;
+    return hitLandsOn(resolveHit(inst, type), slotIdx, tl.roster);
+  });
+}
+
+// Write `value` for `slotId` into every instance in `hitting` (add when true,
+// remove when false) and return the touched timeline. Other instances are
+// untouched.
+function applyChipFlag(
+  tl: TimelineFile,
+  hitting: readonly BossAbilityInstance[],
+  slotId: string,
+  value: boolean,
+): TimelineFile {
+  const hittingIds = new Set(hitting.map((i) => i.id));
+  return touch({
+    ...tl,
+    boss_ability_instances: tl.boss_ability_instances.map((inst) => {
+      if (!hittingIds.has(inst.id)) return inst;
+      const has = inst.no_full_heal_slot_ids.includes(slotId);
+      if (value === has) return inst;
+      return {
+        ...inst,
+        no_full_heal_slot_ids: value
+          ? [...inst.no_full_heal_slot_ids, slotId]
+          : inst.no_full_heal_slot_ids.filter((id) => id !== slotId),
+      };
+    }),
+  });
+}
 
 // Default positions for a child's N charges, anchored 2s after the parent's
 // cast and stepped by the 2s gap of the SCH GCD floor. For

@@ -89,7 +89,7 @@ export function useDamageByTime(): Map<number, (PerPlayerHitResult | null)[]> {
   const perHit = useDisplayResults().perHit;
   return useMemo(() => {
     if (!timeline) return new Map();
-    return aggregateDamageByTime(timeline.boss_ability_instances, perHit);
+    return aggregateDamageByTime(timeline.boss_ability_instances, perHit, timeline.roster);
   }, [timeline, perHit]);
 }
 

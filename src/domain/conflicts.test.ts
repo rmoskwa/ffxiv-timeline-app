@@ -111,7 +111,14 @@ describe("detectConflicts — unset_target", () => {
     effect_time: number,
     target_slot_ids: string[] = [],
   ): BossAbilityInstance {
-    return { id, type_id, effect_time, target_slot_ids, observed_damage: [] };
+    return {
+      id,
+      type_id,
+      effect_time,
+      target_slot_ids,
+      no_full_heal_slot_ids: [],
+      observed_damage: [],
+    };
   }
 
   it("flags a targeted instance with no target picked", () => {

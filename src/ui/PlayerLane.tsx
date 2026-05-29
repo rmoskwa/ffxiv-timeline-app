@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { getMitsForJob } from "@/data/mit-library";
 import type { PerPlayerHitResult } from "@/domain/damage";
-import type { MitigationInstance, PlayerSlot } from "@/domain/types";
+import type { BossAbilityInstance, MitigationInstance, PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitSubLane } from "./MitSubLane";
@@ -21,38 +21,63 @@ interface DamageMark {
   effectTime: number;
   damage: number;
   hpAfter: number;
+  // HP entering this chip — the cap for a Full heal chip, the Carried HP for a
+  // no-Full-heal chip. Drives the contextual Lethal test and the tooltip.
+  hpBefore: number;
   shieldsAfter: number;
   maxHp: number;
   lethal: boolean;
+  // The slot is marked no-Full-heal for this chip (chains to the prior chip).
+  // Suppressed on the player's earliest chip — it has no predecessor, so the
+  // flag is inert (matches the engine fold's first-chip handling).
+  noFullHeal: boolean;
 }
 
 const EMPTY_MITS: readonly MitigationInstance[] = [];
+const EMPTY_BOSS_INSTANCES: readonly BossAbilityInstance[] = [];
 
 // Per-player damage marks: one entry per effect_time that touches this
 // player, with damages summed across every boss hit landing at that second.
 // Drives both the chip bar and the vertical guide lines. `maxHp` is the
 // engine-provided buffed cap at this instant — not `slot.hp` — so max-HP
 // buffs (Thrill, Protraction, Great Nebula) widen lethality and resize the
-// HP fill correctly.
+// HP fill correctly. `lethal` is contextual: damage ≥ entering HP (ADR 0004),
+// which reduces to ≥ max HP for an unmarked (Full heal) chip.
 function usePlayerDamageMarks(slotIndex: number): DamageMark[] {
   const damageByTime = useDamageByTime();
+  const bossInstances = useTimelineStore(
+    (s) => s.timeline?.boss_ability_instances ?? EMPTY_BOSS_INSTANCES,
+  );
+  const slotId = useTimelineStore((s) => s.timeline?.roster[slotIndex]?.id);
   return useMemo<DamageMark[]>(() => {
     const marks: DamageMark[] = [];
+    let minTime = Number.POSITIVE_INFINITY;
     for (const [t, results] of damageByTime) {
       const r = results[slotIndex] as PerPlayerHitResult | null | undefined;
       if (r == null) continue;
+      if (t < minTime) minTime = t;
+      const rawFlag =
+        slotId != null &&
+        bossInstances.some((b) => b.effect_time === t && b.no_full_heal_slot_ids.includes(slotId));
       marks.push({
         id: `t-${t}`,
         effectTime: t,
         damage: r.damage_taken_to_hp,
         hpAfter: r.hp_after,
+        hpBefore: r.hp_before,
         shieldsAfter: r.active_shields_after,
         maxHp: r.max_hp,
-        lethal: r.damage_taken_to_hp >= r.max_hp,
+        lethal: r.damage_taken_to_hp >= r.hp_before,
+        noFullHeal: rawFlag,
       });
     }
+    // The earliest chip has no predecessor — its flag never carries, so don't
+    // chain a glyph onto it.
+    for (const m of marks) {
+      if (m.effectTime === minTime) m.noFullHeal = false;
+    }
     return marks;
-  }, [damageByTime, slotIndex]);
+  }, [damageByTime, slotIndex, bossInstances, slotId]);
 }
 
 function useSlotMits(slot: PlayerSlot): readonly MitigationInstance[] {
@@ -87,7 +112,9 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
         <div className="lane-track player-header-track" style={{ width: laneWidthPx }}>
           <PhaseDividers />
           {!isUnset &&
-            damageMarks.map((m) => <DamageChip key={m.id} mark={m} pxPerSec={pxPerSec} />)}
+            damageMarks.map((m) => (
+              <DamageChip key={m.id} mark={m} slotId={slot.id} pxPerSec={pxPerSec} />
+            ))}
         </div>
       </div>
       {!isUnset &&
@@ -119,7 +146,10 @@ export function PlayerChipRow({ slot, index }: PlayerLaneProps) {
       <div className="lane-label chip-row-label" aria-hidden />
       <div className="lane-track player-header-track chip-row-track" style={{ width: laneWidthPx }}>
         <PhaseDividers />
-        {!isUnset && damageMarks.map((m) => <DamageChip key={m.id} mark={m} pxPerSec={pxPerSec} />)}
+        {!isUnset &&
+          damageMarks.map((m) => (
+            <DamageChip key={m.id} mark={m} slotId={slot.id} pxPerSec={pxPerSec} />
+          ))}
       </div>
     </div>
   );
@@ -191,8 +221,19 @@ export function PhantomGutter() {
 
 // Stacked HP/shield bar with damage-taken label, rendered as a single chip
 // anchored at the boss hit's effect_time. State shown is *immediately after*
-// the hit landed (post-shield, post-HP).
-function DamageChip({ mark, pxPerSec }: { mark: DamageMark; pxPerSec: number }) {
+// the hit landed (post-shield, post-HP). Interactive: clicking toggles the
+// Full heal flag for this (time, slot) chip.
+function DamageChip({
+  mark,
+  slotId,
+  pxPerSec,
+}: {
+  mark: DamageMark;
+  slotId: string;
+  pxPerSec: number;
+}) {
+  const toggleChip = useTimelineStore((s) => s.toggleChipNoFullHeal);
+
   const variant =
     mark.damage === 0 ? " damage-chip--zero" : mark.lethal ? " damage-chip--lethal" : "";
   // Chip width is uniform across all players — segments are percentage fills,
@@ -206,22 +247,30 @@ function DamageChip({ mark, pxPerSec }: { mark: DamageMark; pxPerSec: number }) 
       ? "Fully mitigated (no damage to HP)"
       : `${Math.round(mark.damage).toLocaleString()} damage` +
         ` · HP ${Math.round(mark.hpAfter).toLocaleString()} / ${mark.maxHp.toLocaleString()}` +
+        (mark.noFullHeal
+          ? ` · entering HP ${Math.round(mark.hpBefore).toLocaleString()} (no full heal)`
+          : "") +
         (mark.shieldsAfter > 0
           ? ` · shield ${Math.round(mark.shieldsAfter).toLocaleString()}`
           : "");
+
   return (
-    <div
+    <button
+      type="button"
       className={`damage-chip${variant}`}
       style={{ left: mark.effectTime * pxPerSec, width: CHIP_BAR_PX }}
       title={title}
+      aria-pressed={mark.noFullHeal}
+      onClick={() => toggleChip(mark.effectTime, slotId)}
     >
       <div className="damage-chip-hp" style={{ width: `${hpFrac * 100}%` }} aria-hidden />
       <div className="damage-chip-missing" style={{ width: `${missingFrac * 100}%` }} aria-hidden />
       {shieldFrac > 0 && (
         <div className="damage-chip-shield" style={{ width: `${shieldFrac * 100}%` }} aria-hidden />
       )}
+      {mark.noFullHeal && <span className="damage-chip-link" aria-hidden />}
       <span className="damage-chip-label">{formatDamage(mark.damage)}</span>
-    </div>
+    </button>
   );
 }
 

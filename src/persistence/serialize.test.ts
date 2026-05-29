@@ -78,6 +78,7 @@ function makeTypedTimeline() {
     type_id: "type-1",
     effect_time: 120,
     target_slot_ids: ["slot-a", "slot-b"],
+    no_full_heal_slot_ids: [],
     observed_damage: [
       {
         source_label: "test pull",
@@ -798,6 +799,7 @@ describe("deserialize — fight_duration_sec clamp", () => {
       type_id: "t1",
       effect_time: 100,
       target_slot_ids: [],
+      no_full_heal_slot_ids: [],
       observed_damage: [],
     };
     const past: BossAbilityInstance = {
@@ -805,6 +807,7 @@ describe("deserialize — fight_duration_sec clamp", () => {
       type_id: "t1",
       effect_time: MAX_FIGHT_DURATION_SEC + 100,
       target_slot_ids: [],
+      no_full_heal_slot_ids: [],
       observed_damage: [],
     };
     const json = JSON.stringify({
@@ -963,6 +966,7 @@ describe("deserialize — cross-reference integrity", () => {
       type_id: "GHOST", // not in boss_ability_types
       effect_time: 10,
       target_slot_ids: [],
+      no_full_heal_slot_ids: [],
       observed_damage: [],
     };
     const json = JSON.stringify({
@@ -1035,6 +1039,7 @@ describe("deserialize — cross-reference integrity", () => {
       type_id: "t1",
       effect_time: 10,
       target_slot_ids: ["nonexistent-slot-id"],
+      no_full_heal_slot_ids: [],
       observed_damage: [],
     };
     const json = JSON.stringify({
@@ -1164,5 +1169,60 @@ describe("deserialize — hand-edit round-trip", () => {
     };
     const json = JSON.stringify({ ...tl, boss_ability_types: [t] });
     expect(() => deserialize(json)).toThrowError(/boss_targetable/);
+  });
+});
+
+describe("deserialize — no_full_heal_slot_ids (the Full heal flag)", () => {
+  // A complete timeline carrying one boss type + one flagged instance.
+  function flaggedTimeline() {
+    const tl = newTimeline("flag fixture");
+    const type: BossAbilityType = {
+      id: "t1",
+      name: "Replication",
+      base_damage: 50_000,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    };
+    const inst: BossAbilityInstance = {
+      id: "i1",
+      type_id: "t1",
+      effect_time: 30,
+      target_slot_ids: [],
+      no_full_heal_slot_ids: [tl.roster[6].id],
+      observed_damage: [],
+    };
+    return {
+      ...tl,
+      boss_ability_types: [type],
+      boss_ability_instances: [inst],
+    };
+  }
+
+  it("round-trips a set flag through save → load (AC#9)", () => {
+    const tl = flaggedTimeline();
+    const tl2 = deserialize(serialize(tl));
+    expect(tl2.boss_ability_instances[0].no_full_heal_slot_ids).toEqual([tl.roster[6].id]);
+  });
+
+  it("defaults a missing/legacy field to [] (empty = unchanged meaning)", () => {
+    const tl = flaggedTimeline();
+    const obj = JSON.parse(serialize(tl));
+    obj.boss_ability_instances[0].no_full_heal_slot_ids = undefined; // drop the key
+    const tl2 = deserialize(JSON.stringify(obj));
+    expect(tl2.boss_ability_instances[0].no_full_heal_slot_ids).toEqual([]);
+  });
+
+  it("rejects a non-string-array flag", () => {
+    const tl = flaggedTimeline();
+    const obj = JSON.parse(serialize(tl));
+    obj.boss_ability_instances[0].no_full_heal_slot_ids = [42];
+    expect(() => deserialize(JSON.stringify(obj))).toThrow(TimelineValidationError);
+  });
+
+  it("strips the flag from a boss-timeline export (per-roster field)", () => {
+    const tl = flaggedTimeline();
+    const exported = deserializeBossTimeline(serializeBossTimeline(tl));
+    expect(exported.boss_ability_instances[0].no_full_heal_slot_ids).toEqual([]);
   });
 });

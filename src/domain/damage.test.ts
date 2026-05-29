@@ -49,6 +49,7 @@ function bossInstance(overrides: Partial<BossAbilityInstance> = {}): BossAbility
     type_id: "boss.replication-i",
     effect_time: 60,
     target_slot_ids: [],
+    no_full_heal_slot_ids: [],
     observed_damage: [],
     ...overrides,
   };
@@ -638,6 +639,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 70_000,
       hp_after: 30_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -660,6 +662,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -682,6 +685,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 20_000,
       hp_after: 80_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -716,6 +720,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 25_000, // A had 30k, absorbed 5k → 25k left
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -761,6 +766,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 25_000, // A 5k + B 20k untouched
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -784,6 +790,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 50_000,
       hp_after: 50_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -802,6 +809,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 33_000,
       hp_after: 67_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -834,6 +842,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 10_000,
       hp_after: 90_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -867,12 +876,14 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 10_000,
       hp_after: 90_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
     expect(result[7]).toEqual({
       damage_taken_to_hp: 10_000,
       hp_after: 90_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -970,6 +981,7 @@ describe("computeDamagePerPlayer — barriers", () => {
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 20_000,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -1009,6 +1021,7 @@ describe("computeDamageTimeline — consumes drops the prior pool on caster", ()
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 5_000,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
     // Non-tank s2 (got party pool but never had a selfShield20):
@@ -1016,6 +1029,7 @@ describe("computeDamageTimeline — consumes drops the prior pool on caster", ()
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 5_000,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -1041,6 +1055,7 @@ describe("computeDamageTimeline — consumes drops the prior pool on caster", ()
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 5_000,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -1074,6 +1089,7 @@ describe("computeDamageTimeline — consumes drops the prior pool on caster", ()
       damage_taken_to_hp: 15_000,
       hp_after: 85_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -1112,6 +1128,7 @@ describe("computeDamageTimeline — consumes_many truncates dispelled instances 
       damage_taken_to_hp: 33_000,
       hp_after: 67_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -1143,6 +1160,7 @@ describe("computeDamageTimeline — consumes_many truncates dispelled instances 
       damage_taken_to_hp: 30_000,
       hp_after: 70_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -1177,6 +1195,7 @@ describe("computeDamageTimeline — consumes_many truncates dispelled instances 
       damage_taken_to_hp: 33_000,
       hp_after: 67_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -1211,6 +1230,7 @@ describe("computeDamageTimeline — consumes_many truncates dispelled instances 
       damage_taken_to_hp: 33_000,
       hp_after: 67_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -1235,6 +1255,7 @@ describe("computeDamageTimeline — consumes_many truncates dispelled instances 
       damage_taken_to_hp: 5_000,
       hp_after: 95_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -1268,6 +1289,7 @@ describe("computeDamageTimeline — consumes_many truncates dispelled instances 
       damage_taken_to_hp: 25_000,
       hp_after: 75_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -1309,6 +1331,7 @@ describe("computeDamageTimeline — consumes_many truncates dispelled instances 
       damage_taken_to_hp: 13_000,
       hp_after: 87_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
     // s6 dispelled: 50_000 → 50_000 → 17_000 absorbed → 33_000 to HP.
@@ -1316,6 +1339,7 @@ describe("computeDamageTimeline — consumes_many truncates dispelled instances 
       damage_taken_to_hp: 33_000,
       hp_after: 67_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -1360,6 +1384,7 @@ describe("computeDamageTimeline — consumes_many truncates dispelled instances 
       damage_taken_to_hp: 29_000,
       hp_after: 71_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -2138,12 +2163,14 @@ describe("computeDamageTimeline — shields persist across hits, HP does not", (
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 20_000,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
     expect(out.get("h2")?.[6]).toEqual({
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 10_000,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -2165,12 +2192,14 @@ describe("computeDamageTimeline — shields persist across hits, HP does not", (
       damage_taken_to_hp: 50_000,
       hp_after: 50_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
     expect(out.get("h2")?.[6]).toEqual({
       damage_taken_to_hp: 50_000,
       hp_after: 50_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -2196,12 +2225,14 @@ describe("computeDamageTimeline — shields persist across hits, HP does not", (
       damage_taken_to_hp: 20_000,
       hp_after: 80_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
     expect(out.get("h2")?.[6]).toEqual({
       damage_taken_to_hp: 50_000,
       hp_after: 50_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -2392,6 +2423,7 @@ describe("computeDamageTimeline — max_hp_buff_pct scales effective HP", () => 
       damage_taken_to_hp: 60_000,
       hp_after: 60_000,
       active_shields_after: 0,
+      hp_before: 120_000,
       max_hp: 120_000,
     });
   });
@@ -2506,6 +2538,7 @@ describe("non_stacking_group — cross-type non-stacking", () => {
       damage_taken_to_hp: 20_000,
       hp_after: 80_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -2592,6 +2625,7 @@ describe("§9.1 hit at effect_time = 0", () => {
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -2707,12 +2741,14 @@ describe("§9.6 multi-hit at identical effect_time", () => {
       damage_taken_to_hp: 0,
       hp_after: 100_000,
       active_shields_after: 10_000,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
     expect(out.get("h2")?.[6]).toEqual({
       damage_taken_to_hp: 10_000, // 20k incoming, 10k remaining shield absorbs, 10k to HP
       hp_after: 90_000,
       active_shields_after: 0,
+      hp_before: 100_000,
       max_hp: 100_000,
     });
   });
@@ -2755,12 +2791,13 @@ describe("aggregateDamageByTime", () => {
     const aType = bossType({ id: "boss.a", base_damage: 30_000 });
     const bType = bossType({ id: "boss.b", base_damage: 90_000 });
     const perHit = computeDamageTimeline([a, b], [aType, bType], [], lookup, ROSTER);
-    const byTime = aggregateDamageByTime([a, b], perHit);
+    const byTime = aggregateDamageByTime([a, b], perHit, ROSTER);
     expect(byTime.size).toBe(1);
     const s6 = byTime.get(60)?.[6];
     expect(s6).toEqual({
       damage_taken_to_hp: 120_000,
       hp_after: 0,
+      hp_before: 100_000,
       active_shields_after: 0,
       max_hp: 100_000,
     });
@@ -2783,7 +2820,7 @@ describe("aggregateDamageByTime", () => {
     const rwType = bossType({ id: "boss.rw", base_damage: 50_000 });
     const tbType = bossType({ id: "boss.tgt", base_damage: 30_000, target_pattern: "targeted" });
     const perHit = computeDamageTimeline([rw, tb], [rwType, tbType], [], lookup, ROSTER);
-    const byTime = aggregateDamageByTime([rw, tb], perHit);
+    const byTime = aggregateDamageByTime([rw, tb], perHit, ROSTER);
     const row = byTime.get(30);
     expect(row?.[3]?.damage_taken_to_hp).toBe(80_000); // WHM: 50k + 30k
     expect(row?.[6]?.damage_taken_to_hp).toBe(50_000); // BLM: just the raidwide
@@ -2793,7 +2830,7 @@ describe("aggregateDamageByTime", () => {
   it("single hit passes through unchanged (no regression)", () => {
     const h = bossInstance({ id: "h1", effect_time: 60 });
     const perHit = computeDamageTimeline([h], [bossType()], [], lookup, ROSTER);
-    const byTime = aggregateDamageByTime([h], perHit);
+    const byTime = aggregateDamageByTime([h], perHit, ROSTER);
     expect(byTime.get(60)?.[6]).toEqual(perHit.get("h1")?.[6]);
   });
 
@@ -2816,12 +2853,198 @@ describe("aggregateDamageByTime", () => {
       lookup,
       ROSTER,
     );
-    const byTime = aggregateDamageByTime([h1, h2], perHit);
+    const byTime = aggregateDamageByTime([h1, h2], perHit, ROSTER);
     expect(byTime.get(60)?.[6]).toEqual({
       damage_taken_to_hp: 10_000,
       hp_after: 90_000,
+      hp_before: 100_000,
       active_shields_after: 0,
       max_hp: 100_000,
     });
+  });
+});
+
+// ─── Carried HP (the Full heal flag) ──────────────────────────────────────
+// ADR 0004 / PRD health-metadata-full-heal. A chip whose slot is in an
+// instance's no_full_heal_slot_ids enters at the previous chip's exit HP
+// (Carried HP) instead of the cap; Lethal becomes damage ≥ entering HP.
+describe("aggregateDamageByTime — Carried HP", () => {
+  // Build buckets for a set of raidwide hits (one bossType per id, given
+  // base_damage) plus optional mits, then return the per-time aggregation.
+  function aggregateRaidwides(
+    hits: BossAbilityInstance[],
+    damageById: Record<string, number>,
+    mits: MitigationInstance[] = [],
+  ) {
+    const types = Object.entries(damageById).map(([id, dmg]) => bossType({ id, base_damage: dmg }));
+    const perHit = computeDamageTimeline(hits, types, mits, lookup, ROSTER);
+    return aggregateDamageByTime(hits, perHit, ROSTER);
+  }
+
+  // s6 (BLM, non-tank) so Tank Mastery doesn't muddy the carry numbers.
+  const S6 = "s6";
+
+  it("carries HP forward into a no-Full-heal chip and makes it lethal (AC#2)", () => {
+    const a = bossInstance({ id: "a", type_id: "t.a", effect_time: 10 });
+    const b = bossInstance({
+      id: "b",
+      type_id: "t.b",
+      effect_time: 20,
+      no_full_heal_slot_ids: [S6],
+    });
+    const byTime = aggregateRaidwides([a, b], { "t.a": 50_000, "t.b": 50_000 });
+
+    const at10 = byTime.get(10)?.[6];
+    expect(at10).toMatchObject({
+      damage_taken_to_hp: 50_000,
+      hp_before: 100_000,
+      hp_after: 50_000,
+    });
+    // A is judged from full — not lethal.
+    expect((at10?.damage_taken_to_hp ?? 0) >= (at10?.hp_before ?? 0)).toBe(false);
+
+    const at20 = byTime.get(20)?.[6];
+    // Enters at carried 50k, eats 50k → dead. Lethal contextually.
+    expect(at20).toMatchObject({ damage_taken_to_hp: 50_000, hp_before: 50_000, hp_after: 0 });
+    expect((at20?.damage_taken_to_hp ?? 0) >= (at20?.hp_before ?? 0)).toBe(true);
+  });
+
+  it("contains the cascade — a Full heal chip after a lethal one resets to cap (AC#3)", () => {
+    const a = bossInstance({ id: "a", type_id: "t.a", effect_time: 10 });
+    const b = bossInstance({
+      id: "b",
+      type_id: "t.b",
+      effect_time: 20,
+      no_full_heal_slot_ids: [S6],
+    });
+    const c = bossInstance({ id: "c", type_id: "t.c", effect_time: 30 }); // Full heal
+    const byTime = aggregateRaidwides([a, b, c], {
+      "t.a": 50_000,
+      "t.b": 50_000,
+      "t.c": 50_000,
+    });
+
+    expect(byTime.get(20)?.[6]).toMatchObject({ hp_before: 50_000, hp_after: 0 });
+    // C is a Full heal chip — enters at cap regardless of B killing the player.
+    const at30 = byTime.get(30)?.[6];
+    expect(at30).toMatchObject({ hp_before: 100_000, hp_after: 50_000 });
+    expect((at30?.damage_taken_to_hp ?? 0) >= (at30?.hp_before ?? 0)).toBe(false);
+  });
+
+  it("first chip is inert — a flag on the earliest chip enters at cap (AC#4)", () => {
+    const a = bossInstance({
+      id: "a",
+      type_id: "t.a",
+      effect_time: 10,
+      no_full_heal_slot_ids: [S6], // marked, but no predecessor
+    });
+    const b = bossInstance({ id: "b", type_id: "t.b", effect_time: 20 });
+    const byTime = aggregateRaidwides([a, b], { "t.a": 50_000, "t.b": 50_000 });
+    // First chip: still enters at the cap.
+    expect(byTime.get(10)?.[6]).toMatchObject({ hp_before: 100_000, hp_after: 50_000 });
+  });
+
+  it("an untargeted hit between two raidwides doesn't break a non-tank's carry (AC#5)", () => {
+    const rw1 = bossInstance({ id: "rw1", type_id: "t.rw1", effect_time: 10 });
+    // Tankbuster at t=15 hits only s0 — never touches s6's chain.
+    const tb = bossInstance({
+      id: "tb",
+      type_id: "t.tb",
+      effect_time: 15,
+      target_slot_ids: ["s0"],
+    });
+    const rw2 = bossInstance({
+      id: "rw2",
+      type_id: "t.rw2",
+      effect_time: 20,
+      no_full_heal_slot_ids: [S6],
+    });
+    const types = [
+      bossType({ id: "t.rw1", base_damage: 50_000 }),
+      bossType({ id: "t.tb", base_damage: 90_000, target_pattern: "targeted" }),
+      bossType({ id: "t.rw2", base_damage: 50_000 }),
+    ];
+    const perHit = computeDamageTimeline([rw1, tb, rw2], types, [], lookup, ROSTER);
+    const byTime = aggregateDamageByTime([rw1, tb, rw2], perHit, ROSTER);
+
+    // s6 has no chip at t=15 (untargeted), and its carry spans rw1 → rw2.
+    expect(byTime.get(15)?.[6]).toBeNull();
+    expect(byTime.get(20)?.[6]).toMatchObject({ hp_before: 50_000, hp_after: 0 });
+  });
+
+  it("clamps carried HP down when a max-HP buff falls off (AC#6)", () => {
+    // +10% max HP on s6 active [5,15]. A 0-damage chip at t=10 (cap 110k) exits
+    // at 110k; B at t=20 (buff gone, cap 100k) carries → clamps to 100k.
+    const buff = mit({
+      player_slot_id: "s2",
+      type_id: "synth.tos_buff_10",
+      effect_time: 5,
+      target_slot_ids: [S6],
+    });
+    const a = bossInstance({ id: "a", type_id: "t.a", effect_time: 10 });
+    const b = bossInstance({
+      id: "b",
+      type_id: "t.b",
+      effect_time: 20,
+      no_full_heal_slot_ids: [S6],
+    });
+    const types = [
+      bossType({ id: "t.a", base_damage: 0 }),
+      bossType({ id: "t.b", base_damage: 50_000 }),
+    ];
+    const perHit = computeDamageTimeline([a, b], types, [buff], lookup, ROSTER);
+    const byTime = aggregateDamageByTime([a, b], perHit, ROSTER);
+
+    expect(byTime.get(10)?.[6]).toMatchObject({ hp_before: 110_000, hp_after: 110_000 });
+    // Carry of 110k is clamped to the now-100k cap, not free HP above it.
+    expect(byTime.get(20)?.[6]).toMatchObject({ hp_before: 100_000, hp_after: 50_000 });
+  });
+
+  it("OR-merges the flag across simultaneous hits; damage sums; reset once (AC#7)", () => {
+    const a = bossInstance({ id: "a", type_id: "t.a", effect_time: 10 });
+    // Two hits at t=20; only h2 flags s6. Merged bucket carries for s6.
+    const h1 = bossInstance({ id: "h1", type_id: "t.h1", effect_time: 20 });
+    const h2 = bossInstance({
+      id: "h2",
+      type_id: "t.h2",
+      effect_time: 20,
+      no_full_heal_slot_ids: [S6],
+    });
+    const byTime = aggregateRaidwides([a, h1, h2], {
+      "t.a": 50_000,
+      "t.h1": 30_000,
+      "t.h2": 20_000,
+    });
+
+    const at20 = byTime.get(20)?.[6];
+    // Carries from 50k, sums 30k+20k=50k → 0, single reset at the bucket.
+    expect(at20).toMatchObject({ damage_taken_to_hp: 50_000, hp_before: 50_000, hp_after: 0 });
+  });
+
+  it("contextual Lethal: a from-full-survivable hit kills on a carried chip (AC#8)", () => {
+    const a = bossInstance({ id: "a", type_id: "t.a", effect_time: 10 });
+    const b = bossInstance({
+      id: "b",
+      type_id: "t.b",
+      effect_time: 20,
+      no_full_heal_slot_ids: [S6],
+    });
+    const byTime = aggregateRaidwides([a, b], { "t.a": 70_000, "t.b": 40_000 });
+
+    const at20 = byTime.get(20)?.[6];
+    // 40k < 100k max — survivable from full — but ≥ the carried 30k → lethal.
+    expect(at20?.max_hp).toBe(100_000);
+    expect((at20?.damage_taken_to_hp ?? 0) < (at20?.max_hp ?? 0)).toBe(true);
+    expect((at20?.damage_taken_to_hp ?? 0) >= (at20?.hp_before ?? 0)).toBe(true);
+    expect(at20?.hp_before).toBe(30_000);
+  });
+
+  it("default (no flags) is byte-identical to full-heal isolation (AC#1)", () => {
+    const a = bossInstance({ id: "a", type_id: "t.a", effect_time: 10 });
+    const b = bossInstance({ id: "b", type_id: "t.b", effect_time: 20 });
+    const byTime = aggregateRaidwides([a, b], { "t.a": 50_000, "t.b": 50_000 });
+    // Every chip enters at the cap; exit = cap − damage.
+    expect(byTime.get(10)?.[6]).toMatchObject({ hp_before: 100_000, hp_after: 50_000 });
+    expect(byTime.get(20)?.[6]).toMatchObject({ hp_before: 100_000, hp_after: 50_000 });
   });
 });

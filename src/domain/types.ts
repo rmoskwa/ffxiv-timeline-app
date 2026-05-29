@@ -80,6 +80,13 @@ export interface BossAbilityInstance {
   // User-picked targets for `targeted` instances; empty for `raidwide`.
   // Always present (defaults to []).
   target_slot_ids: string[];
+  // Slots NOT topped to full HP before this hit — the negative sense of the
+  // Full heal flag. A slot listed here enters this chip at its Carried HP (the
+  // previous chip's exit HP) instead of resetting to max. Empty (the default)
+  // = everyone full-healed = the original per-hit HP-isolation behavior.
+  // Always present (defaults to []). Entries need not reference live roster
+  // slots — a stale id is inert (it never matches a slot). See ADR 0004.
+  no_full_heal_slot_ids: string[];
   observed_damage: ObservedDamageEntry[];
 }
 
@@ -394,7 +401,7 @@ export interface FreeformNote {
 
 // ─── Timeline File ──────────────────────────────────────────────────────────
 
-export const TIMELINE_SCHEMA_VERSION = 1 as const;
+export const TIMELINE_SCHEMA_VERSION = 2 as const;
 
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 export const MAX_FIGHT_DURATION_SEC = 1800; // 30:00 hard cap on user-set length

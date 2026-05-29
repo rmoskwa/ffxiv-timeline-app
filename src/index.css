@@ -2399,11 +2399,21 @@ button {
   font-size: 0.7rem;
   font-weight: 800;
   line-height: 1;
-  pointer-events: none;
+  /* Interactive <button>: click toggles the Full heal flag. Strip the native
+     button chrome (padding, font, background) so it renders like the bar it
+     replaced. */
+  appearance: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
   z-index: 1;
   white-space: nowrap;
   overflow: hidden;
   background: transparent;
+}
+.damage-chip:focus-visible {
+  outline: 2px solid #4aa3ff;
+  outline-offset: 1px;
 }
 /* Stacked-bar segments. Order in the DOM is base (green) → missing (white)
    → shield (orange overlay on top). All are absolutely positioned so the
@@ -2440,6 +2450,21 @@ button {
 }
 .damage-chip--zero {
   border-color: #ddd;
+}
+/* No-heal run: a chain glyph hugging the left (previous-chip-facing) edge, so a
+   contiguous run of carried chips reads as visually linked. Purely visual. */
+.damage-chip-link {
+  position: absolute;
+  left: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 9px;
+  z-index: 2;
+  border: 1.5px solid #b25fd6;
+  border-radius: 3px;
+  background: transparent;
+  pointer-events: none;
 }
 
 /* ─── Mit-bar flash-on-jump ───────────────────────────────────────────── */

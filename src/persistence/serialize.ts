@@ -130,6 +130,9 @@ export function serializeBossTimeline(timeline: TimelineFile): string {
     boss_ability_instances: timeline.boss_ability_instances.map((i) => ({
       ...i,
       target_slot_ids: [],
+      // no_full_heal_slot_ids references roster slot ids — meaningless outside
+      // the source roster, so strip it like target_slot_ids.
+      no_full_heal_slot_ids: [],
       observed_damage: [],
     })),
     phases: timeline.phases.map((p) => ({ ...p })),
@@ -403,6 +406,12 @@ function validateBossAbilityInstance(v: unknown, path: string): BossAbilityInsta
     type_id: asString(o.type_id, `${path}.type_id`),
     effect_time: asNonNegativeNumber(o.effect_time, `${path}.effect_time`),
     target_slot_ids: asStringArray(o.target_slot_ids, `${path}.target_slot_ids`),
+    // Missing/legacy (pre-schema-2 or boss-timeline) → [] = full heal = today.
+    // No migrator (pre-launch); empty default preserves old files' meaning.
+    no_full_heal_slot_ids:
+      o.no_full_heal_slot_ids === undefined
+        ? []
+        : asStringArray(o.no_full_heal_slot_ids, `${path}.no_full_heal_slot_ids`),
     observed_damage: asArray(o.observed_damage, `${path}.observed_damage`).map((el, i) =>
       validateObservedDamageEntry(el, `${path}.observed_damage[${i}]`),
     ),

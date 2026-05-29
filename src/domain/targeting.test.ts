@@ -25,6 +25,7 @@ function bossInstance(overrides: Partial<BossAbilityInstance> = {}): BossAbility
     type_id: "t",
     effect_time: 0,
     target_slot_ids: [],
+    no_full_heal_slot_ids: [],
     observed_damage: [],
     ...overrides,
   };

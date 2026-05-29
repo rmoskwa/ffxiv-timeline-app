@@ -51,8 +51,15 @@ const TANK_MASTERY_MULTIPLIER = 0.8;
 export interface PerPlayerHitResult {
   // Damage that landed on HP this hit (after % mits and barriers).
   damage_taken_to_hp: number;
-  // The player's current HP immediately after this hit.
+  // The player's current HP immediately after this hit. Per-instance walk:
+  // `max_hp − damage`. After the Carried HP fold in aggregateDamageByTime:
+  // the carried exit HP (enter − damage), which only differs from the walk
+  // value on chips the user marked no-Full-heal. See ADR 0004.
   hp_after: number;
+  // The HP the player holds *entering* this chip. Per-instance walk = the
+  // effective cap (full heal). After the fold: the Carried HP for a marked
+  // chip, else the cap. Drives the contextual Lethal test (damage ≥ hp_before).
+  hp_before: number;
   // Total barrier HP remaining across all of this player's active pools
   // immediately after this hit.
   active_shields_after: number;
@@ -358,6 +365,7 @@ export function computeDamageTimeline(
       result[i] = {
         damage_taken_to_hp: toHp,
         hp_after: newHp,
+        hp_before: cap,
         active_shields_after: shieldsAfter,
         max_hp: cap,
       };
@@ -576,22 +584,36 @@ function expireAt(pools: BarrierPool[][], t: number) {
 // hit at each time — the engine already drains pools sequentially across
 // simultaneous hits, so the final `active_shields_after` for any given time
 // is whatever the last hit at that time reported.
+//
+// Carried HP fold (ADR 0004): after bucketing, the buckets are walked in
+// ascending effect-time order to thread each player's HP across their own
+// chips. A chip whose slot is flagged no-Full-heal by any contributing
+// instance (OR-merge) enters at the previous chip's exit HP (clamped to the
+// current cap) instead of resetting to max. A chip with no flag — the default
+// — enters at the cap, reproducing the original per-hit HP-isolation behavior
+// exactly. The roster supplies the index→slot-id map for the flag lookup.
 export function aggregateDamageByTime(
   hits: readonly BossAbilityInstance[],
   damageByInstance: ReadonlyMap<string, (PerPlayerHitResult | null)[]>,
+  roster: Roster,
 ): Map<number, (PerPlayerHitResult | null)[]> {
   // Preserve input order within each time bucket — the engine processes
   // simultaneous hits in input order (stable sort), so the bucket's last
-  // entry carries the post-all-hits shield state.
-  const buckets = new Map<number, string[]>();
+  // entry carries the post-all-hits shield state. `instBuckets` keeps the
+  // instances themselves so the fold can OR-merge their no_full_heal flags.
+  const idBuckets = new Map<number, string[]>();
+  const instBuckets = new Map<number, BossAbilityInstance[]>();
   for (const h of hits) {
-    const bucket = buckets.get(h.effect_time);
-    if (bucket) bucket.push(h.id);
-    else buckets.set(h.effect_time, [h.id]);
+    const ids = idBuckets.get(h.effect_time);
+    if (ids) ids.push(h.id);
+    else idBuckets.set(h.effect_time, [h.id]);
+    const insts = instBuckets.get(h.effect_time);
+    if (insts) insts.push(h);
+    else instBuckets.set(h.effect_time, [h]);
   }
 
   const out = new Map<number, (PerPlayerHitResult | null)[]>();
-  for (const [t, ids] of buckets) {
+  for (const [t, ids] of idBuckets) {
     const aggregated: (PerPlayerHitResult | null)[] = new Array(8).fill(null);
     for (let i = 0; i < 8; i++) {
       let damageSum = 0;
@@ -607,14 +629,46 @@ export function aggregateDamageByTime(
         any = true;
       }
       if (!any) continue;
+      // hp_before/hp_after are provisional here (full-heal values); the carry
+      // fold below overwrites them for flagged chips.
       aggregated[i] = {
         damage_taken_to_hp: damageSum,
         hp_after: Math.max(0, cap - damageSum),
+        hp_before: cap,
         active_shields_after: shieldsAfter,
         max_hp: cap,
       };
     }
     out.set(t, aggregated);
+  }
+
+  // Carried HP fold. Walk buckets ascending (the Map above is insertion-
+  // ordered, not time-ordered). `prevExit`/`hasPrev` track each player's last
+  // chip independently — a player's first chip has no predecessor, so its flag
+  // is inert and it always enters at the cap.
+  const sortedTimes = [...out.keys()].sort((a, b) => a - b);
+  const prevExit: number[] = new Array(8).fill(0);
+  const hasPrev: boolean[] = new Array(8).fill(false);
+  for (const t of sortedTimes) {
+    const results = out.get(t);
+    if (!results) continue;
+    const instsAtT = instBuckets.get(t) ?? [];
+    for (let i = 0; i < 8; i++) {
+      const r = results[i];
+      if (r == null) continue;
+      const cap = r.max_hp;
+      const slotId = roster[i]?.id ?? "";
+      const noFullHeal =
+        hasPrev[i] && instsAtT.some((inst) => inst.no_full_heal_slot_ids.includes(slotId));
+      // Clamp the carry to the current cap — a max-HP buff falling off shrinks
+      // it; a buff coming up grants no free HP.
+      const enterHP = noFullHeal ? Math.min(prevExit[i] ?? cap, cap) : cap;
+      const exitHP = Math.max(0, enterHP - r.damage_taken_to_hp);
+      r.hp_before = enterHP;
+      r.hp_after = exitHP;
+      prevExit[i] = exitHP;
+      hasPrev[i] = true;
+    }
   }
   return out;
 }
