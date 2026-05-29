@@ -22,6 +22,7 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitIcon } from "./MitIcon";
 import { TimecodeField } from "./primitives/TimecodeField";
+import { jobColor } from "./role-color";
 import { SimpleGridAddRow } from "./SimpleGridAddRow";
 import { SimpleGridMitPicker } from "./SimpleGridMitPicker";
 import { projectInstancesToHits } from "./simple-grid-projection";
@@ -171,7 +172,12 @@ export function SimpleTimelineGrid() {
                 Damage
               </th>
               {displayedSlots.map((slot) => (
-                <th scope="col" key={slot.id} className="simple-grid-col-slot">
+                <th
+                  scope="col"
+                  key={slot.id}
+                  className="simple-grid-col-slot"
+                  style={{ backgroundColor: jobColor(slot.job) }}
+                >
                   <div className="simple-grid-slot-head">
                     <JobIcon job={slot.job} size={20} title={slot.name_label ?? slot.job} />
                     <span className="simple-grid-slot-label">{slot.name_label ?? slot.job}</span>
@@ -232,6 +238,17 @@ export function SimpleTimelineGrid() {
                       pickerCell?.slotId === slot.id && pickerCell.rowIndex === item.rowIndex;
                     return (
                       <td key={slot.id} className="simple-grid-cell">
+                        {slot.job !== "unset" && (
+                          <button
+                            type="button"
+                            className="simple-grid-cell-add"
+                            title="Add mitigation"
+                            aria-label="Add mitigation"
+                            onClick={() =>
+                              setPickerCell({ slotId: slot.id, rowIndex: item.rowIndex })
+                            }
+                          />
+                        )}
                         <div className="simple-grid-cell-inner">
                           {chips.map((chip) => (
                             <button
@@ -246,19 +263,6 @@ export function SimpleTimelineGrid() {
                               <MitIcon name={chip.name} size={18} title={chip.name} />
                             </button>
                           ))}
-                          {slot.job !== "unset" && (
-                            <button
-                              type="button"
-                              className="simple-grid-cell-add"
-                              title="Add mitigation"
-                              aria-label="Add mitigation"
-                              onClick={() =>
-                                setPickerCell({ slotId: slot.id, rowIndex: item.rowIndex })
-                              }
-                            >
-                              +
-                            </button>
-                          )}
                         </div>
                         {pickerOpen && (
                           <SimpleGridMitPicker
