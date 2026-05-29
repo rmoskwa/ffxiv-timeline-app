@@ -165,12 +165,24 @@ A mit-library entry with `mechanic: "utility"`, no % mit, and no **Barrier**. Ac
 _Avoid_: planner mit, dummy mit
 
 **Lethal**:
-A computed property of a **hit**, true when this hit's damage-to-HP (post-% mit, post-**Tank Mastery**, post-**Barrier**) is at least the targeted player's max **HP**. HP is evaluated per-hit against the player's full max — earlier hits don't decrement the HP budget — so lethality describes this hit *in isolation*. Drives the red **damage chip** styling and the lethal flag on a **marker**.
+A computed property of a **damage chip** (a player's aggregated **hit**s at one **effect time**), true when the chip's total damage-to-HP (post-% mit, post-**Tank Mastery**, post-**Barrier**) is at least the player's **Carried HP** *entering* the chip — the HP they actually hold at that moment, not necessarily their full max **HP**. For a **Full heal** chip entering HP equals max HP, so this reduces to the original "kills from full" test; for a no-Full-heal chip it can flag a hit that only kills because earlier damage was carried. Drives the red damage chip styling and the lethal flag on a **marker**.
 _Avoid_: deadly, fatal, kill
 
 **HP**:
-A player slot's maximum hit points, edited per-slot in the **ROSTER** panel. Drives the per-player **Lethal** threshold. Stored on the slot (`PlayerSlot.hp`); when omitted, falls back to the party-wide `PLAYER_MAX_HP` constant. Clamped at the store boundary to `[SLOT_HP_MIN, SLOT_HP_MAX]` (1k–999k).
+A player slot's maximum hit points, edited per-slot in the **ROSTER** panel. The cap (not the moment-to-moment value — that is **Carried HP**) that drives the per-player **Lethal** threshold. Stored on the slot (`PlayerSlot.hp`); when omitted, falls back to the party-wide `PLAYER_MAX_HP` constant. Clamped at the store boundary to `[SLOT_HP_MIN, SLOT_HP_MAX]` (1k–999k).
 _Avoid_: hitpoints, max-hp, health, hp_max
+
+**Full heal**:
+A per-(**Boss ability** instance × **player slot**) boolean controlling whether the player is restored to full max **HP** before this **hit**. Default `true` for every chip — reproducing the original full-HP-per-hit model exactly. Stored in its *negative* sense as `no_full_heal_slot_ids` on the `BossAbilityInstance`: an empty array (the default) means everyone is topped, so untouched timelines behave exactly as before. When `false` for a slot, that slot's **damage chip** enters at the player's **Carried HP** from their previous chip instead of resetting to max. Toggled by clicking the chip on the **canvas** (with multi-select to mark a **No-heal run** in one gesture); canvas-only — never surfaces in the **Simple Timeline View**. When several hits share an **effect time**, the merged chip is treated as no-Full-heal if *any* contributing instance is flagged (OR-merge).
+_Avoid_: heal flag, top-off, rez, full restore
+
+**Carried HP**:
+The running, per-player HP the damage walk threads from one of that player's **damage chip**s to the next when the later chip's **Full heal** flag is off. `enterHP = fullHeal ? maxHP : previousChip.exitHP`; `exitHP = max(0, enterHP − chipDamage)`. The chain spans only the player's *own* chips — hits that don't target the player are skipped and never reset it — and is clamped to the **effective** max HP at each chip (a `max_hp_buff_pct` falling off shrinks Carried HP; one coming up grants no free HP). A player's first chip, and every Full heal chip, re-enter at max HP and break the chain. Threaded at the chip (**effect time** bucket) level: within a bucket simultaneous hits always carry sequentially, since "full heal *between* hits" is meaningless at a single instant. Distinct from **HP** (the static per-slot cap).
+_Avoid_: carryover, rollover, running HP, HP state, remaining HP
+
+**No-heal run**:
+A maximal contiguous sequence of one player's **damage chip**s all marked no-**Full heal**, across which **Carried HP** threads unbroken. A death (exit HP 0) propagates forward only *within* a run; the next Full heal chip resets to max and ends the propagation — so a death can never reach past the next Full heal chip, and since chips default to Full heal an unmarked timeline has no propagation at all. Rendered with a **link glyph** chaining the chips so the run reads at a glance.
+_Avoid_: chain, no-heal window, damage sequence, carry chain
 
 **Numeric input convention**:
 Every user-typed number field (HP, boss base damage, future damage fields) routes its raw string through `parseNumericInput` (`src/ui/parse-number.ts`). The parser accepts plain integers, comma thousands-separators, and a `k` suffix that multiplies by 1000 (`"300k"` → 300000, `"1.5k"` → 1500). New numeric inputs MUST use this parser — `<input type="number">` blocks commas and the `k` suffix and is therefore disallowed for user-facing numeric fields.
@@ -238,10 +250,10 @@ A Bar is *authoritative* over its `[effect_time, effect_time + cooldown_seconds]
 _Avoid_: block, segment (use "active segment" or "cooldown tail" explicitly), span
 
 **Damage chip**:
-The per-player stacked HP/shield bar that appears on a player lane's header track at each hit time, with a damage-taken numeric label overlaid. The bar has a uniform pixel width across all players (`CHIP_BAR_PX`); each segment is a percentage fill of that player's own max **HP**. HP is evaluated per-hit against the player's full max — the bar shows what HP the player ends this hit with *assuming full HP entering the hit*. **Barrier** pools, by contrast, are stateful and carry between hits; a partially-drained shield from an earlier hit is visible on later chips until it is fully consumed or expires. Layered left-to-right:
+The per-player stacked HP/shield bar that appears on a player lane's header track at each hit time, with a damage-taken numeric label overlaid. The bar has a uniform pixel width across all players (`CHIP_BAR_PX`); each segment is a percentage fill of that player's own max **HP**. The bar shows the player's **Carried HP** state after this hit: by default every chip is a **Full heal** chip that re-enters at full max HP (identical to the original full-HP-per-hit model), but a chip whose Full heal flag is off enters at the previous chip's exit HP, so its green bar is shorter. **Barrier** pools are likewise stateful and carry between hits; a partially-drained shield from an earlier hit is visible on later chips until it is fully consumed or expires. A **link glyph** chains the chips of a **No-heal run**. Layered left-to-right:
 
-- **Green** base — HP remaining after this hit (`max_hp − damage_to_hp`).
-- **White** right-anchored overlay — HP lost this hit. On a **Lethal** hit this segment tints red.
+- **Green** base — Carried HP remaining after this hit (`exitHP`, as a fraction of max HP).
+- **White** right-anchored overlay — total HP missing right now (`max_hp − exitHP`), i.e. everything not currently present — not only this hit's loss, so on a no-Full-heal chip it can exceed the overlaid numeric label (which still reads *this hit's* damage). On a **Lethal** chip this segment tints red.
 - **Orange** left-anchored overlay — remaining barrier total as a fraction of max HP, capped at the bar width. A 100%-shielded player reads as fully orange.
 
 _Avoid_: damage label, hit chip, number tag, HP bar
