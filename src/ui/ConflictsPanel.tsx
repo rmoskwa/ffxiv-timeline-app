@@ -293,7 +293,12 @@ function SlotChip({ slot, index }: { slot: PlayerSlot; index: number }) {
 function flashElement(selector: string): void {
   const el = document.querySelector<HTMLElement>(selector);
   if (!el) return;
-  el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  // Simple view's chips live in a vertically-scrolling grid, so center them in
+  // view; the canvas keeps "nearest" to avoid jarring vertical lane jumps.
+  const block: ScrollLogicalPosition = el.classList.contains("simple-grid-chip")
+    ? "center"
+    : "nearest";
+  el.scrollIntoView({ behavior: "smooth", inline: "center", block });
   el.classList.add("mit-bar--flash");
   window.setTimeout(() => el.classList.remove("mit-bar--flash"), 1200);
 }

@@ -11,7 +11,7 @@
 // instance inline (re-sorts on commit); SimpleGridAddRow appends new rows.
 // See docs/adr/0002-simple-view-live-projection.md.
 
-import { type CSSProperties, type ReactNode, useMemo, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
 import { getMitById } from "@/data/mit-library";
 import { phaseOrdinalFor } from "@/domain/phases";
 import {
@@ -74,6 +74,9 @@ export function SimpleTimelineGrid() {
   const selectMit = useTimelineStore((s) => s.selectMitInstance);
   const selectedMitId = useTimelineStore((s) =>
     s.selectedInstance?.kind === "mit" ? s.selectedInstance.id : null,
+  );
+  const selectedBossInstanceId = useTimelineStore((s) =>
+    s.selectedInstance?.kind === "boss" ? s.selectedInstance.id : null,
   );
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
   const columnWidth = useColumnWidthStore((s) => s.columnWidth);
@@ -303,6 +306,25 @@ export function SimpleTimelineGrid() {
     return items;
   }, [sortedRows, phases]);
 
+  // Conflicts panel → grid sync: when a boss ability becomes selected (e.g. via a
+  // "needs target" conflict's jump action), scroll its row into view and flash it.
+  // Mirrors the canvas BossLane effect; the transient flash stands in for the
+  // canvas's persistent selected-marker border, which the grid has no equivalent of.
+  useEffect(() => {
+    if (!selectedBossInstanceId) return;
+    const el = document.querySelector<HTMLElement>(
+      `.simple-grid-row[data-boss-instance-id="${selectedBossInstanceId}"]`,
+    );
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    el.classList.add("simple-grid-row--flash");
+    const timer = window.setTimeout(() => el.classList.remove("simple-grid-row--flash"), 1200);
+    return () => {
+      window.clearTimeout(timer);
+      el.classList.remove("simple-grid-row--flash");
+    };
+  }, [selectedBossInstanceId]);
+
   if (!roster) {
     return <div className="simple-grid-empty">No timeline loaded.</div>;
   }
@@ -321,6 +343,10 @@ export function SimpleTimelineGrid() {
           isPlacingChild && !chip.isHome ? " is-dimmed" : ""
         }`}
         title={chip.name}
+        // The Home chip is the conflict-jump target (ConflictsPanel.flashElement
+        // queries [data-mit-id]); Coverage markers stay unaddressed so the query
+        // resolves a single, deterministic element.
+        {...(chip.isHome ? { "data-mit-id": chip.instanceId } : {})}
         onClick={() => selectMit(chip.instanceId)}
       >
         <MitIcon name={chip.name} size={iconSize} title={chip.name} />
@@ -533,7 +559,11 @@ export function SimpleTimelineGrid() {
               const nameColor = type ? abilityTextColor(type, "target_pattern", colorConfig) : null;
               const typeColor = type ? abilityTextColor(type, "damage_type", colorConfig) : null;
               return (
-                <tr key={item.inst.id} className="simple-grid-row">
+                <tr
+                  key={item.inst.id}
+                  className="simple-grid-row"
+                  data-boss-instance-id={item.inst.id}
+                >
                   <td className="simple-grid-col-time">
                     {item.phasePrefix && (
                       <span className="simple-grid-phase-prefix">{item.phasePrefix}</span>
