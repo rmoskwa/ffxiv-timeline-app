@@ -349,20 +349,30 @@ function BossLaneLabel({ mergedGutter }: { mergedGutter: boolean }) {
   );
   const setBossName = useTimelineStore((s) => s.setBossName);
   const setFightDuration = useTimelineStore((s) => s.setFightDuration);
+  // Local draft committed on blur/Enter, so a boss rename is a single undo step
+  // rather than one per keystroke. Resyncs on external change (Open, undo/redo).
+  const [draft, setDraft] = useState(bossName);
+
+  useEffect(() => {
+    setDraft(bossName);
+  }, [bossName]);
+
+  const commitBossName = () => {
+    const next = draft.trim() === "" ? "Boss Name" : draft;
+    if (next !== bossName) setBossName(next);
+  };
 
   return (
     <div className={`lane-label lane-label--boss${mergedGutter ? " lane-label--boss-merged" : ""}`}>
       <textarea
         className="boss-name-input"
         placeholder="Boss name"
-        value={bossName}
+        value={draft}
         maxLength={MAX_NAME_LEN}
         rows={1}
         // Wrapping is purely visual — strip any newlines from typing or paste.
-        onChange={(e) => setBossName(e.target.value.replace(/\n/g, ""))}
-        onBlur={(e) => {
-          if (e.target.value.trim() === "") setBossName("Boss Name");
-        }}
+        onChange={(e) => setDraft(e.target.value.replace(/\n/g, ""))}
+        onBlur={commitBossName}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();

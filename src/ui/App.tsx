@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { confirm as confirmDialog, message as messageDialog } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
 import {
   deleteWorkingTimeline,
@@ -14,6 +14,7 @@ import {
   useJobHpDefaultsAutoSave,
 } from "@/persistence/use-auto-save";
 import { useHydrate } from "@/persistence/use-hydrate";
+import { useHistoryStore } from "@/state/history-store";
 import { useJobHpDefaultsStore } from "@/state/job-hp-defaults-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { AbilityColorsModal } from "./AbilityColorsModal";
@@ -30,6 +31,7 @@ import { TimelineEditor } from "./TimelineEditor";
 import { useAbilityColorsModalStore } from "./use-ability-colors-modal";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
 import { useBossImportExport } from "./use-boss-import-export";
+import { useHistoryRecorder } from "./use-history-recorder";
 import { useJobDefaultsModalStore } from "./use-job-defaults-modal";
 import { useUpdateCheck } from "./use-update-check";
 
@@ -41,7 +43,10 @@ export function App() {
   const timeline = useTimelineStore((s) => s.timeline);
   const loadTimeline = useTimelineStore((s) => s.loadTimeline);
   const closeTimeline = useTimelineStore((s) => s.closeTimeline);
-  const setName = useTimelineStore((s) => s.setName);
+  const undo = useHistoryStore((s) => s.undo);
+  const redo = useHistoryStore((s) => s.redo);
+  const canUndo = useHistoryStore((s) => s.past.length > 0);
+  const canRedo = useHistoryStore((s) => s.future.length > 0);
   const openAddPhase = useAddPhaseModalStore((s) => s.open);
   const openClearTimeline = useClearTimelineModalStore((s) => s.open);
   const openJobDefaults = useJobDefaultsModalStore((s) => s.open);
@@ -58,6 +63,9 @@ export function App() {
   // timeline.
   useJobHpDefaultsAutoSave(hydrated);
   useAbilityColorsAutoSave(hydrated);
+  // Record edits for undo/redo once hydrated. Resets itself on a document
+  // boundary (New / Open / Discard) — see use-history-recorder.ts.
+  useHistoryRecorder(hydrated);
 
   const handleSaveTimeline = useCallback(async () => {
     if (!timeline) return;
@@ -128,6 +136,9 @@ export function App() {
       {
         label: "Edit",
         items: [
+          { kind: "item", label: "Undo", onClick: undo, disabled: !canUndo },
+          { kind: "item", label: "Redo", onClick: redo, disabled: !canRedo },
+          { kind: "separator" },
           {
             kind: "item",
             label: "Add Phase",
@@ -173,6 +184,10 @@ export function App() {
     ],
     [
       timeline,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
       handleDiscard,
       handleOpenTimeline,
       handleSaveTimeline,
@@ -228,23 +243,7 @@ export function App() {
       <div className="app-shell">
         <header className="app-header">
           <div>
-            <input
-              type="text"
-              className="fight-name-input"
-              maxLength={MAX_NAME_LEN}
-              value={timeline.metadata.name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={(e) => {
-                if (e.target.value.trim() === "") setName("Untitled Timeline");
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.currentTarget.blur();
-                }
-              }}
-              aria-label="Fight name"
-            />
+            <FightNameInput />
             <p className="subtitle">
               schema v{TIMELINE_SCHEMA_VERSION} · {savedLabel}
             </p>
@@ -276,5 +275,43 @@ export function App() {
       </div>
       <HelpModals />
     </div>
+  );
+}
+
+// Fight-name field. Owns a local draft and commits to the store on blur/Enter,
+// so a rename is a single undo step (and a single auto-save) rather than one per
+// keystroke. The store sanitizes/clamps on commit; the [name] resync reflects
+// that back, plus any external change (Open, undo/redo). Mirrors the boss-name
+// input (BossLane) and the ability-name input (BossAbilityPanel).
+function FightNameInput() {
+  const name = useTimelineStore((s) => s.timeline?.metadata.name ?? "");
+  const setName = useTimelineStore((s) => s.setName);
+  const [draft, setDraft] = useState(name);
+
+  useEffect(() => {
+    setDraft(name);
+  }, [name]);
+
+  const commit = () => {
+    const next = draft.trim() === "" ? "Untitled Timeline" : draft;
+    if (next !== name) setName(next);
+  };
+
+  return (
+    <input
+      type="text"
+      className="fight-name-input"
+      maxLength={MAX_NAME_LEN}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.currentTarget.blur();
+        }
+      }}
+      aria-label="Fight name"
+    />
   );
 }
