@@ -277,8 +277,20 @@ _Avoid_: phase boundary line, phase break, separator
 ### Imports
 
 **Import** / **Export**:
-Scoped data movement *into* or *out of* an already-open document — a subset of the document's contents, not the document itself. The live example is loading a **boss timeline** into the current Timeline (`useBossImportExport`). Distinct from **Open** / **Save**, which apply to whole-document file operations on standalone artifacts (Timelines).
-_Avoid_: fetch, ingest, sync; never use "import" for opening a full Timeline from disk (use "Open" there)
+Scoped data movement *into* or *out of* an already-open document — a subset of the document's contents, not the document itself. The live example is loading a **boss timeline** into the current Timeline (`useBossImportExport`). Round-trippable: an exported boss-timeline JSON can be re-imported. Distinct from **Open** / **Save** (whole-document file operations on standalone Timelines) and from **Share** (a one-way rendering that never returns to the app).
+_Avoid_: fetch, ingest, sync; never use "import" for opening a full Timeline from disk (use "Open" there); never use "export" for the one-way **Share** rendering
+
+### Sharing
+
+The one-way movement of timeline information *out* of the app into an external presentation format — for humans (and later other tools), never back into this app. The mirror of **Imports**, which round-trip.
+
+**Share**:
+Producing a human-facing rendering of a **Slice** of the Timeline in an external format, delivered to the clipboard for pasting elsewhere — Discord-flavored markdown today, possibly `.xlsx` later. One-way: a Share can never be re-imported, which is exactly what distinguishes it from **Export** (a boss-timeline Export round-trips). The Discord rendering reuses the **Simple Timeline View**'s temporal-presence model — a mitigation reads as *present* on every **hit** its **active window** covers — but emits a per-**Boss ability** text digest grouped by **Phase** rather than a grid, because Discord renders no markdown tables.
+_Avoid_: export (reserved for round-trippable data movement), dump, post
+
+**Slice**:
+The contiguous time window of a Timeline chosen for a **Share** — an inclusive `[from, to]` window in seconds-from-**pull**, defaulting to the whole fight. Picked by typing timecodes ("Export range") or by quick-filling a **Phase**'s bounds. Times in the rendered output stay absolute (pull-relative), never re-based to the slice start.
+_Avoid_: splice (means join, not cut), clip, crop, trim
 
 ### Simple Timeline View
 
