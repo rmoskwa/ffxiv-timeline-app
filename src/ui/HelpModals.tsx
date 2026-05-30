@@ -46,14 +46,8 @@ function ShortcutsBody({ onClose }: { onClose: () => void }) {
     <div className="help-modal" role="dialog" aria-label="Keyboard shortcuts">
       <h2>Keyboard Shortcuts</h2>
       <dl className="help-shortcuts">
-        <dt>Delete</dt>
-        <dd>Remove the selected boss ability or mitigation placement.</dd>
-        <dt>Esc</dt>
-        <dd>Deselect the current placement, or close the open menu / modal.</dd>
-        <dt>← →</dt>
-        <dd>While the menu bar is open: switch between menus.</dd>
-        <dt>↑ ↓</dt>
-        <dd>While a menu is open: move between items.</dd>
+        <dt>Ctrl / Alt + wheel</dt>
+        <dd>Zoom the timeline in and out, centered on the cursor.</dd>
       </dl>
       <div className="form-actions">
         <button type="button" onClick={onClose}>
