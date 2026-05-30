@@ -11,7 +11,9 @@ import {
   type Phase,
   type Roster,
 } from "@/domain/types";
+import { useAbilityColorsStore } from "@/state/ability-colors-store";
 import { useTimelineStore } from "@/state/timeline-store";
+import { abilityTextColor } from "./ability-color";
 import { BossPlacementPicker } from "./BossPlacementPicker";
 import { clampLabelCenter, packLabelRows } from "./boss-label-packing";
 import { PhaseDividers } from "./PhaseDividers";
@@ -47,6 +49,7 @@ export function BossLane() {
   const selectBossInstance = useTimelineStore((s) => s.selectBossInstance);
   const deselectInstance = useTimelineStore((s) => s.deselectInstance);
   const damageByTime = useDamageByTime();
+  const colorConfig = useAbilityColorsStore((s) => s.config);
   const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
   const chipPosition = useChipLayoutStore((s) => s.position);
 
@@ -171,6 +174,8 @@ export function BossLane() {
           const lethal =
             results?.some((r) => r != null && r.damage_taken_to_hp >= r.max_hp) ?? false;
           const rowIndex = packed.rowByInstanceId.get(inst.id) ?? 0;
+          // Surfaced-scheme text color for the resting Label (null = theme-neutral).
+          const labelColor = abilityTextColor(type, colorConfig.surfacedScheme, colorConfig);
           return (
             <BossMarker
               key={inst.id}
@@ -184,6 +189,7 @@ export function BossLane() {
               rowIndex={rowIndex}
               stripHeight={stripHeight}
               phasePrefix={phasePrefixById.get(inst.id) ?? ""}
+              labelColor={labelColor}
               onSelect={() => selectBossInstance(inst.id)}
               onPickTargets={(ids) => updateInstance(inst.id, { target_slot_ids: ids })}
             />
@@ -210,6 +216,7 @@ function BossMarker({
   rowIndex,
   stripHeight,
   phasePrefix,
+  labelColor,
   onSelect,
   onPickTargets,
 }: {
@@ -223,12 +230,17 @@ function BossMarker({
   rowIndex: number;
   stripHeight: number;
   phasePrefix: string;
+  labelColor: string | null;
   onSelect: () => void;
   onPickTargets: (ids: string[]) => void;
 }) {
   const targeting = targetingForBoss(instance, type);
   const needsTarget = targeting.maxCount > 0;
   const targetsUnset = needsTarget && !targeting.isComplete;
+  // The unset-target state wins the text/bg outright (yellow bg + dark text via
+  // CSS), so suppress the type color there; otherwise paint it inline (it
+  // composes with the lethal red border and the selected blue halo).
+  const typeColor = targetsUnset ? null : labelColor;
 
   // Auto-opens target picker when a newly-placed instance still needs targets.
   const [targetPickerOpen, setTargetPickerOpen] = useState(targetsUnset);
@@ -280,7 +292,7 @@ function BossMarker({
       <button
         type="button"
         className="boss-marker-label"
-        style={{ top: labelTop, left: labelDx }}
+        style={{ top: labelTop, left: labelDx, ...(typeColor ? { color: typeColor } : {}) }}
         onClick={(e) => {
           e.stopPropagation();
           onSelect();

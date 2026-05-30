@@ -12,7 +12,9 @@ import {
   type Roster,
   type TargetPattern,
 } from "@/domain/types";
+import { useAbilityColorsStore } from "@/state/ability-colors-store";
 import { DuplicateNameError, LimitExceededError, useTimelineStore } from "@/state/timeline-store";
+import { abilityTextColor } from "./ability-color";
 import { CautionIcon } from "./CautionIcon";
 import { NumberInput } from "./primitives/NumberInput";
 import { TimecodeField } from "./primitives/TimecodeField";
@@ -154,6 +156,9 @@ function TypeEntry({
   onToggle: () => void;
 }) {
   const removeType = useTimelineStore((s) => s.removeBossAbilityType);
+  const colorConfig = useAbilityColorsStore((s) => s.config);
+  // Surfaced-scheme color for the type name (null = theme-neutral text).
+  const nameColor = abilityTextColor(type, colorConfig.surfacedScheme, colorConfig);
 
   if (!expanded) {
     return (
@@ -172,7 +177,12 @@ function TypeEntry({
         >
           ▸
         </button>
-        <span className="boss-type-collapsed-name">{type.name}</span>
+        <span
+          className="boss-type-collapsed-name"
+          {...(nameColor ? { style: { color: nameColor } } : {})}
+        >
+          {type.name}
+        </span>
         <button
           type="button"
           className="boss-type-remove"
@@ -200,7 +210,7 @@ function TypeEntry({
         >
           ▾
         </button>
-        <TypeNameField type={type} />
+        <TypeNameField type={type} nameColor={nameColor} />
         <button
           type="button"
           className="boss-type-remove"
@@ -289,7 +299,7 @@ function PhaseGroupedInstanceList({
 
 // ─── Type-level fields ─────────────────────────────────────────────────────
 
-function TypeNameField({ type }: { type: BossAbilityType }) {
+function TypeNameField({ type, nameColor }: { type: BossAbilityType; nameColor: string | null }) {
   const updateType = useTimelineStore((s) => s.updateBossAbilityType);
   const [draft, setDraft] = useState(type.name);
   const [error, setError] = useState<string | null>(null);
@@ -331,6 +341,7 @@ function TypeNameField({ type }: { type: BossAbilityType }) {
         value={draft}
         maxLength={MAX_NAME_LEN}
         aria-label="Ability name"
+        {...(nameColor ? { style: { color: nameColor } } : {})}
         onChange={(e) => {
           setDraft(e.target.value);
           if (error) setError(null);
