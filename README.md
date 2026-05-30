@@ -1,6 +1,13 @@
+<p align="center">
+  <img src="src-tauri/icons/icon.png" alt="Screenshot of FFXIV-Timeline logo">
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/-React-61DAFB?style=for-the-badge&logo=react&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Vite-646CFF?style=for-the-badge&logo=vite&logoColor=FFD62E&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Tauri-FFC131?style=for-the-badge&logo=tauri&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Rust-CE422B?style=for-the-badge&logo=rust&logoColor=white&labelColor=555555" height="32">
+</p>
+
 # FFXIV Raid Timeline and Mitigation Planner
 #### **NOTE:** Planned updates before and during the Dancing Mad (Ultimate) are tracked on the [Issues page.](https://github.com/rmoskwa/ffxiv-timeline-app/issues) Please feel free to offer suggestions (and complain about bugs!)
-<img src="https://img.shields.io/badge/-React-61DAFB?style=for-the-badge&logo=react&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Vite-646CFF?style=for-the-badge&logo=vite&logoColor=FFD62E&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Tauri-FFC131?style=for-the-badge&logo=tauri&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Rust-CE422B?style=for-the-badge&logo=rust&logoColor=white&labelColor=555555" height="32">
+
 
 Local desktop app for building and planning FFXIV raid timelines with drag-and-drop mitigation and boss ability placement. Import timelines to plan a mit sheet for your static, or create your own and share.
 
