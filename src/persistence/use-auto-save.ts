@@ -6,10 +6,12 @@ import { useEffect, useState } from "react";
 import { useAbilityColorsStore } from "@/state/ability-colors-store";
 import { useJobHpDefaultsStore } from "@/state/job-hp-defaults-store";
 import { useMitLaneLayoutStore } from "@/state/mit-lane-layout-store";
+import { useShareOptionsStore } from "@/state/share-options-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { saveAbilityColors } from "./ability-colors-storage";
 import { saveJobHpDefaults } from "./job-hp-defaults-storage";
 import { saveMitLaneLayout } from "./mit-lane-layout-storage";
+import { saveShareOptions } from "./share-options-storage";
 import { saveWorkingTimeline } from "./storage";
 
 const DEBOUNCE_MS = 1500;
@@ -169,6 +171,41 @@ export function useMitLaneLayoutAutoSave(enabled: boolean): void {
         clearTimeout(timeoutId);
         void saveMitLaneLayout(useMitLaneLayoutStore.getState().layout).catch((e: unknown) => {
           console.error("Mit lane layout save failed:", e);
+        });
+      }
+    };
+  }, [enabled]);
+}
+
+// Mirror of useMitLaneLayoutAutoSave for the app-global Share options. Mounted
+// only after hydration completes (the load via setAll is treated as the baseline,
+// never echoed back to disk).
+export function useShareOptionsAutoSave(enabled: boolean): void {
+  useEffect(() => {
+    if (!enabled) return;
+
+    let timeoutId: number | null = null;
+    let baseline = useShareOptionsStore.getState().options;
+
+    const unsubscribe = useShareOptionsStore.subscribe((state) => {
+      const next = state.options;
+      if (next === baseline) return;
+      baseline = next;
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        timeoutId = null;
+        void saveShareOptions(next).catch((e: unknown) => {
+          console.error("Share options save failed:", e);
+        });
+      }, DEBOUNCE_MS);
+    });
+
+    return () => {
+      unsubscribe();
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        void saveShareOptions(useShareOptionsStore.getState().options).catch((e: unknown) => {
+          console.error("Share options save failed:", e);
         });
       }
     };
