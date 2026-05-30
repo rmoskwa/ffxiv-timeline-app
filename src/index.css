@@ -2507,6 +2507,23 @@ button {
   animation: mit-bar-flash 1.2s ease-out;
 }
 
+/* Simple-view row flash-on-jump (boss-ability conflicts). An inset overlay tints
+   the whole row's cells on top of their per-lane background, so the job tint
+   underneath survives the flash; a box-shadow glow reads poorly across a row. */
+@keyframes simple-grid-row-flash {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 9999px rgba(255, 220, 80, 0);
+  }
+  30% {
+    box-shadow: inset 0 0 0 9999px rgba(255, 220, 80, 0.28);
+  }
+}
+.simple-grid-row--flash.simple-grid-row td,
+.simple-grid-row--flash.simple-grid-row th {
+  animation: simple-grid-row-flash 1.2s ease-out;
+}
+
 /* ─── Light appearance overrides (scoped to lane-scroll subtree) ──────── */
 
 .lane-scroll.theme-light {
