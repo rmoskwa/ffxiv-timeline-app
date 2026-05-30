@@ -28,6 +28,7 @@
       "allow": [{ "path": "**" }]
     },
     "updater:default",
-    "process:default"
+    "process:default",
+    "clipboard-manager:allow-write-text"
   ]
 }
