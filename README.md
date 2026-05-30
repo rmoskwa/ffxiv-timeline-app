@@ -70,3 +70,5 @@ src/
 src-tauri/          Rust crate for the desktop shell
 CONTEXT.md          Project glossary — canonical vocabulary
 ```
+## FFXIV-Timeline Logo 
+Graphics by `Araiyme`
