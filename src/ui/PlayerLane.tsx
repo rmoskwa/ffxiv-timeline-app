@@ -1,15 +1,40 @@
 import { useMemo } from "react";
 import { getMitsForJob } from "@/data/mit-library";
 import type { PerPlayerHitResult } from "@/domain/damage";
-import type { BossAbilityInstance, MitigationInstance, PlayerSlot } from "@/domain/types";
+import type {
+  BossAbilityInstance,
+  MitigationInstance,
+  MitigationType,
+  PlayerSlot,
+} from "@/domain/types";
+import { useMitLaneLayoutStore } from "@/state/mit-lane-layout-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
 import { MitSubLane } from "./MitSubLane";
+import { orderedVisibleMits } from "./mit-lane-order";
 import { PhaseDividers } from "./PhaseDividers";
 import { jobColor } from "./role-color";
 import { CHIP_BAR_PX, JOB_GUTTER_PX } from "./timeline-constants";
 import { useDamageByTime } from "./use-derived";
 import { useZoom } from "./use-zoom";
+
+// The job's non-gated library types in library order — the base set the Mit lane
+// layout reorders/filters over. Gated children render on their parent's bar (see
+// MitBar) and never get their own sub-lane, so they're excluded here. Resolved
+// at the React seam per ADR-0001; mit-lane-order.ts stays library-agnostic.
+function useOrderedSlotMits(slot: PlayerSlot): MitigationType[] {
+  const layout = useMitLaneLayoutStore((s) => s.layout);
+  return useMemo(
+    () =>
+      slot.job === "unset"
+        ? []
+        : orderedVisibleMits(
+            getMitsForJob(slot.job).filter((mt) => mt.gated_by == null),
+            layout[slot.job],
+          ),
+    [slot.job, layout],
+  );
+}
 
 interface PlayerLaneProps {
   slot: PlayerSlot;
@@ -93,10 +118,7 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
   const { pxPerSec, laneWidthPx } = useZoom();
 
   const label = slot.name_label ?? (slot.job === "unset" ? "Unset" : slot.job);
-  // Gated children render on their parent's bar (see MitBar) and do not get
-  // their own sub-lane.
-  const mits =
-    slot.job === "unset" ? [] : getMitsForJob(slot.job).filter((mt) => mt.gated_by == null);
+  const mits = useOrderedSlotMits(slot);
   const isUnset = slot.job === "unset";
 
   return (
@@ -162,9 +184,7 @@ export function PlayerChipRow({ slot, index }: PlayerLaneProps) {
 export function SlotMitGroup({ slot, index }: PlayerLaneProps) {
   const damageMarks = usePlayerDamageMarks(index);
   const mitsBySlot = useSlotMits(slot);
-
-  const mits =
-    slot.job === "unset" ? [] : getMitsForJob(slot.job).filter((mt) => mt.gated_by == null);
+  const mits = useOrderedSlotMits(slot);
   if (mits.length === 0) return null;
 
   const label = slot.name_label ?? slot.job;

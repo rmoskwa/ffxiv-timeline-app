@@ -5,9 +5,11 @@
 import { useEffect, useState } from "react";
 import { useAbilityColorsStore } from "@/state/ability-colors-store";
 import { useJobHpDefaultsStore } from "@/state/job-hp-defaults-store";
+import { useMitLaneLayoutStore } from "@/state/mit-lane-layout-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { saveAbilityColors } from "./ability-colors-storage";
 import { saveJobHpDefaults } from "./job-hp-defaults-storage";
+import { saveMitLaneLayout } from "./mit-lane-layout-storage";
 import { saveWorkingTimeline } from "./storage";
 
 const DEBOUNCE_MS = 1500;
@@ -131,6 +133,42 @@ export function useAbilityColorsAutoSave(enabled: boolean): void {
         clearTimeout(timeoutId);
         void saveAbilityColors(useAbilityColorsStore.getState().config).catch((e: unknown) => {
           console.error("Ability colors save failed:", e);
+        });
+      }
+    };
+  }, [enabled]);
+}
+
+// Mirror of useAbilityColorsAutoSave for the app-global Mit lane layout. Mounted
+// only after hydration completes (the load via setAll is treated as the
+// baseline, never echoed back to disk). Runs independently of the working
+// timeline — the layout can be edited from the Settings menu with no timeline open.
+export function useMitLaneLayoutAutoSave(enabled: boolean): void {
+  useEffect(() => {
+    if (!enabled) return;
+
+    let timeoutId: number | null = null;
+    let baseline = useMitLaneLayoutStore.getState().layout;
+
+    const unsubscribe = useMitLaneLayoutStore.subscribe((state) => {
+      const next = state.layout;
+      if (next === baseline) return;
+      baseline = next;
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        timeoutId = null;
+        void saveMitLaneLayout(next).catch((e: unknown) => {
+          console.error("Mit lane layout save failed:", e);
+        });
+      }, DEBOUNCE_MS);
+    });
+
+    return () => {
+      unsubscribe();
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        void saveMitLaneLayout(useMitLaneLayoutStore.getState().layout).catch((e: unknown) => {
+          console.error("Mit lane layout save failed:", e);
         });
       }
     };

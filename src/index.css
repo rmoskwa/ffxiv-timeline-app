@@ -3832,6 +3832,190 @@ button {
   cursor: not-allowed;
 }
 
+/* ─── Mitigation Layout modal ────────────────────────────────────────── */
+
+.mit-lane-modal {
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  width: min(640px, 100%);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.mit-lane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mit-lane-modal h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #e0e0e0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mit-lane-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+.mit-lane-close:hover {
+  color: #e0e0e0;
+}
+.mit-lane-hint {
+  margin: 0;
+  color: #888;
+  font-size: 0.8rem;
+}
+.mit-lane-body {
+  display: flex;
+  gap: 1rem;
+  min-height: 0;
+  flex: 1;
+}
+.mit-lane-jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  border-right: 1px solid #333;
+  flex: 0 0 8.5rem;
+}
+.mit-lane-job-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.mit-lane-job-role {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #aaa;
+  font-weight: 600;
+  margin-bottom: 0.1rem;
+}
+.mit-lane-job {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+  color: #ccc;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+}
+.mit-lane-job:hover {
+  background: #2c2c2c;
+}
+.mit-lane-job.is-selected {
+  background: #2f3a36;
+  border-color: #4a8;
+  color: #e0e0e0;
+}
+.mit-lane-rows-pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+}
+.mit-lane-rows-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mit-lane-rows-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+}
+.mit-lane-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.mit-lane-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 0.3rem 0.45rem;
+}
+.mit-lane-row-name {
+  flex: 1;
+  min-width: 0;
+  color: #ccc;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mit-lane-row.is-hidden .mit-lane-row-name,
+.mit-lane-row.is-hidden .mit-icon {
+  opacity: 0.4;
+}
+.mit-lane-row-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: #ccc;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.mit-lane-row-btn:hover:not(:disabled) {
+  background: #333;
+  color: #e0e0e0;
+}
+.mit-lane-row-btn:disabled {
+  color: #555;
+  cursor: not-allowed;
+}
+.mit-lane-row-eye[aria-pressed="true"] {
+  color: #7a7a7a;
+}
+.mit-lane-modal .form-actions button:not(.link-button) {
+  background: #4a8;
+  color: #111;
+  border: none;
+  border-radius: 3px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mit-lane-modal .form-actions button:not(.link-button):disabled {
+  background: #333;
+  color: #777;
+  cursor: not-allowed;
+}
+
 /* ─── Phase dividers ─────────────────────────────────────────────────── */
 
 .phase-divider {
