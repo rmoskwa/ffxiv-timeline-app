@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src-tauri/icons/icon.png" alt="Screenshot of FFXIV-Timeline logo">
+  <img src="docs/FFXIVTimelineIcon.png" alt="Screenshot of FFXIV-Timeline logo">
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/-React-61DAFB?style=for-the-badge&logo=react&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Vite-646CFF?style=for-the-badge&logo=vite&logoColor=FFD62E&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Tauri-FFC131?style=for-the-badge&logo=tauri&logoColor=white&labelColor=555555" height="32"> <img src="https://img.shields.io/badge/-Rust-CE422B?style=for-the-badge&logo=rust&logoColor=white&labelColor=555555" height="32">
