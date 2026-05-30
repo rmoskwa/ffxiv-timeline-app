@@ -12,6 +12,7 @@ import {
   type Roster,
 } from "@/domain/types";
 import { useAbilityColorsStore } from "@/state/ability-colors-store";
+import { isRestoredView } from "@/state/history-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { abilityTextColor } from "./ability-color";
 import { BossPlacementPicker } from "./BossPlacementPicker";
@@ -242,11 +243,13 @@ function BossMarker({
   // composes with the lethal red border and the selected blue halo).
   const typeColor = targetsUnset ? null : labelColor;
 
-  // Auto-opens target picker when a newly-placed instance still needs targets.
-  const [targetPickerOpen, setTargetPickerOpen] = useState(targetsUnset);
-  useEffect(() => {
-    if (targetsUnset) setTargetPickerOpen(true);
-  }, [targetsUnset]);
+  // Auto-opens the target picker on placement (the instance mounts with an
+  // unset target). Deliberately NOT reopened on later transitions into the
+  // unset state: an undo that clears a target leaves the picker closed instead
+  // of reprompting and trapping the user mid-undo. Re-target via the ConflictsPanel.
+  // isRestoredView guards the mount case too: an instance re-created by undo/redo
+  // remounts with an unset target but must not re-prompt — only fresh placement does.
+  const [targetPickerOpen, setTargetPickerOpen] = useState(targetsUnset && !isRestoredView());
 
   // Labels anchor to the bottom of the strip so that when the strip is taller
   // than its packed rows (MIN_BOSS_LABEL_STRIP_HEIGHT floor), the empty space

@@ -19,6 +19,12 @@ const MAX_HISTORY = 100;
 // anything the UI renders.
 let isRestoring = false;
 
+// True immediately after an undo/redo restore and until the next recorded edit
+// (or document boundary). Placement-time UI reads it via isRestoredView() to
+// tell a genuine fresh placement from an instance re-created by undo/redo — the
+// target picker auto-opens on the former but must not re-prompt on the latter.
+let restoredView = false;
+
 export interface HistoryStore {
   past: TimelineFile[];
   future: TimelineFile[];
@@ -36,13 +42,17 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
   past: [],
   future: [],
 
-  record: (prev) =>
+  record: (prev) => {
+    if (isRestoring) return;
+    // A genuine edit ends the "just restored" view, so the next mount is treated
+    // as a fresh placement (target picker may auto-open).
+    restoredView = false;
     set((s) => {
-      if (isRestoring) return s;
       const past = [...s.past, prev];
       // Keep only the most recent MAX_HISTORY snapshots; drop the oldest.
       return { past: past.length > MAX_HISTORY ? past.slice(-MAX_HISTORY) : past, future: [] };
-    }),
+    });
+  },
 
   undo: () => {
     const { past } = get();
@@ -54,6 +64,9 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
     // comes back deselected, mirroring how deletes clear a stale selection.
     useTimelineStore.setState({ timeline: previous, selectedInstance: null });
     isRestoring = false;
+    // A remounted instance must not re-open its target picker — only fresh
+    // placement should. Cleared by the next recorded edit.
+    restoredView = true;
     set((s) => ({ past: s.past.slice(0, -1), future: [...s.future, current] }));
   },
 
@@ -65,11 +78,22 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
     isRestoring = true;
     useTimelineStore.setState({ timeline: next, selectedInstance: null });
     isRestoring = false;
+    restoredView = true;
     set((s) => ({ past: [...s.past, current], future: s.future.slice(0, -1) }));
   },
 
-  reset: () => set({ past: [], future: [] }),
+  reset: () => {
+    restoredView = false;
+    set({ past: [], future: [] });
+  },
 }));
+
+// True immediately after an undo/redo restore and until the next recorded edit.
+// The target-picker mount-time auto-open reads this to suppress re-prompting on
+// an instance re-created by undo/redo (only a fresh placement should auto-open).
+export function isRestoredView(): boolean {
+  return restoredView;
+}
 
 // True when the timeline-store transition from `prev` to `next` is a document
 // boundary (New / Open / Discard) rather than an in-document edit. Edits keep the
