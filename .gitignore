@@ -4,6 +4,7 @@
 docs/*
 !.gitkeep
 !timeline-screenshot.png
+!FFXIVTimelinelogo.png
 
 ### Sample data
 scratch/
