@@ -213,6 +213,10 @@ _Avoid_: row, channel, swimlane
 A row nested inside a player lane, one per `(slot, mit type)` pair. Same label-plus-**Track** layout as a lane. Where **Bars** are placed.
 _Avoid_: nested lane, mit row
 
+**Mit lane layout**:
+An app-global, per-**job** record of the vertical order and visibility of that job's mitigation **Sub-lanes** on the **canvas**. A personal authoring preference configured in the **Mitigation Layout** modal (reached from the Settings menu) — stored with the app, never in a timeline file, and applied identically across every **player slot** of that job. Two axes: an *order* (top-to-bottom Sub-lane sequence) and a per-type *visibility* toggle. Canvas-only — it never reorders or hides anything in the **Simple Timeline View** — and a pure visual lens: a hidden Sub-lane's instances still occupy the timeline and still feed the survival math (mirrors **player slot** lane hide/show in `use-view`). Parallels **Job HP default** as a once-configured per-job convenience.
+_Avoid_: mit row, mit ordering, lane preset, mitigation row config
+
 **Track**:
 The time-axis strip inside a Lane or Sub-lane — a single continuous surface, not subdivided into cells. The *placement surface*: clicking a track at second N creates an instance with `effect_time: N` (snapped to the nearest whole second).
 _Avoid_: timeline, strip, lane track (use just "track")
