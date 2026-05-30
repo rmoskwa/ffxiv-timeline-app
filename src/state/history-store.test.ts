@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { TimelineFile } from "@/domain/types";
 import { newTimeline } from "@/persistence/serialize";
-import { isDocumentBoundary, useHistoryStore } from "./history-store";
+import { isDocumentBoundary, isRestoredView, useHistoryStore } from "./history-store";
 import { useTimelineStore } from "./timeline-store";
 
 // Must mirror MAX_HISTORY in history-store.ts (kept internal there).
@@ -128,6 +128,48 @@ describe("history store actions", () => {
     useHistoryStore.getState().undo();
     expect(useTimelineStore.getState().timeline).toBeNull();
     expect(useHistoryStore.getState().past).toEqual([a]);
+  });
+});
+
+describe("isRestoredView (target-picker auto-open suppression)", () => {
+  it("is false after a recorded edit and true after undo/redo", () => {
+    const a = newTimeline("a");
+    const b = newTimeline("b");
+    useTimelineStore.setState({ timeline: b });
+    useHistoryStore.getState().record(a);
+    expect(isRestoredView()).toBe(false);
+
+    useHistoryStore.getState().undo();
+    expect(isRestoredView()).toBe(true);
+
+    useHistoryStore.getState().redo();
+    expect(isRestoredView()).toBe(true);
+  });
+
+  it("clears on the next recorded edit after a restore", () => {
+    const a = newTimeline("a");
+    const b = newTimeline("b");
+    const c = newTimeline("c");
+    useTimelineStore.setState({ timeline: b });
+    useHistoryStore.getState().record(a);
+    useHistoryStore.getState().undo();
+    expect(isRestoredView()).toBe(true);
+
+    useTimelineStore.setState({ timeline: c });
+    useHistoryStore.getState().record(a);
+    expect(isRestoredView()).toBe(false);
+  });
+
+  it("clears on reset (document boundary)", () => {
+    const a = newTimeline("a");
+    const b = newTimeline("b");
+    useTimelineStore.setState({ timeline: b });
+    useHistoryStore.getState().record(a);
+    useHistoryStore.getState().undo();
+    expect(isRestoredView()).toBe(true);
+
+    useHistoryStore.getState().reset();
+    expect(isRestoredView()).toBe(false);
   });
 });
 
