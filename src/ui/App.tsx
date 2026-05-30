@@ -12,6 +12,7 @@ import {
   useAbilityColorsAutoSave,
   useAutoSave,
   useJobHpDefaultsAutoSave,
+  useMitLaneLayoutAutoSave,
 } from "@/persistence/use-auto-save";
 import { useHydrate } from "@/persistence/use-hydrate";
 import { useHistoryStore } from "@/state/history-store";
@@ -24,6 +25,7 @@ import { HelpModals, useHelpModalStore } from "./HelpModals";
 import { importErrorMessage } from "./import-error-message";
 import { JobDefaultsModal } from "./JobDefaultsModal";
 import { type Menu, MenuBar } from "./MenuBar";
+import { MitLaneLayoutModal } from "./MitLaneLayoutModal";
 import { OctocatIcon } from "./OctocatIcon";
 import { RosterPanel } from "./RosterPanel";
 import { SetupWizard } from "./SetupWizard";
@@ -33,6 +35,7 @@ import { useAddPhaseModalStore } from "./use-add-phase-modal";
 import { useBossImportExport } from "./use-boss-import-export";
 import { useHistoryRecorder } from "./use-history-recorder";
 import { useJobDefaultsModalStore } from "./use-job-defaults-modal";
+import { useMitLaneLayoutModalStore } from "./use-mit-lane-layout-modal";
 import { useUpdateCheck } from "./use-update-check";
 
 const GITHUB_URL = "https://github.com/rmoskwa/ffxiv-timeline-app";
@@ -51,6 +54,7 @@ export function App() {
   const openClearTimeline = useClearTimelineModalStore((s) => s.open);
   const openJobDefaults = useJobDefaultsModalStore((s) => s.open);
   const openAbilityColors = useAbilityColorsModalStore((s) => s.open);
+  const openMitLaneLayout = useMitLaneLayoutModalStore((s) => s.open);
   const showHelp = useHelpModalStore((s) => s.show);
   const jobHpDefaults = useJobHpDefaultsStore((s) => s.defaults);
   const { handleImport: handleBossImport, handleExport: handleBossExport } = useBossImportExport();
@@ -63,6 +67,7 @@ export function App() {
   // timeline.
   useJobHpDefaultsAutoSave(hydrated);
   useAbilityColorsAutoSave(hydrated);
+  useMitLaneLayoutAutoSave(hydrated);
   // Record edits for undo/redo once hydrated. Resets itself on a document
   // boundary (New / Open / Discard) — see use-history-recorder.ts.
   useHistoryRecorder(hydrated);
@@ -171,6 +176,7 @@ export function App() {
         items: [
           { kind: "item", label: "Job HP Defaults…", onClick: openJobDefaults },
           { kind: "item", label: "Ability Colors…", onClick: openAbilityColors },
+          { kind: "item", label: "Mitigation Layout…", onClick: openMitLaneLayout },
         ],
       },
       {
@@ -196,6 +202,7 @@ export function App() {
       openClearTimeline,
       openJobDefaults,
       openAbilityColors,
+      openMitLaneLayout,
       handleBossImport,
       handleBossExport,
       showHelp,
@@ -226,6 +233,7 @@ export function App() {
         <SetupWizard hydrateError={hydrateError} />
         <JobDefaultsModal />
         <AbilityColorsModal />
+        <MitLaneLayoutModal />
         <HelpModals />
       </div>
     );
@@ -272,6 +280,7 @@ export function App() {
         <ClearTimelineModal />
         <JobDefaultsModal />
         <AbilityColorsModal />
+        <MitLaneLayoutModal />
       </div>
       <HelpModals />
     </div>
