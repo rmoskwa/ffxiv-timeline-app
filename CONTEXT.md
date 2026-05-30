@@ -198,7 +198,7 @@ Cooldown overlap is *not* a conflict kind: two Bars on the same sub-lane (same s
 _Avoid_: error, warning, problem
 
 **Schema version**:
-The integer at the root of a saved timeline file. Pre-launch the deserializer rejects anything that doesn't match the current version — no migrators in tree. Currently `12` (bumped from `11` when `boss_targetable` was added to `BossAbilityType`).
+The integer at the root of a saved timeline file. The deserializer strict-rejects anything that doesn't match the current version — no migrators in tree — so now that the app has outside users, bumping it strands their saved files. Currently `2` (bumped from `1` when `no_full_heal_slot_ids` was added to `BossAbilityInstance`).
 _Avoid_: file version, format version
 
 ### Canvas
