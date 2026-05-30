@@ -311,3 +311,19 @@ _Avoid_: bank, mitigation bank, mit bank, library, reservoir
 **Add Row**:
 The **Simple Timeline View** action that creates one new **Boss ability instance** from an *existing* `BossAbilityType` — pick a stored type (its Name/Type/Damage come along, read-only), enter the `effect_time`, and pick a target if the **target pattern** requires it. Minting a brand-new type stays in the Boss Abilities panel's `NewTypeForm`; Add Row never creates a type. In the grid, only instance-level fields are editable inline — the **Time** cell (moves the instance, re-sorts the row) and the target — while the type-level Name/Type/Damage cells are read-only and edited in the Boss Abilities panel, so a single edit can never silently ripple across every instance of a type.
 _Avoid_: new row, insert row, add ability (as the button)
+
+### Appearance
+
+User-configurable coloring of boss abilities by type. App-global personal preference (configured in the **Ability Color Defaults** modal, reached from the Settings menu), derived at render time and never stored in a timeline file.
+
+**Color scheme**:
+One of the two axes by which a **Boss ability** can be tinted: the *damage-type scheme* (`magical` / `physical` / `unaspected`) or the *target-pattern scheme* (`raidwide` / `targeted` / `stack`). A scheme maps each of its enum values to an **Ability color default**.
+_Avoid_: palette, color mode
+
+**Surfaced scheme**:
+The single **Color scheme** painted on the one-text-channel surfaces — the canvas **Label** and the **BossAbilityPanel** type rows, which have room for only one color. App-global, chosen in the **Ability Color Defaults** modal. The **Simple Timeline View** ignores it: having two channels (the Ability Cast Name column and the Type column), it always paints *both* schemes — name by target-pattern, Type by damage-type — regardless of which scheme is surfaced elsewhere.
+_Avoid_: active scheme, selected scheme, color mode
+
+**Ability color default**:
+An app-global, per-(**damage type** | **target pattern**) text color the user configures once so abilities of a given kind read at a glance. A sparse, optional map (one per **Color scheme**) — an *absent* value falls back to the theme-neutral text color, so an unconfigured app looks exactly as before. Stored in its own AppData file, never serialized into a timeline. Parallels **Job HP default** (blank = baseline). On the canvas **Label**, the configured color paints the text only in the resting state: a *lethal* hit overrides it with a red **border** (not red text), and an *unset-target* hit overrides it entirely with the yellow background + dark text; *selected* adds a blue halo that composes with any of these.
+_Avoid_: color preset, custom color, type color
