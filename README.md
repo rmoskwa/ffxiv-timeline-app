@@ -4,6 +4,13 @@
 
 Local desktop app for building and planning FFXIV raid timelines with drag-and-drop mitigation and boss ability placement. Import timelines to plan a mit sheet for your static, or create your own and share.
 
+## Real-time visual mitigation feedback in the Canvas view
+https://github.com/user-attachments/assets/23342d4b-01ef-4fb3-b55d-c921e5f8c343
+
+## Mitigation planning at-a-glance in the Simple view
+https://github.com/user-attachments/assets/ac606ed7-3e54-43a5-865b-288fb761cba1
+
+## Get as detailed as you want!
 ![Screenshot of the FFXIV Raid Timeline app](docs/timeline-screenshot.png)
 
 ## Quickstart
@@ -14,7 +21,7 @@ Local desktop app for building and planning FFXIV raid timelines with drag-and-d
 
 **Requirements:** Windows 10 or 11. Windows 11 ships with WebView2; on Windows 10, install it from <https://developer.microsoft.com/microsoft-edge/webview2/>.
 
-## For developers
+## For Developers
 
 Built with React 19 + TypeScript (Vite) on a Tauri 2 (Rust) desktop shell. State is Zustand; persistence is JSON files via the Tauri FS plugin.
 
