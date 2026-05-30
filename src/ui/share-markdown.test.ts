@@ -158,6 +158,10 @@ describe("renderShareMarkdown — attribution", () => {
   it("both: job plus label (job only when no label)", () => {
     expect(out("both")).toContain("→ Rampart (PLD), Reprisal (WAR · Tanky)");
   });
+
+  it("none: lists the mit names with no parenthetical attribution", () => {
+    expect(out("none")).toContain("→ Rampart, Reprisal");
+  });
 });
 
 describe("renderShareMarkdown — presence (list-once vs all-covered)", () => {
