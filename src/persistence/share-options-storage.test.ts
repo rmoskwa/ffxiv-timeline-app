@@ -31,6 +31,10 @@ describe("parseShareOptions — forgiving, shape-only parse", () => {
     expect(parseShareOptions(JSON.stringify({ attribution: "rainbow" })).attribution).toBe("job");
   });
 
+  it("preserves the none attribution", () => {
+    expect(parseShareOptions(JSON.stringify({ attribution: "none" })).attribution).toBe("none");
+  });
+
   it("round-trips a fully-specified config", () => {
     const cfg = {
       ...DEFAULT_SHARE_OPTIONS,

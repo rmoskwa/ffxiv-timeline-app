@@ -50,6 +50,7 @@ const ATTRIBUTIONS: [ShareOptions["attribution"], string][] = [
   ["job", "Job"],
   ["name", "Name"],
   ["both", "Both"],
+  ["none", "None"],
 ];
 
 export function ShareModal() {
@@ -259,6 +260,10 @@ export function ShareModal() {
               <span className="share-section-label">Options</span>
               <div className="share-options-list">
                 <fieldset className="share-option-group">
+                  <legend>Header</legend>
+                  {HEADER_TOGGLES.map(checkbox)}
+                </fieldset>
+                <fieldset className="share-option-group">
                   <legend>Attribution</legend>
                   {ATTRIBUTIONS.map(([value, label]) => (
                     <label key={value} className="share-option">
@@ -275,10 +280,6 @@ export function ShareModal() {
                 <fieldset className="share-option-group">
                   <legend>Ability fields</legend>
                   {FIELD_TOGGLES.map(checkbox)}
-                </fieldset>
-                <fieldset className="share-option-group">
-                  <legend>Header</legend>
-                  {HEADER_TOGGLES.map(checkbox)}
                 </fieldset>
                 <fieldset className="share-option-group">
                   <legend>Behavior</legend>

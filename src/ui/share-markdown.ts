@@ -19,7 +19,7 @@
 import { projectInstancesToHits } from "./simple-grid-projection";
 import { secondsToTimecode } from "./timeline-constants";
 
-export type ShareAttribution = "job" | "name" | "both";
+export type ShareAttribution = "job" | "name" | "both" | "none";
 
 // Persisted, app-global content options (PRD §3.1). Defined here — in the pure
 // renderer — because they are exactly its parameters; the Zustand store imports
@@ -91,9 +91,11 @@ function formatDamageK(n: number): string {
   return `${Number.isInteger(k) ? k : Number(k.toFixed(1))}k`;
 }
 
-// The parenthetical attribution label per the attribution mode. Name/Both fall
+// The parenthetical attribution label per the attribution mode. "none" drops the
+// label entirely (the caller emits the mit name with no parens). Name/Both fall
 // back to job when the slot has no label; name labels are escaped (jobs are not).
 function attributionLabel(slot: ShareSlot, mode: ShareAttribution): string {
+  if (mode === "none") return "";
   if (mode === "job" || slot.nameLabel == null) return slot.job;
   const label = escapeMarkdown(slot.nameLabel);
   return mode === "name" ? label : `${slot.job} · ${label}`;
@@ -156,7 +158,8 @@ export function renderShareMarkdown(input: ShareInput): string {
           ? [projection.homeHitIndex]
           : []
         : projection.coveredHitIndices;
-      const label = `${escapeMarkdown(m.name)} (${attributionLabel(slot, options.attribution)})`;
+      const attr = attributionLabel(slot, options.attribution);
+      const label = attr ? `${escapeMarkdown(m.name)} (${attr})` : escapeMarkdown(m.name);
       for (const idx of presentIdxs) {
         const arr = presentByHit.get(idx) ?? [];
         arr.push({ slotIndex, mitEffectTime: m.effectTime, label });

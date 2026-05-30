@@ -18,7 +18,12 @@ function ensureAppDataDir(): Promise<void> {
   return ensureDirPromise;
 }
 
-const ATTRIBUTIONS: ReadonlySet<string> = new Set<ShareAttribution>(["job", "name", "both"]);
+const ATTRIBUTIONS: ReadonlySet<string> = new Set<ShareAttribution>([
+  "job",
+  "name",
+  "both",
+  "none",
+]);
 
 const bool = (v: unknown, fallback: boolean): boolean => (typeof v === "boolean" ? v : fallback);
 
