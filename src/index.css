@@ -4001,6 +4001,10 @@ button {
 .mit-lane-row-eye[aria-pressed="true"] {
   color: #7a7a7a;
 }
+/* Push the global reset to the left, leaving Cancel/Save right-aligned. */
+.mit-lane-reset-all {
+  margin-right: auto;
+}
 .mit-lane-modal .form-actions button:not(.link-button) {
   background: #4a8;
   color: #111;

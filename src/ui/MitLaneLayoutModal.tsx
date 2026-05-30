@@ -129,7 +129,10 @@ export function MitLaneLayoutModal() {
     firstJobRef.current?.focus();
   }, [isOpen, layout]);
 
-  const dirty = useMemo(() => !layoutsEqual(normalizeDraft(draft), layout), [draft, layout]);
+  const normalized = useMemo(() => normalizeDraft(draft), [draft]);
+  const dirty = !layoutsEqual(normalized, layout);
+  // Every job already at the library default — nothing left to reset.
+  const allDefault = Object.keys(normalized).length === 0;
 
   if (!isOpen) return null;
 
@@ -162,9 +165,15 @@ export function MitLaneLayoutModal() {
   const resetSelectedJob = () =>
     setDraft((d) => ({ ...d, [selectedJob]: defaultEntries(selectedJob) }));
 
+  // Restore every job to the library default (a full factory reset). Resets the
+  // draft only — Cancel still discards, Save still commits — so it stays
+  // consistent with per-job Reset. `seedDraft({})` resolves each job against an
+  // empty layout = default order, all visible.
+  const resetAll = () => setDraft(seedDraft({}));
+
   const save = () => {
     if (!dirty) return;
-    setAll(normalizeDraft(draft));
+    setAll(normalized);
     close();
   };
 
@@ -287,6 +296,15 @@ export function MitLaneLayoutModal() {
         </div>
 
         <div className="form-actions">
+          <button
+            type="button"
+            className="link-button mit-lane-reset-all"
+            onClick={resetAll}
+            disabled={allDefault}
+            title="Restore every job to the default order, all rows visible"
+          >
+            Reset all jobs
+          </button>
           <button type="button" className="link-button" onClick={close}>
             Cancel
           </button>
