@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
 import { effectiveBarFootprintSeconds, effectiveCooldownSeconds } from "@/domain/damage";
 import { targetingForMit } from "@/domain/targeting";
@@ -9,6 +9,7 @@ import {
   type MitigationInstance,
   type MitigationType,
 } from "@/domain/types";
+import { isRestoredView } from "@/state/history-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { MitIcon } from "./MitIcon";
 import { computeBarGeometry, computeChildGeometry } from "./mit-bar-geometry";
@@ -105,12 +106,13 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
   // — via useDamageByInstance — excludes it from damage math.
   const inConflict = useConflictedMitIds().has(instance.id);
 
-  // Auto-open the picker for a newly-dropped target mit. The effect dep on
-  // targetUnset re-opens if the field is somehow cleared later.
-  const [pickerOpen, setPickerOpen] = useState(targetUnset);
-  useEffect(() => {
-    if (targetUnset) setPickerOpen(true);
-  }, [targetUnset]);
+  // Auto-open the picker on placement for a newly-dropped target mit (it mounts
+  // with an unset target). NOT reopened on later transitions into the unset
+  // state: an undo that clears the target leaves the picker closed rather than
+  // reprompting. Re-open via the "?" target badge. isRestoredView guards the
+  // mount case: an instance re-created by undo/redo remounts unset but must not
+  // re-prompt — only fresh placement auto-opens.
+  const [pickerOpen, setPickerOpen] = useState(targetUnset && !isRestoredView());
 
   // Pointerdown captures the starting cursor + the neighbor/lane snapshot we
   // need to drive clamping. Subsequent move/up events read from this ref.

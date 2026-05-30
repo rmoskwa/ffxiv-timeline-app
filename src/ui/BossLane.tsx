@@ -12,6 +12,7 @@ import {
   type Roster,
 } from "@/domain/types";
 import { useAbilityColorsStore } from "@/state/ability-colors-store";
+import { isRestoredView } from "@/state/history-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { abilityTextColor } from "./ability-color";
 import { BossPlacementPicker } from "./BossPlacementPicker";
@@ -242,11 +243,13 @@ function BossMarker({
   // composes with the lethal red border and the selected blue halo).
   const typeColor = targetsUnset ? null : labelColor;
 
-  // Auto-opens target picker when a newly-placed instance still needs targets.
-  const [targetPickerOpen, setTargetPickerOpen] = useState(targetsUnset);
-  useEffect(() => {
-    if (targetsUnset) setTargetPickerOpen(true);
-  }, [targetsUnset]);
+  // Auto-opens the target picker on placement (the instance mounts with an
+  // unset target). Deliberately NOT reopened on later transitions into the
+  // unset state: an undo that clears a target leaves the picker closed instead
+  // of reprompting and trapping the user mid-undo. Re-target via the ConflictsPanel.
+  // isRestoredView guards the mount case too: an instance re-created by undo/redo
+  // remounts with an unset target but must not re-prompt — only fresh placement does.
+  const [targetPickerOpen, setTargetPickerOpen] = useState(targetsUnset && !isRestoredView());
 
   // Labels anchor to the bottom of the strip so that when the strip is taller
   // than its packed rows (MIN_BOSS_LABEL_STRIP_HEIGHT floor), the empty space
@@ -349,20 +352,30 @@ function BossLaneLabel({ mergedGutter }: { mergedGutter: boolean }) {
   );
   const setBossName = useTimelineStore((s) => s.setBossName);
   const setFightDuration = useTimelineStore((s) => s.setFightDuration);
+  // Local draft committed on blur/Enter, so a boss rename is a single undo step
+  // rather than one per keystroke. Resyncs on external change (Open, undo/redo).
+  const [draft, setDraft] = useState(bossName);
+
+  useEffect(() => {
+    setDraft(bossName);
+  }, [bossName]);
+
+  const commitBossName = () => {
+    const next = draft.trim() === "" ? "Boss Name" : draft;
+    if (next !== bossName) setBossName(next);
+  };
 
   return (
     <div className={`lane-label lane-label--boss${mergedGutter ? " lane-label--boss-merged" : ""}`}>
       <textarea
         className="boss-name-input"
         placeholder="Boss name"
-        value={bossName}
+        value={draft}
         maxLength={MAX_NAME_LEN}
         rows={1}
         // Wrapping is purely visual — strip any newlines from typing or paste.
-        onChange={(e) => setBossName(e.target.value.replace(/\n/g, ""))}
-        onBlur={(e) => {
-          if (e.target.value.trim() === "") setBossName("Boss Name");
-        }}
+        onChange={(e) => setDraft(e.target.value.replace(/\n/g, ""))}
+        onBlur={commitBossName}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();

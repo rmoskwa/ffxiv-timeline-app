@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useHistoryStore } from "@/state/history-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossAbilityPanel } from "./BossAbilityPanel";
 import { ConflictsPanel } from "./ConflictsPanel";
@@ -64,6 +65,25 @@ function EditorViewToggle() {
 function useSelectionKeyboardHandlers() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Undo / Redo (Ctrl/Cmd+Z; Ctrl/Cmd+Y or +Shift+Z). Excludes Alt so AltGr
+      // chords aren't hijacked. Skipped in editable targets so typing keeps the
+      // browser's native text undo, and while a popover-mode picker owns the
+      // keyboard — same guards as Delete/Esc below. Non-undo/redo chords fall
+      // through so existing shortcuts are untouched.
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        const key = e.key.toLowerCase();
+        const isUndo = key === "z" && !e.shiftKey;
+        const isRedo = key === "y" || (key === "z" && e.shiftKey);
+        if (isUndo || isRedo) {
+          if (isEditableTarget(e.target)) return;
+          if (document.querySelector('.target-picker[data-picker-mode="popover"]')) return;
+          e.preventDefault();
+          const { undo, redo } = useHistoryStore.getState();
+          if (isUndo) undo();
+          else redo();
+          return;
+        }
+      }
       if (e.key !== "Delete" && e.key !== "Escape") return;
       if (isEditableTarget(e.target)) return;
       // Popover-mode pickers (boss marker, mit bar, conflicts panel, etc.)
