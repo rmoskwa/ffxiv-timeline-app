@@ -4,8 +4,10 @@
 // back to disk.
 
 import { useEffect, useState } from "react";
+import { useAbilityColorsStore } from "@/state/ability-colors-store";
 import { useJobHpDefaultsStore } from "@/state/job-hp-defaults-store";
 import { useTimelineStore } from "@/state/timeline-store";
+import { loadAbilityColors } from "./ability-colors-storage";
 import { loadJobHpDefaults } from "./job-hp-defaults-storage";
 import { loadWorkingTimeline } from "./storage";
 
@@ -29,6 +31,11 @@ export function useHydrate(): HydrateState {
         const defaults = await loadJobHpDefaults();
         if (cancelled) return;
         useJobHpDefaultsStore.getState().setAll(defaults);
+        // App-global ability colors load alongside Job HP defaults (independent
+        // of the working timeline — derived at render time, never serialized).
+        const colors = await loadAbilityColors();
+        if (cancelled) return;
+        useAbilityColorsStore.getState().setConfig(colors);
         const tl = await loadWorkingTimeline(defaults);
         if (cancelled) return;
         if (tl) useTimelineStore.getState().loadTimeline(tl);

@@ -19,7 +19,9 @@ import {
   instanceActiveDurationSeconds,
   type MitigationInstance,
 } from "@/domain/types";
+import { useAbilityColorsStore } from "@/state/ability-colors-store";
 import { useTimelineStore } from "@/state/timeline-store";
+import { abilityTextColor } from "./ability-color";
 import { JobIcon } from "./JobIcon";
 import { MitIcon } from "./MitIcon";
 import { TimecodeField } from "./primitives/TimecodeField";
@@ -80,6 +82,7 @@ export function SimpleTimelineGrid() {
   const setIconSize = useSimpleIconSizeStore((s) => s.setIconSize);
   const showCoverageMarkers = useCoverageMarkersStore((s) => s.showCoverageMarkers);
   const toggleCoverageMarkers = useCoverageMarkersStore((s) => s.toggleCoverageMarkers);
+  const colorConfig = useAbilityColorsStore((s) => s.config);
   const [pickerCell, setPickerCell] = useState<PickerCell | null>(null);
 
   // Currently displayed slots — same hiddenSlotIds semantics as the canvas lanes.
@@ -524,6 +527,11 @@ export function SimpleTimelineGrid() {
                 );
               }
               const type = typeById.get(item.inst.type_id);
+              // The Simple view has two text channels and ignores the surfaced
+              // scheme: Name always rides the target-pattern color, Type the
+              // damage-type color.
+              const nameColor = type ? abilityTextColor(type, "target_pattern", colorConfig) : null;
+              const typeColor = type ? abilityTextColor(type, "damage_type", colorConfig) : null;
               return (
                 <tr key={item.inst.id} className="simple-grid-row">
                   <td className="simple-grid-col-time">
@@ -546,10 +554,19 @@ export function SimpleTimelineGrid() {
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>
-                  <th scope="row" className="simple-grid-col-name">
+                  <th
+                    scope="row"
+                    className="simple-grid-col-name"
+                    {...(nameColor ? { style: { color: nameColor } } : {})}
+                  >
                     {type?.name ?? "—"}
                   </th>
-                  <td className="simple-grid-col-type">{type?.damage_type ?? "—"}</td>
+                  <td
+                    className="simple-grid-col-type"
+                    {...(typeColor ? { style: { color: typeColor } } : {})}
+                  >
+                    {type?.damage_type ?? "—"}
+                  </td>
                   <td className="simple-grid-col-damage">{type?.base_damage ?? 0}</td>
                   {displayedSlots.map((slot) => {
                     const pickerOpen =

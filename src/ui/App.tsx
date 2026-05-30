@@ -8,10 +8,15 @@ import {
   exportTimelineDialog,
   importTimelineDialog,
 } from "@/persistence/storage";
-import { useAutoSave, useJobHpDefaultsAutoSave } from "@/persistence/use-auto-save";
+import {
+  useAbilityColorsAutoSave,
+  useAutoSave,
+  useJobHpDefaultsAutoSave,
+} from "@/persistence/use-auto-save";
 import { useHydrate } from "@/persistence/use-hydrate";
 import { useJobHpDefaultsStore } from "@/state/job-hp-defaults-store";
 import { useTimelineStore } from "@/state/timeline-store";
+import { AbilityColorsModal } from "./AbilityColorsModal";
 import { AddPhaseModal } from "./AddPhaseModal";
 import { ClearTimelineModal, useClearTimelineModalStore } from "./ClearTimelineModal";
 import { HelpModals, useHelpModalStore } from "./HelpModals";
@@ -22,6 +27,7 @@ import { OctocatIcon } from "./OctocatIcon";
 import { RosterPanel } from "./RosterPanel";
 import { SetupWizard } from "./SetupWizard";
 import { TimelineEditor } from "./TimelineEditor";
+import { useAbilityColorsModalStore } from "./use-ability-colors-modal";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
 import { useBossImportExport } from "./use-boss-import-export";
 import { useJobDefaultsModalStore } from "./use-job-defaults-modal";
@@ -39,6 +45,7 @@ export function App() {
   const openAddPhase = useAddPhaseModalStore((s) => s.open);
   const openClearTimeline = useClearTimelineModalStore((s) => s.open);
   const openJobDefaults = useJobDefaultsModalStore((s) => s.open);
+  const openAbilityColors = useAbilityColorsModalStore((s) => s.open);
   const showHelp = useHelpModalStore((s) => s.show);
   const jobHpDefaults = useJobHpDefaultsStore((s) => s.defaults);
   const { handleImport: handleBossImport, handleExport: handleBossExport } = useBossImportExport();
@@ -47,8 +54,10 @@ export function App() {
   // The hydration gate guarantees the loaded ref is treated as the baseline
   // and isn't echoed back to disk on mount.
   const { lastSavedAt, error: saveError } = useAutoSave(hydrated && timeline !== null);
-  // Job HP defaults persist independently of the working timeline.
+  // Job HP defaults and ability colors persist independently of the working
+  // timeline.
   useJobHpDefaultsAutoSave(hydrated);
+  useAbilityColorsAutoSave(hydrated);
 
   const handleSaveTimeline = useCallback(async () => {
     if (!timeline) return;
@@ -148,7 +157,10 @@ export function App() {
       },
       {
         label: "Settings",
-        items: [{ kind: "item", label: "Job HP Defaults…", onClick: openJobDefaults }],
+        items: [
+          { kind: "item", label: "Job HP Defaults…", onClick: openJobDefaults },
+          { kind: "item", label: "Ability Colors…", onClick: openAbilityColors },
+        ],
       },
       {
         label: "Help",
@@ -168,6 +180,7 @@ export function App() {
       openAddPhase,
       openClearTimeline,
       openJobDefaults,
+      openAbilityColors,
       handleBossImport,
       handleBossExport,
       showHelp,
@@ -197,6 +210,7 @@ export function App() {
         <MenuBar menus={menus} rightSlot={menuBarRightSlot} />
         <SetupWizard hydrateError={hydrateError} />
         <JobDefaultsModal />
+        <AbilityColorsModal />
         <HelpModals />
       </div>
     );
@@ -258,6 +272,7 @@ export function App() {
         <AddPhaseModal />
         <ClearTimelineModal />
         <JobDefaultsModal />
+        <AbilityColorsModal />
       </div>
       <HelpModals />
     </div>

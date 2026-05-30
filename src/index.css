@@ -2098,13 +2098,14 @@ button {
   background: #ececec;
   color: #1f1f1f;
 }
+/* Selected: a blue halo (box-shadow ring) rather than a border, so selection
+   and lethal (a red border) no longer fight over the border channel — they
+   compose. */
 .boss-marker--selected .boss-marker-label {
-  border-color: #6cf;
-  box-shadow: 0 0 0 1px rgba(102, 204, 255, 0.4);
+  box-shadow: 0 0 0 2px #6cf;
 }
 .lane-scroll.theme-light .boss-marker--selected .boss-marker-label {
-  border-color: #1565c0;
-  box-shadow: 0 0 0 1px rgba(21, 101, 192, 0.4);
+  box-shadow: 0 0 0 2px #1565c0;
 }
 
 /* ─── Mit bar (duration + faded cooldown) ─────────────────────────────── */
@@ -2405,12 +2406,14 @@ button {
 .boss-marker--lethal .boss-marker-leader line {
   stroke: rgba(238, 68, 68, 0.45);
 }
-/* Lethal state: red TEXT on the label; background stays neutral. */
+/* Lethal state: red BORDER on the label (was red text), freeing the text
+   channel for the user's surfaced-scheme color. Composes with the type-colored
+   text and the selected blue halo. */
 .boss-marker--lethal .boss-marker-label {
-  color: #ff5a5a;
+  border-color: #ff5a5a;
 }
 .lane-scroll.theme-light .boss-marker--lethal .boss-marker-label {
-  color: #c62828;
+  border-color: #c62828;
 }
 
 /* ─── Per-player damage chip (rendered in the player parent-lane header) ─ */
@@ -3221,14 +3224,12 @@ button {
 .boss-marker--needs-target .boss-marker-leader line {
   stroke: rgba(255, 170, 51, 0.55);
 }
-/* Unset target: whole label tinted yellow. */
+/* Unset target: whole label tinted yellow + dark text — wins the text/bg
+   channel outright (the type color is suppressed inline). Lethal + unset
+   renders cleanly as this yellow bg + dark text plus the lethal red border. */
 .boss-marker--needs-target .boss-marker-label {
   background: #fa3;
   color: #111;
-}
-/* Lethal + unset target: red text on yellow background. */
-.boss-marker--lethal.boss-marker--needs-target .boss-marker-label {
-  color: #b21010;
 }
 .mit-bar--needs-target .mit-bar-duration,
 .mit-bar--in-conflict .mit-bar-duration {
@@ -3637,6 +3638,177 @@ button {
   cursor: pointer;
 }
 .job-defaults-modal .form-actions button:not(.link-button):disabled {
+  background: #333;
+  color: #777;
+  cursor: not-allowed;
+}
+
+/* ─── Ability Colors modal ───────────────────────────────────────────── */
+
+.ability-colors-modal {
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  width: min(440px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.ability-colors-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ability-colors-modal h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #e0e0e0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ability-colors-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+.ability-colors-close:hover {
+  color: #e0e0e0;
+}
+.ability-colors-scheme {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  align-items: center;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+}
+.ability-colors-scheme legend {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #aaa;
+  font-weight: 600;
+  padding: 0 0.35rem;
+}
+.ability-colors-scheme-option {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #ccc;
+  cursor: pointer;
+}
+.ability-colors-hint {
+  margin: 0;
+  color: #888;
+  font-size: 0.75rem;
+}
+.ability-colors-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.ability-colors-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.ability-colors-group-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #aaa;
+  font-weight: 600;
+}
+.ability-colors-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.ability-colors-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ability-colors-row-label {
+  flex: 1;
+  font-size: 0.85rem;
+  color: #ccc;
+  text-transform: capitalize;
+}
+.ability-colors-swatch-wrap {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 22px;
+}
+.ability-colors-swatch {
+  width: 32px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #444;
+  border-radius: 3px;
+  background: #1a1a1a;
+  cursor: pointer;
+}
+.ability-colors-swatch::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+.ability-colors-swatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+/* "Not customized": a checkerboard chip overlays the swatch (clicks fall
+   through to the input below it, opening the picker). */
+.ability-colors-swatch-unset {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  pointer-events: none;
+  background-color: #2a2a2a;
+  background-image:
+    linear-gradient(45deg, #555 25%, transparent 25%, transparent 75%, #555 75%),
+    linear-gradient(45deg, #555 25%, transparent 25%, transparent 75%, #555 75%);
+  background-size: 8px 8px;
+  background-position:
+    0 0,
+    4px 4px;
+}
+.ability-colors-clear {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+.ability-colors-clear:hover:not(:disabled) {
+  color: #e0e0e0;
+}
+.ability-colors-clear:disabled {
+  color: #444;
+  cursor: default;
+}
+.ability-colors-modal .form-actions button:not(.link-button) {
+  background: #4a8;
+  color: #111;
+  border: none;
+  border-radius: 3px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ability-colors-modal .form-actions button:not(.link-button):disabled {
   background: #333;
   color: #777;
   cursor: not-allowed;
