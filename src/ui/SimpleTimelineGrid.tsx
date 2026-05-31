@@ -72,6 +72,7 @@ export function SimpleTimelineGrid() {
   const applyGatedRestack = useTimelineStore((s) => s.applyGatedRestack);
   const removeMit = useTimelineStore((s) => s.removeMitigationInstance);
   const selectMit = useTimelineStore((s) => s.selectMitInstance);
+  const selectBossInstance = useTimelineStore((s) => s.selectBossInstance);
   const selectedMitId = useTimelineStore((s) =>
     s.selectedInstance?.kind === "mit" ? s.selectedInstance.id : null,
   );
@@ -561,7 +562,9 @@ export function SimpleTimelineGrid() {
               return (
                 <tr
                   key={item.inst.id}
-                  className="simple-grid-row"
+                  className={`simple-grid-row${
+                    item.inst.id === selectedBossInstanceId ? " is-selected" : ""
+                  }`}
                   data-boss-instance-id={item.inst.id}
                 >
                   <td className="simple-grid-col-time">
@@ -589,7 +592,17 @@ export function SimpleTimelineGrid() {
                     className="simple-grid-col-name"
                     {...(nameColor ? { style: { color: nameColor } } : {})}
                   >
-                    {type?.name ?? "—"}
+                    {type ? (
+                      <button
+                        type="button"
+                        className="simple-grid-name-button"
+                        onClick={() => selectBossInstance(item.inst.id)}
+                      >
+                        {type.name}
+                      </button>
+                    ) : (
+                      "—"
+                    )}
                   </th>
                   <td
                     className="simple-grid-col-type"
