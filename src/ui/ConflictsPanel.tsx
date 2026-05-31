@@ -248,6 +248,11 @@ function UnsetTargetRow({
         <button
           type="button"
           className="conflict-row-toggle"
+          // Stops the picker's document-level mousedown handler from closing the
+          // popover before this click toggles it. Without this, re-clicking the
+          // row to collapse would close-then-reopen (mousedown closes, the later
+          // click sees isOpen=false and reopens).
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={onToggle}
           aria-expanded={isOpen}
           title="Click to pick a target"

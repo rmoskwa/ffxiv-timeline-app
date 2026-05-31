@@ -504,6 +504,11 @@ function InstanceSubRow({
             <button
               type="button"
               className="link-button"
+              // Stops the picker's document-level mousedown handler from closing
+              // the popover before this click toggles it. Without this, re-clicking
+              // "Re-target" to collapse would close-then-reopen (mousedown closes,
+              // the later click sees retargetOpen=false and reopens).
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 selectBossInstance(instance.id);
