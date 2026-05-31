@@ -290,7 +290,8 @@ button {
    shaped affordances. Inline link-buttons inside forms/rows keep the
    original hyperlink look. */
 .header-actions .link-button,
-.boss-panel-header-actions .link-button {
+.boss-panel-header-actions .link-button,
+.roster-panel-header .link-button {
   text-decoration: none;
   background: #2a2a2a;
   border: 1px solid #454545;
@@ -301,13 +302,15 @@ button {
   white-space: nowrap;
 }
 .header-actions .link-button:hover,
-.boss-panel-header-actions .link-button:hover {
+.boss-panel-header-actions .link-button:hover,
+.roster-panel-header .link-button:hover {
   background: #353535;
   border-color: #5a5a5a;
   color: #cfe6ff;
 }
 .header-actions .link-button:active,
-.boss-panel-header-actions .link-button:active {
+.boss-panel-header-actions .link-button:active,
+.roster-panel-header .link-button:active {
   background: #232323;
 }
 .hydrating {
@@ -375,9 +378,9 @@ button {
 }
 .roster-panel-header {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
   margin-bottom: 0.4rem;
 }
 .roster-panel h3 {
@@ -389,7 +392,14 @@ button {
   font-weight: 600;
 }
 .roster-panel-header .link-button {
-  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  padding: 0.18rem 0.5rem;
+}
+.roster-panel-header .link-button svg {
+  opacity: 0.85;
 }
 .roster-list {
   list-style: none;
