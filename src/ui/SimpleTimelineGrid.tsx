@@ -571,8 +571,8 @@ export function SimpleTimelineGrid() {
                 <tr
                   key={item.inst.id}
                   className={`simple-grid-row${
-                    item.inst.id === selectedBossInstanceId ? " is-selected" : ""
-                  }`}
+                    item.rowIndex % 2 === 1 ? " simple-grid-row--alt" : ""
+                  }${item.inst.id === selectedBossInstanceId ? " is-selected" : ""}`}
                   data-boss-instance-id={item.inst.id}
                 >
                   <td className="simple-grid-col-time">

@@ -839,12 +839,12 @@ button {
 .simple-grid-col-filler {
   width: 100%;
   /* Closes the rightmost lane with a rule on the dead-space filler's edge. */
-  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
 }
 .simple-grid tbody td,
 .simple-grid tbody th {
   padding: 0.3rem 0.6rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.11);
   text-align: left;
   font-weight: 400;
   vertical-align: middle;
@@ -886,7 +886,17 @@ button {
   /* Stronger rule splitting the fixed data block from the job lanes. Under
      border-collapse it collapses with the first lane's lighter border-left,
      and the heavier line wins — anchoring "data | lanes" without a double rule. */
-  border-right: 1px solid rgba(255, 255, 255, 0.13);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+/* Row banding (zebra) on the fixed data columns so the eye tracks one boss
+   ability across the table. Specificity stays at two classes — below the row
+   hover (which adds an element) and the is-selected accent — so both still win.
+   The Slot columns get the checkerboard tint (.simple-grid-cell) instead. */
+.simple-grid-row--alt .simple-grid-col-time,
+.simple-grid-row--alt .simple-grid-col-name,
+.simple-grid-row--alt .simple-grid-col-type,
+.simple-grid-row--alt .simple-grid-col-damage {
+  background: rgba(255, 255, 255, 0.03);
 }
 /* Persistent selected-row accent — parallels the canvas Label's blue border and
    .simple-grid-chip.is-selected. Tints only the fixed columns so the per-slot
@@ -915,18 +925,22 @@ button {
 }
 .simple-grid-cell {
   position: relative;
-  /* The job's role color (--slot-tint, set per cell from jobColor) bleeds down
-     from the bold header as a faint vertical wash, turning each column into a
-     scannable lane so grouped mits read at a glance. Hairline border-left rules
-     the lanes apart; under border-collapse the seam against the data block
-     collapses into the heavier .simple-grid-col-damage rule. */
-  background: color-mix(in srgb, var(--slot-tint, transparent) 13%, transparent);
-  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  /* Each column is a role-tinted lane (--slot-tint, set per cell from jobColor).
+     The tint strength alternates row-by-row (--tint-pct, raised on alt rows via
+     .simple-grid-row--alt) so consecutive rows read as distinct bands; adjacent
+     same-role lanes (two tanks, the three DPS) are told apart by the border-left
+     rule. Under border-collapse the seam against the data block collapses into
+     the heavier .simple-grid-col-damage rule. */
+  background: color-mix(in srgb, var(--slot-tint, transparent) var(--tint-pct, 12%), transparent);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+.simple-grid-row--alt .simple-grid-cell {
+  --tint-pct: 22%;
 }
 /* Hover brightens the whole row but keeps each lane's tint (more specific than
    the generic row-hover fill below) so the color coding survives the highlight. */
 .simple-grid-row:hover .simple-grid-cell {
-  background: color-mix(in srgb, var(--slot-tint, #2a2a2a) 24%, #262626);
+  background: color-mix(in srgb, var(--slot-tint, #2a2a2a) 32%, #2b2b2b);
 }
 .simple-grid-cell-inner {
   position: relative;
