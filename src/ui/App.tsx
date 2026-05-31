@@ -332,6 +332,7 @@ function FightNameInput() {
       type="text"
       className="fight-name-input"
       maxLength={MAX_NAME_LEN}
+      size={MAX_NAME_LEN}
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
