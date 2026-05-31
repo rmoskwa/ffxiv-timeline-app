@@ -34,11 +34,14 @@ const FIELD_TOGGLES: [BooleanOptionKey, string][] = [
   ["showTargetPattern", "Target pattern"],
   ["showDamage", "Damage"],
 ];
-const BEHAVIOR_TOGGLES: [BooleanOptionKey, string][] = [
+const MIT_APPEARANCE_TOGGLES: [BooleanOptionKey, string][] = [
   ["showUncovered", "Show uncovered hits"],
   ["includeHiddenSlots", "Include hidden slots"],
-  ["listEachMitOnce", "List each mit once"],
 ];
+// "Show full mit coverage" is the user-facing inverse of the persisted
+// `listEachMitOnce` flag: checked (default) = list a mit on every covered hit;
+// unchecked = list it only on its home hit. Rendered separately from the generic
+// checkbox helper because its bound value is negated.
 const HEADER_TOGGLES: [BooleanOptionKey, string][] = [
   ["headerTitle", "Title"],
   ["headerRange", "Range"],
@@ -282,8 +285,16 @@ export function ShareModal() {
                   {FIELD_TOGGLES.map(checkbox)}
                 </fieldset>
                 <fieldset className="share-option-group">
-                  <legend>Behavior</legend>
-                  {BEHAVIOR_TOGGLES.map(checkbox)}
+                  <legend>Mitigation appearance</legend>
+                  {MIT_APPEARANCE_TOGGLES.map(checkbox)}
+                  <label className="share-option">
+                    <input
+                      type="checkbox"
+                      checked={!options.listEachMitOnce}
+                      onChange={(e) => setOption("listEachMitOnce", !e.target.checked)}
+                    />
+                    <span>Show full mit coverage</span>
+                  </label>
                 </fieldset>
               </div>
             </div>
