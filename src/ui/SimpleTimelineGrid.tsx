@@ -315,15 +315,17 @@ export function SimpleTimelineGrid() {
 
   // Conflicts panel → grid sync: when a boss ability becomes selected (e.g. via a
   // "needs target" conflict's jump action), scroll its row into view and flash it.
-  // Mirrors the canvas BossLane effect; the transient flash stands in for the
-  // canvas's persistent selected-marker border, which the grid has no equivalent of.
+  // Centers the row vertically (block: "center") to match the mit-chip jump in
+  // this same vertically-scrolling grid — "nearest" would leave the row pinned to
+  // the top/bottom edge. The transient flash stands in for the canvas's persistent
+  // selected-marker border, which the grid has no equivalent of.
   useEffect(() => {
     if (!selectedBossInstance) return;
     const el = document.querySelector<HTMLElement>(
       `.simple-grid-row[data-boss-instance-id="${selectedBossInstance.id}"]`,
     );
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    el.scrollIntoView({ behavior: "smooth", inline: "center", block: "center" });
     el.classList.add("simple-grid-row--flash");
     const timer = window.setTimeout(() => el.classList.remove("simple-grid-row--flash"), 1200);
     return () => {
