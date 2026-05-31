@@ -1,8 +1,11 @@
-// Right-sidebar inspector for the currently-selected mit. Renders when:
-//   (a) the mit needs a target (affects:target / target_or_self), OR
-//   (b) the mit is a parent type with at least one gated child in the library
-//       exposes a Children section to delete/re-add children.
-// For non-target leaf mits, nothing is exposed and the panel stays hidden.
+// Right-sidebar inspector for the currently-selected mit. Always renders the
+// mit's reference detail (icon, Effect, cd · dur · reaches, notes — the same
+// content as the Mitigation Reference modal, via the shared MitReferenceDetail).
+// Below the detail it appends interactive controls when the mit has them:
+//   - a target picker (affects:target / target_or_self),
+//   - a hold-duration field (held abilities),
+//   - a Children section (parent types with gated children in the library).
+// A plain leaf mit shows the detail alone. See docs/prd/mit-inspector-detail.md.
 
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
 import { targetingForMit } from "@/domain/targeting";
@@ -13,6 +16,7 @@ import {
 } from "@/domain/types";
 import { defaultChildPositions, useTimelineStore } from "@/state/timeline-store";
 import { JobIcon } from "./JobIcon";
+import { MitReferenceDetail } from "./MitReferenceDetail";
 import { TargetPicker } from "./TargetPicker";
 import { secondsToTimecode } from "./timeline-constants";
 import { useMitInstanceStates } from "./use-derived";
@@ -40,8 +44,6 @@ export function MitInspectorPanel() {
   const childTypes = getGatedChildrenOf(type.id);
   const hasGatedChildren = childTypes.length > 0;
   const isHeldAbility = type.min_duration_seconds != null;
-  // Hide the panel when nothing instance-editable applies.
-  if (targeting.maxCount === 0 && !hasGatedChildren && !isHeldAbility) return null;
 
   const slot = roster.find((s) => s.id === mit.player_slot_id);
   const slotLabel = slot ? (slot.name_label ?? (slot.job === "unset" ? "Unset" : slot.job)) : "—";
@@ -60,13 +62,15 @@ export function MitInspectorPanel() {
         </button>
       </header>
       <div className="mit-inspector-meta">
-        <div className="mit-inspector-title">{type.name}</div>
         <div className="mit-inspector-detail">
           {slot && <JobIcon job={slot.job} size={16} title={slotLabel} />}
           <span>{slotLabel}</span>
           <span aria-hidden>·</span>
           <span>{secondsToTimecode(mit.effect_time)}</span>
         </div>
+      </div>
+      <div>
+        <MitReferenceDetail mit={type} />
       </div>
       {targeting.maxCount > 0 && (
         <div className="mit-inspector-target">

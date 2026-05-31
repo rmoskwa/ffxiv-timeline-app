@@ -2833,14 +2833,6 @@ button {
   gap: 0.15rem;
   min-width: 0;
 }
-.mit-inspector-title {
-  color: #eee;
-  font-size: 0.85rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .mit-inspector-detail {
   display: flex;
   align-items: center;
@@ -2848,10 +2840,15 @@ button {
   color: #999;
   font-size: 0.72rem;
 }
+/* The target picker is the first interactive section below the reference
+   detail, so it carries the detail/interactive divider like the held and
+   children sections do. */
 .mit-inspector-target {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  border-top: 1px solid #2a2a2a;
+  padding-top: 0.5rem;
 }
 
 /* Held-ability numeric editor — mirrors the bar's right-edge resize handle
