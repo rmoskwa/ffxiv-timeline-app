@@ -3,7 +3,7 @@
 // Mounted by App when no timeline is loaded.
 
 import { useState } from "react";
-import type { Job, JobOrUnset } from "@/domain/types";
+import { type Job, type JobOrUnset, MAX_NAME_LEN } from "@/domain/types";
 import { importTimelineDialog, saveWorkingTimeline } from "@/persistence/storage";
 import { useTimelineStore } from "@/state/timeline-store";
 import { importErrorMessage } from "./import-error-message";
@@ -131,7 +131,13 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
 
         <label className="field">
           <span>Fight name</span>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={MAX_NAME_LEN}
+            required
+          />
         </label>
 
         <div className="wizard-columns">
