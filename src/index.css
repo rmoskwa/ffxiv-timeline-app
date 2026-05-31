@@ -2875,12 +2875,16 @@ button {
   color: #eee;
   font-weight: 600;
   font-size: 0.9rem;
+  /* A long ability name wraps rather than shoving the timecode off the edge. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .boss-inspector-timecode {
   color: #bbb;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .boss-inspector-trio {
   color: #999;
@@ -2948,13 +2952,22 @@ button {
 .boss-inspector-mit-row:hover {
   background: #262626;
 }
+/* Icons hold their size; the text block takes the rest and wraps, so a long
+   Effect string folds onto a second line instead of clipping at the window edge. */
+.boss-inspector-mit-row .job-icon,
+.boss-inspector-mit-row .mit-icon {
+  flex-shrink: 0;
+}
+.boss-inspector-mit-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .boss-inspector-mit-name {
   color: #eee;
 }
 .boss-inspector-mit-effect {
   color: #999;
-  margin-left: auto;
-  white-space: nowrap;
 }
 .mit-inspector-panel {
   border-bottom: 1px solid #333;

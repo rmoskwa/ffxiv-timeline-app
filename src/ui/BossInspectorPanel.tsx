@@ -131,9 +131,11 @@ export function BossInspectorPanel() {
                   >
                     {caster && <JobIcon job={caster.job} size={16} title={slotLabelFor(caster)} />}
                     <MitIcon name={mitType.name} size={16} title={mitType.name} />
-                    <span className="boss-inspector-mit-name">{mitType.name}</span>
-                    <span className="boss-inspector-mit-effect">
-                      — {formatMitMagnitude(mitType)}
+                    <span className="boss-inspector-mit-text">
+                      <span className="boss-inspector-mit-name">{mitType.name}</span>
+                      <span className="boss-inspector-mit-effect">
+                        {` — ${formatMitMagnitude(mitType)}`}
+                      </span>
                     </span>
                   </button>
                 </li>
