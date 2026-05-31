@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useHistoryStore } from "@/state/history-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { BossAbilityPanel } from "./BossAbilityPanel";
+import { BossInspectorPanel } from "./BossInspectorPanel";
 import { ConflictsPanel } from "./ConflictsPanel";
 import { MitInspectorPanel } from "./MitInspectorPanel";
 import { PhasesPanel } from "./PhasesPanel";
@@ -24,6 +25,7 @@ export function TimelineEditor() {
       </main>
       <aside className="editor-right">
         <MitInspectorPanel />
+        <BossInspectorPanel />
         <ConflictsPanel />
       </aside>
     </div>

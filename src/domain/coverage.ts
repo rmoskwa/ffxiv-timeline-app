@@ -120,3 +120,41 @@ export function mitCovers(
 
   return true;
 }
+
+// Inspector-only "does this mit touch this hit?" — temporal presence (raw
+// window, per ADR-0002) ∩ reach, with NO damage-type clause and the
+// untargetable-boss boss_debuff exclusion. Distinct from mitCovers (which
+// gates the damage walk and DOES require a damage-type match). The active
+// duration is resolved at the React seam and passed in, so this module stays
+// library-free (ADR-0001), mirroring simple-grid-projection.ts.
+export function mitInteractsWithHit(
+  mit: MitigationInstance,
+  mitType: MitigationType,
+  hit: ResolvedHit,
+  bossTargetable: boolean,
+  roster: Roster,
+  activeDurationSec: number,
+): boolean {
+  // 1. Temporal presence on the raw window [start, start + duration] (inclusive
+  //    both ends, matching mitCovers — no truncation).
+  const mitStart = mit.effect_time;
+  if (hit.effect_time < mitStart) return false;
+  if (hit.effect_time > mitStart + activeDurationSec) return false;
+
+  // An untargetable boss can't carry a debuff — an affects:boss_debuff mit
+  // reaches nobody on this hit, so it never interacts.
+  if (!bossTargetable && mitType.affects === "boss_debuff") return false;
+
+  // 2. Reach: the mit must touch at least one slot the hit actually lands on.
+  //    affects:none reaches nobody (mitReachesPlayer returns false), so utility
+  //    anchors fall out here with no special-casing.
+  for (const player of roster) {
+    if (
+      hitLandsOnPlayer(hit, player) &&
+      mitReachesPlayer(mitType.affects, mit.player_slot_id, mit.target_slot_ids, player)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}

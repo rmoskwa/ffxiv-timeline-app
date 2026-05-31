@@ -861,6 +861,21 @@ button {
 .simple-grid-col-name {
   color: #eee;
 }
+/* The ability name is the row's boss-selection click target (canvas-parity with
+   the Label). Inherits the cell's target-pattern color; underlines on hover. */
+.simple-grid-name-button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.simple-grid-name-button:hover {
+  text-decoration: underline;
+}
 .simple-grid-col-type {
   text-transform: capitalize;
   color: #aaa;
@@ -872,6 +887,19 @@ button {
      border-collapse it collapses with the first lane's lighter border-left,
      and the heavier line wins — anchoring "data | lanes" without a double rule. */
   border-right: 1px solid rgba(255, 255, 255, 0.13);
+}
+/* Persistent selected-row accent — parallels the canvas Label's blue border and
+   .simple-grid-chip.is-selected. Tints only the fixed columns so the per-slot
+   lane tints survive; a left bar on the Time cell marks the row edge. Placed
+   after the base column rules so specificity ascends down the file. */
+.simple-grid-row.is-selected .simple-grid-col-time,
+.simple-grid-row.is-selected .simple-grid-col-name,
+.simple-grid-row.is-selected .simple-grid-col-type,
+.simple-grid-row.is-selected .simple-grid-col-damage {
+  background: rgba(109, 179, 242, 0.12);
+}
+.simple-grid-row.is-selected .simple-grid-col-time {
+  box-shadow: inset 3px 0 0 #6db3f2;
 }
 .simple-grid-phase-head {
   padding: 0.35rem 0.6rem;
@@ -2793,6 +2821,153 @@ button {
   min-width: 0;
   border-left: 1px solid #333;
   background: #1c1c1c;
+}
+
+/* ── Boss ability inspector ──────────────────────────────────────────────
+   Mutually exclusive with the Mit inspector (selection is one-at-a-time), so
+   they share the same right-sidebar slot. Mirrors the mit-inspector shell. */
+.boss-inspector-panel {
+  border-bottom: 1px solid #333;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+.boss-inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.boss-inspector-header h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #ccc;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.boss-inspector-close {
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+.boss-inspector-close:hover {
+  color: #fff;
+}
+.boss-inspector-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.boss-inspector-name {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.boss-inspector-name-text {
+  color: #eee;
+  font-weight: 600;
+  font-size: 0.9rem;
+  /* A long ability name wraps rather than shoving the timecode off the edge. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.boss-inspector-timecode {
+  color: #bbb;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.boss-inspector-trio {
+  color: #999;
+  font-size: 0.72rem;
+  text-transform: capitalize;
+}
+.boss-inspector-badge {
+  color: #e0b34a;
+  font-size: 0.72rem;
+}
+.boss-inspector-desc {
+  margin: 0.15rem 0 0;
+  color: #aaa;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+}
+.boss-inspector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-top: 1px solid #2a2a2a;
+  padding-top: 0.5rem;
+}
+.boss-inspector-section h4 {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.boss-inspector-hits {
+  display: grid;
+  grid-template-columns: repeat(4, max-content);
+  gap: 0.3rem;
+}
+.boss-inspector-empty {
+  margin: 0;
+  color: #777;
+  font-size: 0.75rem;
+  font-style: italic;
+}
+.boss-inspector-mit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.boss-inspector-mit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0.2rem 0.25rem;
+  border-radius: 3px;
+  color: #ddd;
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+.boss-inspector-mit-row:hover {
+  background: #262626;
+}
+/* Icons hold their size; the text block takes the rest and wraps, so a long
+   Effect string folds onto a second line instead of clipping at the window edge. */
+.boss-inspector-mit-row .job-icon,
+.boss-inspector-mit-row .mit-icon {
+  flex-shrink: 0;
+}
+.boss-inspector-mit-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.boss-inspector-mit-name {
+  color: #eee;
+}
+.boss-inspector-mit-effect {
+  color: #999;
 }
 .mit-inspector-panel {
   border-bottom: 1px solid #333;
