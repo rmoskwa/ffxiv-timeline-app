@@ -278,6 +278,10 @@ The transient state marking one **instance** as the focus of editing. **Mutually
 
 _Avoid_: focus, highlight, active
 
+**Mit inspector**:
+The right-sidebar surface showing the currently-selected mit's details. Leads with instance context (caster **slot** and time), then the same per-ability detail the **Mitigation Reference** surfaces — icon, **Effect**, cooldown/duration, *reaches*, and modeling **Reference note**s — followed by whatever instance-level controls the mit needs: **Target** picking (targeted abilities), hold-duration (held abilities), and the gated **Child mit** add/remove list (parents). Shown for *every* selected mit; a plain leaf mit shows the reference detail alone, with no controls. Mit-only — boss instances have no inspector. Stays mounted in both the **canvas** and **Simple Timeline View**.
+_Avoid_: information panel, info panel, mitigation info, properties panel
+
 **Phase divider**:
 A thin (1px), low-opacity, neutral-colored vertical line painted across every **Lane** and **Sub-lane** at each **Phase** boundary (i.e., at each phase's `start_time` except the first). Z-ordered *behind* **Bars** and **Markers** so mit-bar and boss-marker visuals remain authoritative where they overlap the divider — preserving the "phases are organizational only" rule that cooldowns and **active windows** flow uninterrupted across boundaries. Hidden entirely when the timeline has zero user-added phases.
 _Avoid_: phase boundary line, phase break, separator
