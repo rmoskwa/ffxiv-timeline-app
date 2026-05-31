@@ -370,7 +370,7 @@ button {
 /* Destructive action — quiet until intent, then danger-tinted. */
 .toolbar-btn--danger {
   background: transparent;
-  border-color: transparent;
+  border-color: #454545;
   color: #9a9a9a;
 }
 .toolbar-btn--danger:hover {
