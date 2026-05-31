@@ -313,8 +313,8 @@ button {
 
 /* ── Header toolbar ──────────────────────────────────────────────────────
    A single segmented bar, grouped by intent and ordered along the workflow:
-   document I/O (Open · Save) → authoring (Add Phase) → export hub → the
-   set-apart destructive action (Discard). Export is the gold accent endpoint. */
+   document I/O (Open · Save) → export hub → the set-apart destructive action
+   (Discard). Export is the gold accent endpoint. */
 .toolbar-group {
   display: flex;
   align-items: center;
@@ -366,18 +366,6 @@ button {
 .toolbar-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-/* Authoring action — additive, ghost/dashed affordance. */
-.toolbar-btn--ghost {
-  background: transparent;
-  border-style: dashed;
-  border-color: #4a4a4a;
-  color: #bdbdbd;
-}
-.toolbar-btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: #6a6a6a;
-  color: #eaf4ff;
 }
 /* Destructive action — quiet until intent, then danger-tinted. */
 .toolbar-btn--danger {

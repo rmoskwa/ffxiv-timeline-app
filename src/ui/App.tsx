@@ -34,7 +34,7 @@ import { RosterPanel } from "./RosterPanel";
 import { SetupWizard } from "./SetupWizard";
 import { ShareModal } from "./ShareModal";
 import { TimelineEditor } from "./TimelineEditor";
-import { OpenIcon, PlusIcon, SaveIcon, TrashIcon } from "./ToolbarIcons";
+import { OpenIcon, SaveIcon, TrashIcon } from "./ToolbarIcons";
 import { useAbilityColorsModalStore } from "./use-ability-colors-modal";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
 import { useBossImportExport } from "./use-boss-import-export";
@@ -296,17 +296,6 @@ export function App() {
               >
                 <SaveIcon size={15} />
                 Save
-              </button>
-            </div>
-            <span className="toolbar-divider" aria-hidden="true" />
-            <div className="toolbar-group">
-              <button
-                type="button"
-                className="toolbar-btn toolbar-btn--ghost"
-                onClick={openAddPhase}
-              >
-                <PlusIcon size={15} />
-                Add Phase
               </button>
             </div>
             <span className="toolbar-divider" aria-hidden="true" />
