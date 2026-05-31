@@ -26,7 +26,7 @@ https://github.com/user-attachments/assets/ac606ed7-3e54-43a5-865b-288fb761cba1
 2. Run the installer
 3. Launch from the Start menu. The app checks for updates on launch and prompts you when a new version is available.
 
-**Requirements:** Windows 10 or 11. Windows 11 ships with WebView2; on Windows 10, install it from <https://developer.microsoft.com/microsoft-edge/webview2/>.
+**Requirements:** Windows 10 or 11. Windows 11 ships with WebView2; on Windows 10, you may need to install it from <https://developer.microsoft.com/microsoft-edge/webview2/>.
 
 ## For Developers
 
