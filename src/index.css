@@ -410,11 +410,12 @@ button {
   gap: 0.5rem;
 }
 .roster-list li {
-  /* 3-zone layout: job-trigger (left) | HP input (center) | visibility (right).
-     Symmetric 1fr side-columns keep the HP input visually centered regardless
-     of how long the job label is. */
+  /* 3-zone layout: job-trigger (left) | HP input | visibility (right).
+     The job label takes all leftover width (1fr); HP and the visibility
+     toggle hug the right edge at their natural size, so long names get the
+     maximum room before ellipsizing. */
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   column-gap: 0.5rem;
   background: #222;
