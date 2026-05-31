@@ -32,8 +32,12 @@ export function BossAbilityPanel() {
   const instances = useTimelineStore((s) => s.timeline?.boss_ability_instances ?? []);
   const phases = useTimelineStore((s) => s.timeline?.phases ?? EMPTY_PHASES);
   const roster = useTimelineStore((s) => s.timeline?.roster);
-  const selectedBossInstanceId = useTimelineStore((s) =>
-    s.selectedInstance?.kind === "boss" ? s.selectedInstance.id : null,
+  // Boss-selection object (or null), not the derived id: re-selecting the same
+  // boss from the conflicts panel stores a fresh object, changing this reference
+  // so the expand + sub-row-scroll effects below re-fire on repeat jumps. A
+  // stable id string would make every repeat a no-op.
+  const selectedBossInstance = useTimelineStore((s) =>
+    s.selectedInstance?.kind === "boss" ? s.selectedInstance : null,
   );
   const deselectInstance = useTimelineStore((s) => s.deselectInstance);
   const [newTypeFormOpen, setNewTypeFormOpen] = useState(false);
@@ -56,10 +60,10 @@ export function BossAbilityPanel() {
   // conflicts panel), make sure its parent type is the one expanded so the
   // sub-row is actually rendered to scroll to.
   useEffect(() => {
-    if (!selectedBossInstanceId) return;
-    const inst = instances.find((i) => i.id === selectedBossInstanceId);
+    if (!selectedBossInstance) return;
+    const inst = instances.find((i) => i.id === selectedBossInstance.id);
     if (inst) setExpandedTypeId(inst.type_id);
-  }, [selectedBossInstanceId, instances]);
+  }, [selectedBossInstance, instances]);
 
   // Canvas → panel sync: scroll the selected sub-row into view whenever
   // selection changes (no-op if the row is already visible). Instance ids
@@ -68,12 +72,12 @@ export function BossAbilityPanel() {
   // once its parent type is the expanded one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: expandedTypeId gates DOM presence of the queried row
   useEffect(() => {
-    if (!selectedBossInstanceId) return;
+    if (!selectedBossInstance) return;
     const el = document.querySelector<HTMLElement>(
-      `.boss-instance-row[data-boss-instance-id="${selectedBossInstanceId}"]`,
+      `.boss-instance-row[data-boss-instance-id="${selectedBossInstance.id}"]`,
     );
     el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [selectedBossInstanceId, expandedTypeId]);
+  }, [selectedBossInstance, expandedTypeId]);
 
   if (!roster) return null;
 

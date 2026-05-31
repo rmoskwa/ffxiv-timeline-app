@@ -76,9 +76,15 @@ export function SimpleTimelineGrid() {
   const selectedMitId = useTimelineStore((s) =>
     s.selectedInstance?.kind === "mit" ? s.selectedInstance.id : null,
   );
-  const selectedBossInstanceId = useTimelineStore((s) =>
-    s.selectedInstance?.kind === "boss" ? s.selectedInstance.id : null,
+  // Subscribe to the boss-selection object (or null), not the derived id string:
+  // every select() stores a fresh object, so re-selecting the SAME boss from the
+  // conflicts panel changes this reference and re-fires the flash effect below.
+  // A stable id string makes every repeat jump a no-op (the bug); narrowing to
+  // boss here keeps unrelated mit selections from re-rendering the grid.
+  const selectedBossInstance = useTimelineStore((s) =>
+    s.selectedInstance?.kind === "boss" ? s.selectedInstance : null,
   );
+  const selectedBossInstanceId = selectedBossInstance?.id ?? null;
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
   const columnWidth = useColumnWidthStore((s) => s.columnWidth);
   const setColumnWidth = useColumnWidthStore((s) => s.setColumnWidth);
@@ -312,9 +318,9 @@ export function SimpleTimelineGrid() {
   // Mirrors the canvas BossLane effect; the transient flash stands in for the
   // canvas's persistent selected-marker border, which the grid has no equivalent of.
   useEffect(() => {
-    if (!selectedBossInstanceId) return;
+    if (!selectedBossInstance) return;
     const el = document.querySelector<HTMLElement>(
-      `.simple-grid-row[data-boss-instance-id="${selectedBossInstanceId}"]`,
+      `.simple-grid-row[data-boss-instance-id="${selectedBossInstance.id}"]`,
     );
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
@@ -324,7 +330,7 @@ export function SimpleTimelineGrid() {
       window.clearTimeout(timer);
       el.classList.remove("simple-grid-row--flash");
     };
-  }, [selectedBossInstanceId]);
+  }, [selectedBossInstance]);
 
   if (!roster) {
     return <div className="simple-grid-empty">No timeline loaded.</div>;

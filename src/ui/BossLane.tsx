@@ -44,9 +44,14 @@ export function BossLane() {
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const addInstance = useTimelineStore((s) => s.addBossAbilityInstance);
   const updateInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
-  const selectedBossInstanceId = useTimelineStore((s) =>
-    s.selectedInstance?.kind === "boss" ? s.selectedInstance.id : null,
+  // Boss-selection object (or null), not the derived id: re-selecting the same
+  // boss from the conflicts panel stores a fresh object, changing this reference
+  // so the centering effect below re-fires on repeat jumps (a stable id string
+  // makes repeats a no-op). selectedBossInstanceId stays for marker styling.
+  const selectedBossInstance = useTimelineStore((s) =>
+    s.selectedInstance?.kind === "boss" ? s.selectedInstance : null,
   );
+  const selectedBossInstanceId = selectedBossInstance?.id ?? null;
   const selectBossInstance = useTimelineStore((s) => s.selectBossInstance);
   const deselectInstance = useTimelineStore((s) => s.deselectInstance);
   const damageByTime = useDamageByTime();
@@ -60,12 +65,12 @@ export function BossLane() {
   // Panel → canvas sync: when selection changes (from any source), center the
   // corresponding marker horizontally. No-op if already in view.
   useEffect(() => {
-    if (!selectedBossInstanceId) return;
+    if (!selectedBossInstance) return;
     const el = document.querySelector<HTMLElement>(
-      `.boss-marker[data-boss-instance-id="${selectedBossInstanceId}"]`,
+      `.boss-marker[data-boss-instance-id="${selectedBossInstance.id}"]`,
     );
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-  }, [selectedBossInstanceId]);
+  }, [selectedBossInstance]);
 
   const typeMap = useMemo(() => new Map(types.map((t) => [t.id, t])), [types]);
   const inert = types.length === 0;
