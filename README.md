@@ -20,6 +20,8 @@ https://github.com/user-attachments/assets/ac606ed7-3e54-43a5-865b-288fb761cba1
 ## Get as detailed as you want!
 ![Screenshot of the FFXIV Raid Timeline app](docs/timeline-screenshot.png)
 
+## Curious what mitigations are available in FFXIV-Timeline?
+See the mitigation documentation ![here.](docs/mitigation-data.md)
 ## Quickstart
 
 1. Download the latest installer from the [Releases page](https://github.com/rmoskwa/ffxiv-timeline-app/releases/latest)
