@@ -9,29 +9,14 @@
 
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { getMitById, getMitsForJob, getSharedRecastPartners } from "@/data/mit-library";
-import {
-  formatMitMagnitude,
-  type Job,
-  type MitAffects,
-  type MitigationType,
-  mitReachesLabel,
-  mitReferenceNotes,
-  type ResolvedMitRefs,
-} from "@/domain/types";
+import { getMitsForJob } from "@/data/mit-library";
+import type { Job } from "@/domain/types";
 import { JobIcon } from "./JobIcon";
 import { JOBS_BY_ROLE } from "./jobs-by-role";
-import { MitIcon } from "./MitIcon";
+import { MitReferenceDetail } from "./MitReferenceDetail";
 import { useMitReferenceModalStore } from "./use-mit-reference-modal";
 
 const FIRST_JOB: Job = JOBS_BY_ROLE[0]?.jobs[0] ?? "PLD";
-
-// The two non-obvious reaches words read bare without the cut global legend, so
-// each gets an inline tooltip. The other four are self-explanatory.
-const REACHES_TOOLTIP: Partial<Record<MitAffects, string>> = {
-  target_or_self: "A single party member, the caster included",
-  boss_debuff: "Weakens the boss — all 8 slots benefit",
-};
 
 export function MitReferenceModal() {
   const isOpen = useMitReferenceModalStore((s) => s.isOpen);
@@ -117,60 +102,14 @@ export function MitReferenceModal() {
             </div>
             <ul className="mit-ref-list">
               {mits.map((mit) => (
-                <MitReferenceRow key={mit.id} mit={mit} />
+                <li key={mit.id} className="mit-ref-row">
+                  <MitReferenceDetail mit={mit} />
+                </li>
               ))}
             </ul>
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-// One ability row: icon + name + Effect, a cd · duration · reaches meta line, and
-// the derived ++ authored notes. Resolves the cross-entry names mitReferenceNotes
-// needs at this seam (the formatter stays library-free — ADR-0001).
-function MitReferenceRow({ mit }: { mit: MitigationType }) {
-  const parent = mit.gated_by != null ? getMitById(mit.gated_by) : undefined;
-  const refs: ResolvedMitRefs = {
-    recastPartners: getSharedRecastPartners(mit).map((m) => m.name),
-    conditionNames:
-      mit.conditional_bonus?.requires_active
-        .map((id) => getMitById(id)?.name)
-        .filter((n): n is string => n != null) ?? [],
-  };
-  if (parent) refs.parentName = parent.name;
-  const notes = mitReferenceNotes(mit, refs);
-
-  // Held abilities (min set) show a range; gated children omit the cd — they
-  // have no own cooldown on the timeline (the "Cast inside …" note carries it).
-  const durationLabel =
-    mit.min_duration_seconds != null
-      ? `${mit.min_duration_seconds}–${mit.duration_seconds}s`
-      : `${mit.duration_seconds}s`;
-  const metaPrefix =
-    mit.gated_by != null ? durationLabel : `${mit.cooldown_seconds}s cd · ${durationLabel}`;
-
-  return (
-    <li className="mit-ref-row">
-      <div className="mit-ref-head">
-        <MitIcon name={mit.name} size={20} />
-        <span className="mit-ref-name">{mit.name}</span>
-        <span className="mit-ref-effect">{formatMitMagnitude(mit)}</span>
-      </div>
-      <div className="mit-ref-meta">
-        {metaPrefix} ·{" "}
-        <span className="mit-ref-reaches" title={REACHES_TOOLTIP[mit.affects]}>
-          {mitReachesLabel(mit)}
-        </span>
-      </div>
-      {notes.length > 0 && (
-        <ul className="mit-ref-notes">
-          {notes.map((note) => (
-            <li key={note}>{note}</li>
-          ))}
-        </ul>
-      )}
-    </li>
   );
 }
