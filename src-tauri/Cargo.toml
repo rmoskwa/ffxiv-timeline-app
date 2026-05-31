@@ -1,6 +1,6 @@
 [package]
 name = "ffxiv-timeline-app"
-version = "0.2.0"
+version = "0.3.0"
 description = "FFXIV Raid Timeline planner"
 authors = ["rmoskwa"]
 license = "MIT"
