@@ -4020,6 +4020,73 @@ button {
   cursor: not-allowed;
 }
 
+/* ─── Mitigation Reference (read-only right pane) ─────────────────────── */
+.mit-ref-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.mit-ref-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 0.4rem 0.55rem;
+}
+.mit-ref-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.mit-ref-name {
+  flex: 1;
+  min-width: 0;
+  color: #e0e0e0;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.mit-ref-effect {
+  color: #7dc4a0;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.mit-ref-meta {
+  color: #888;
+  font-size: 0.78rem;
+}
+.mit-ref-reaches[title] {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.mit-ref-notes {
+  list-style: none;
+  margin: 0.1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.mit-ref-notes li {
+  position: relative;
+  padding-left: 1rem;
+  color: #aaa;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.mit-ref-notes li::before {
+  content: "└";
+  position: absolute;
+  left: 0.15rem;
+  color: #555;
+}
+
 /* ─── Phase dividers ─────────────────────────────────────────────────── */
 
 .phase-divider {

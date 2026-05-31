@@ -50,6 +50,9 @@ export const PLD_MITS: MitigationType[] = [
     // potency shields are properly modeled.
     barrier: { kind: "max_hp_pct", value: 15 },
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Guardian",
+    reference_notes: [
+      "Shield is an approximation — a flat 15% of max HP; in-game it scales with cure potency, which the app doesn't model.",
+    ],
   },
   {
     id: "pld.passage_of_arms",
@@ -66,6 +69,9 @@ export const PLD_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Passage_of_Arms",
+    reference_notes: [
+      "Held/channeled: starts at the 5s minimum; drag the bar's right edge (or use the mit inspector) to extend up to 23s. Placing another Paladin mitigation inside the hold ends the channel early.",
+    ],
   },
   {
     id: "pld.holy_sheltron",

@@ -53,5 +53,8 @@ export const PCT_MITS: MitigationType[] = [
     // the reduction targets the consumed entry, not self.
     cooldown_reduce_on_absorb: 30,
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Tempera_Grassa",
+    reference_notes: [
+      "Casting it consumes Tempera Coat — Coat's shield ends and is replaced by this party-wide shield.",
+    ],
   },
 ];

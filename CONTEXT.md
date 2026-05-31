@@ -164,6 +164,14 @@ _Avoid_: tank passive, tank mit
 A mit-library entry with `mechanic: "utility"`, no % mit, and no **Barrier**. Acts as a planner anchor for abilities whose strategic value matters even without direct damage reduction (e.g. Macrocosmos, Pneuma). Renders as a marker on the timeline but contributes no math.
 _Avoid_: planner mit, dummy mit
 
+**Reference note**:
+Authored modeling-caveat prose stored per mit-library entry (`reference_notes?: string[]`) — the *why* a number is what it is, when no structured field can express it (e.g. PLD Guardian's shield is approximated as a flat 15% max-HP because cure potency isn't modeled). A sibling of `wiki_url`: provenance about the model, not presentation. Behavior the structured fields already encode (tiers, **Affects**, **Shared recast**, charges) is *derived* where shown, never duplicated here.
+_Avoid_: tooltip text, help copy, description, caveat
+
+**Mitigation Reference**:
+The read-only Help-menu surface that documents each **Job**'s mitigations job-by-job (left job list, right detail, mirroring the **Mit lane layout** modal's master-detail shape) — numbers (cooldown, duration, effect, *reaches*) derived live from the mit library, prose from its **Reference note**s. A view over the library, never a second copy, and it never touches the damage math. Lives under Help (it configures nothing), unlike the Settings-menu config modals.
+_Avoid_: mitigation help, mit docs, info modal, mitigation info
+
 **Lethal**:
 A computed property of a **damage chip** (a player's aggregated **hit**s at one **effect time**), true when the chip's total damage-to-HP (post-% mit, post-**Tank Mastery**, post-**Barrier**) is at least the player's **Carried HP** *entering* the chip — the HP they actually hold at that moment, not necessarily their full max **HP**. For a **Full heal** chip entering HP equals max HP, so this reduces to the original "kills from full" test; for a no-Full-heal chip it can flag a hit that only kills because earlier damage was carried. Drives the red damage chip styling and the lethal flag on a **marker**.
 _Avoid_: deadly, fatal, kill
