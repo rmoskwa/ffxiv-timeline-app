@@ -41,6 +41,8 @@ See the mitigation documentation ![here.](docs/mitigation-data.md)
   sudo dnf install webkit2gtk4.1 gtk3 libsoup3
   ```
   A white screen with `Could not create default EGL display: EGL_BAD_PARAMETER` means these runtime libraries are missing.
+ 
+  If none of the assets or installed dependencies work(Arch Linux users...), go through the Dev setup below.
 
 ## For Developers
 
