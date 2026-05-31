@@ -15,6 +15,7 @@ import { MitIcon } from "./MitIcon";
 import { PhaseDividers } from "./PhaseDividers";
 import { type BlockingInterval, isPlacementLegal } from "./placement-legality";
 import { snapClientXToSecond } from "./timeline-constants";
+import { useBossGuidesStore } from "./use-boss-guides";
 import { useMitInstanceStates } from "./use-derived";
 import { useRowSize } from "./use-row-size";
 import { useZoom } from "./use-zoom";
@@ -104,6 +105,7 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
   const allMits = useTimelineStore((s) => s.timeline?.mitigation_instances);
   const mitStates = useMitInstanceStates();
   const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
+  const guidesVisible = useBossGuidesStore((s) => s.visible);
   const [hoverSec, setHoverSec] = useState<number | null>(null);
 
   // Neighbor end-time uses each placement's EFFECTIVE footprint — `max(CD,
@@ -221,14 +223,15 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
     >
       <div className="lane-gridlines" aria-hidden />
       <PhaseDividers />
-      {damageMarks.map((m) => (
-        <div
-          key={m.id}
-          className={`damage-guide${m.lethal ? " damage-guide--lethal" : ""}`}
-          style={{ left: m.effectTime * pxPerSec }}
-          aria-hidden
-        />
-      ))}
+      {guidesVisible &&
+        damageMarks.map((m) => (
+          <div
+            key={m.id}
+            className={`damage-guide${m.lethal ? " damage-guide--lethal" : ""}`}
+            style={{ left: m.effectTime * pxPerSec }}
+            aria-hidden
+          />
+        ))}
       {partnerInstances.map((p, i) => {
         const pEnd = partnerCdEnds[i];
         if (pEnd == null) return null;

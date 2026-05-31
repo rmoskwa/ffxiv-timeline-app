@@ -16,6 +16,7 @@ import {
   ZOOM_WHEEL_FACTOR,
 } from "./timeline-constants";
 import { type AppearanceTheme, useAppearanceStore } from "./use-appearance";
+import { useBossGuidesStore } from "./use-boss-guides";
 import { type ChipPosition, useChipLayoutStore } from "./use-chip-layout";
 import { ICON_SIZE_MAX, ICON_SIZE_MIN, useRowSizeStore } from "./use-row-size";
 import { useViewStore } from "./use-view";
@@ -157,6 +158,8 @@ function ZoomToolbar() {
   const setTheme = useAppearanceStore((s) => s.setTheme);
   const chipPosition = useChipLayoutStore((s) => s.position);
   const setChipPosition = useChipLayoutStore((s) => s.setPosition);
+  const guidesVisible = useBossGuidesStore((s) => s.visible);
+  const setGuidesVisible = useBossGuidesStore((s) => s.setVisible);
   const tickIntervalSec = pickTickIntervalSec(pxPerSec);
   const percent = Math.round((pxPerSec / DEFAULT_PX_PER_SEC) * 100);
   const tickLabel = tickIntervalSec >= 60 ? "1m" : `${tickIntervalSec}s`;
@@ -171,6 +174,11 @@ function ZoomToolbar() {
     { value: "top", label: "Top" },
     { value: "interleaved", label: "Interleaved" },
     { value: "bottom", label: "Bottom" },
+  ];
+
+  const bossLineOptions: readonly { value: boolean; label: string }[] = [
+    { value: true, label: "Show" },
+    { value: false, label: "Hide" },
   ];
 
   return (
@@ -242,6 +250,20 @@ function ZoomToolbar() {
             className={`toolbar-toggle${chipPosition === opt.value ? " is-selected" : ""}`}
             onClick={() => setChipPosition(opt.value)}
             aria-pressed={chipPosition === opt.value}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      <span className="timeline-toolbar-title">Timeline Boss Lines:</span>
+      <div className="timeline-toolbar-zoom">
+        {bossLineOptions.map((opt) => (
+          <button
+            key={String(opt.value)}
+            type="button"
+            className={`toolbar-toggle${guidesVisible === opt.value ? " is-selected" : ""}`}
+            onClick={() => setGuidesVisible(opt.value)}
+            aria-pressed={guidesVisible === opt.value}
           >
             {opt.label}
           </button>
