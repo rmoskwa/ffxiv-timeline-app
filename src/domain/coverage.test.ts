@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mitCovers, type ResolvedHit } from "./coverage";
+import { mitCovers, mitInteractsWithHit, type ResolvedHit } from "./coverage";
 import type { MitigationInstance, MitigationType, PlayerSlot, Roster } from "./types";
 
 // ─── Test fixtures ──────────────────────────────────────────────────────────
@@ -196,6 +196,165 @@ describe("mitCovers — damage type", () => {
 
     expect(mitCovers(m, t, hit({ damage_type: "physical" }), 0, ROSTER)).toBe(false);
     expect(mitCovers(m, t, hit({ damage_type: "magical" }), 0, ROSTER)).toBe(true);
+  });
+});
+
+// ─── mitInteractsWithHit (Boss ability inspector predicate) ─────────────────
+
+describe("mitInteractsWithHit — temporal presence (raw window)", () => {
+  it("hit before the mit's effect_time does not interact", () => {
+    const m = mit({ player_slot_id: "s0", effect_time: 100 });
+    const t = mitType({ affects: "party" });
+    expect(mitInteractsWithHit(m, t, hit({ effect_time: 99 }), true, ROSTER, 20)).toBe(false);
+  });
+
+  it("hit at the mit's effect_time (T) interacts", () => {
+    const m = mit({ player_slot_id: "s0", effect_time: 100 });
+    const t = mitType({ affects: "party" });
+    expect(mitInteractsWithHit(m, t, hit({ effect_time: 100 }), true, ROSTER, 20)).toBe(true);
+  });
+
+  it("hit at T + activeDurationSec interacts (inclusive end)", () => {
+    const m = mit({ player_slot_id: "s0", effect_time: 100 });
+    const t = mitType({ affects: "party" });
+    expect(mitInteractsWithHit(m, t, hit({ effect_time: 120 }), true, ROSTER, 20)).toBe(true);
+  });
+
+  it("hit after T + activeDurationSec does not interact", () => {
+    const m = mit({ player_slot_id: "s0", effect_time: 100 });
+    const t = mitType({ affects: "party" });
+    expect(mitInteractsWithHit(m, t, hit({ effect_time: 121 }), true, ROSTER, 20)).toBe(false);
+  });
+
+  it("uses the passed activeDurationSec, not the type's duration_seconds", () => {
+    // A held ability whose resolved window (10s) is shorter than the type max.
+    const m = mit({ player_slot_id: "s0", effect_time: 100 });
+    const t = mitType({ affects: "party", duration_seconds: 23 });
+    expect(mitInteractsWithHit(m, t, hit({ effect_time: 115 }), true, ROSTER, 10)).toBe(false);
+    expect(mitInteractsWithHit(m, t, hit({ effect_time: 108 }), true, ROSTER, 10)).toBe(true);
+  });
+});
+
+describe("mitInteractsWithHit — reach", () => {
+  it("raidwide + affects:party interacts (everyone is hit)", () => {
+    const m = mit({ player_slot_id: "s0" });
+    const t = mitType({ affects: "party" });
+    expect(mitInteractsWithHit(m, t, hit({ target_pattern: "raidwide" }), true, ROSTER, 20)).toBe(
+      true,
+    );
+  });
+
+  it("raidwide + affects:self interacts via the hit caster", () => {
+    const m = mit({ player_slot_id: "s3" });
+    const t = mitType({ affects: "self" });
+    expect(mitInteractsWithHit(m, t, hit({ target_pattern: "raidwide" }), true, ROSTER, 20)).toBe(
+      true,
+    );
+  });
+
+  it("targeted self-mit interacts only when the owner is among the hit slots", () => {
+    const t = mitType({ affects: "self" });
+    const h = hit({ target_pattern: "targeted", target_slot_ids: ["s0"] });
+    expect(mitInteractsWithHit(mit({ player_slot_id: "s0" }), t, h, true, ROSTER, 20)).toBe(true);
+    // Owner s1 is reached by the mit but isn't hit → no overlap.
+    expect(mitInteractsWithHit(mit({ player_slot_id: "s1" }), t, h, true, ROSTER, 20)).toBe(false);
+  });
+
+  it("affects:target interacts only when its picked target is among the hit slots", () => {
+    const t = mitType({ affects: "target" });
+    const h = hit({ target_pattern: "targeted", target_slot_ids: ["s0"] });
+    // Healer's target shield aimed at the hit tank.
+    expect(
+      mitInteractsWithHit(
+        mit({ player_slot_id: "s2", target_slot_ids: ["s0"] }),
+        t,
+        h,
+        true,
+        ROSTER,
+        20,
+      ),
+    ).toBe(true);
+    // Aimed at a non-hit ally.
+    expect(
+      mitInteractsWithHit(
+        mit({ player_slot_id: "s2", target_slot_ids: ["s4"] }),
+        t,
+        h,
+        true,
+        ROSTER,
+        20,
+      ),
+    ).toBe(false);
+  });
+
+  it("targeted hit with no target picked interacts with nothing (empty list)", () => {
+    const h = hit({ target_pattern: "targeted", target_slot_ids: [] });
+    expect(
+      mitInteractsWithHit(
+        mit({ player_slot_id: "s0" }),
+        mitType({ affects: "self" }),
+        h,
+        true,
+        ROSTER,
+        20,
+      ),
+    ).toBe(false);
+    expect(
+      mitInteractsWithHit(
+        mit({ player_slot_id: "s0" }),
+        mitType({ affects: "party" }),
+        h,
+        true,
+        ROSTER,
+        20,
+      ),
+    ).toBe(false);
+  });
+
+  it("affects:none (utility anchor) never interacts", () => {
+    const m = mit({ player_slot_id: "s0" });
+    const t = mitType({ affects: "none", mechanic: "utility", mitigation_per_type: {} });
+    expect(mitInteractsWithHit(m, t, hit({ target_pattern: "raidwide" }), true, ROSTER, 20)).toBe(
+      false,
+    );
+  });
+});
+
+describe("mitInteractsWithHit — no damage-type clause", () => {
+  it("an off-type mit still interacts (the Effect string carries the truth)", () => {
+    // RDM Magick Barrier ({magical:10}) on a physical raidwide: mitCovers is
+    // false (no physical %), but the inspector still lists it.
+    const m = mit({ player_slot_id: "s7" });
+    const t = mitType({ affects: "party", mitigation_per_type: { magical: 10 } });
+    const h = hit({ damage_type: "physical", target_pattern: "raidwide" });
+    expect(mitCovers(m, t, h, 0, ROSTER)).toBe(false);
+    expect(mitInteractsWithHit(m, t, h, true, ROSTER, 20)).toBe(true);
+  });
+});
+
+describe("mitInteractsWithHit — untargetable-boss boss_debuff exclusion", () => {
+  it("affects:boss_debuff interacts on a targetable boss", () => {
+    const m = mit({ player_slot_id: "s0" });
+    const t = mitType({ affects: "boss_debuff" });
+    expect(mitInteractsWithHit(m, t, hit({ target_pattern: "raidwide" }), true, ROSTER, 20)).toBe(
+      true,
+    );
+  });
+
+  it("affects:boss_debuff is excluded on an untargetable boss", () => {
+    const m = mit({ player_slot_id: "s0" });
+    const t = mitType({ affects: "boss_debuff" });
+    expect(mitInteractsWithHit(m, t, hit({ target_pattern: "raidwide" }), false, ROSTER, 20)).toBe(
+      false,
+    );
+  });
+
+  it("a party mit is unaffected by boss targetability", () => {
+    const m = mit({ player_slot_id: "s0" });
+    const t = mitType({ affects: "party" });
+    expect(mitInteractsWithHit(m, t, hit({ target_pattern: "raidwide" }), false, ROSTER, 20)).toBe(
+      true,
+    );
   });
 });
 
