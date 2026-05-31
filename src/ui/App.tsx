@@ -27,6 +27,7 @@ import { importErrorMessage } from "./import-error-message";
 import { JobDefaultsModal } from "./JobDefaultsModal";
 import { type Menu, MenuBar } from "./MenuBar";
 import { MitLaneLayoutModal } from "./MitLaneLayoutModal";
+import { MitReferenceModal } from "./MitReferenceModal";
 import { OctocatIcon } from "./OctocatIcon";
 import { RosterPanel } from "./RosterPanel";
 import { SetupWizard } from "./SetupWizard";
@@ -38,6 +39,7 @@ import { useBossImportExport } from "./use-boss-import-export";
 import { useHistoryRecorder } from "./use-history-recorder";
 import { useJobDefaultsModalStore } from "./use-job-defaults-modal";
 import { useMitLaneLayoutModalStore } from "./use-mit-lane-layout-modal";
+import { useMitReferenceModalStore } from "./use-mit-reference-modal";
 import { useShareModalStore } from "./use-share-modal";
 import { useUpdateCheck } from "./use-update-check";
 
@@ -58,6 +60,7 @@ export function App() {
   const openJobDefaults = useJobDefaultsModalStore((s) => s.open);
   const openAbilityColors = useAbilityColorsModalStore((s) => s.open);
   const openMitLaneLayout = useMitLaneLayoutModalStore((s) => s.open);
+  const openMitReference = useMitReferenceModalStore((s) => s.open);
   const openShare = useShareModalStore((s) => s.open);
   const showHelp = useHelpModalStore((s) => s.show);
   const jobHpDefaults = useJobHpDefaultsStore((s) => s.defaults);
@@ -195,6 +198,7 @@ export function App() {
         label: "Help",
         items: [
           { kind: "item", label: "Keyboard Shortcuts", onClick: () => showHelp("shortcuts") },
+          { kind: "item", label: "Mitigation Reference", onClick: openMitReference },
           { kind: "item", label: "View on GitHub", onClick: handleOpenGitHub },
           { kind: "item", label: "About", onClick: () => showHelp("about") },
         ],
@@ -215,6 +219,7 @@ export function App() {
       openJobDefaults,
       openAbilityColors,
       openMitLaneLayout,
+      openMitReference,
       openShare,
       handleBossImport,
       handleBossExport,
@@ -247,6 +252,7 @@ export function App() {
         <JobDefaultsModal />
         <AbilityColorsModal />
         <MitLaneLayoutModal />
+        <MitReferenceModal />
         <HelpModals />
       </div>
     );
@@ -294,6 +300,7 @@ export function App() {
         <JobDefaultsModal />
         <AbilityColorsModal />
         <MitLaneLayoutModal />
+        <MitReferenceModal />
         <ShareModal />
       </div>
       <HelpModals />

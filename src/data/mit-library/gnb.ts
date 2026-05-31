@@ -43,6 +43,7 @@ export const GNB_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Camouflage",
+    reference_notes: ["Only the flat 10% reduction is modeled; the parry-rate bonus isn't."],
   },
   {
     id: "gnb.great_nebula",

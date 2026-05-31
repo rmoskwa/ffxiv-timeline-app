@@ -183,6 +183,13 @@ export interface MitigationType {
   // FFXIV wiki page for this ability. Re-verify against this URL before
   // changing any numeric value — it is the source of truth.
   wiki_url: string;
+  // Irreducible modeling-caveat prose — the *why* a number is what it is, when no
+  // other field can express it (e.g. an approximation, or a held-channel UX rule).
+  // Provenance about the model, not screen copy (ADR-0007). Behavior the structured
+  // fields already encode (tiers, conditional_bonus, affects, shared_recast_group,
+  // non_stacking_group, max_charges, gated_by, cooldown_reduce_on_absorb, mechanic)
+  // is DERIVED at the view — do NOT restate it here.
+  reference_notes?: string[];
   // ID of the parent mit-library entry that gates this child. A gated child can
   // only be cast inside its parent's **execution zone** on the same caster slot,
   // has no sub-lane of its own, and renders as an icon on the parent's bar.
@@ -261,6 +268,94 @@ export function formatMitMagnitude(mit: MitigationType): string {
   if (pct.length === 0) return extras.join(" + ");
   if (extras.length === 0) return pct;
   return `${pct} + ${extras.join(" + ")}`;
+}
+
+// Friendly "reaches" word from the affects enum. Faithful to the doc's legend.
+//   self → "Self" · target → "One ally" · target_or_self → "One ally or self"
+//   party → "Whole party" · boss_debuff → "Boss debuff" · none → "—"
+export function mitReachesLabel(mit: MitigationType): string {
+  switch (mit.affects) {
+    case "self":
+      return "Self";
+    case "target":
+      return "One ally";
+    case "target_or_self":
+      return "One ally or self";
+    case "party":
+      return "Whole party";
+    case "boss_debuff":
+      return "Boss debuff";
+    case "none":
+      return "—";
+  }
+}
+
+// Cross-entry names the seam looked up so mitReferenceNotes stays library-free
+// (src/domain/types.ts must not import the mit library — see ADR-0001). The
+// modal resolves these via getMitById / getSharedRecastPartners and passes them in.
+export interface ResolvedMitRefs {
+  parentName?: string; // getMitById(mit.gated_by)?.name
+  recastPartners?: string[]; // getSharedRecastPartners(mit).map(m => m.name)
+  conditionNames?: string[]; // mit.conditional_bonus.requires_active → names
+}
+
+// The single % magnitude of a tier / conditional-bonus map (every such map
+// carries one value today). Mirrors formatMitMagnitude's per-type handling.
+function pctLabel(m: Partial<Record<DamageType | "all", number>>): string {
+  if (m.all != null) return `${m.all}%`;
+  const parts: string[] = [];
+  if (m.physical != null) parts.push(`${m.physical}% phys`);
+  if (m.magical != null) parts.push(`${m.magical}% mag`);
+  if (m.unaspected != null) parts.push(`${m.unaspected}% unasp`);
+  return parts.join(" / ");
+}
+
+// Modeling notes for an ability: *derived* notes from the structured fields,
+// followed by the authored mit.reference_notes. Each note is one short sentence.
+// Cross-entry names come from `refs` (resolved at the modal seam, per ADR-0001).
+export function mitReferenceNotes(mit: MitigationType, refs: ResolvedMitRefs): string[] {
+  const notes: string[] = [];
+  if (mit.tiers) {
+    for (const t of mit.tiers) {
+      notes.push(
+        `Extra ${pctLabel(t.mitigation_per_type)} reduction for the first ${t.duration_seconds}s.`,
+      );
+    }
+  }
+  if (mit.max_hp_buff_pct != null) {
+    notes.push(
+      "Temporarily raises max HP — lifts the lethal threshold for hits in the window and sizes any shield applied during it off the larger max HP.",
+    );
+  }
+  if (mit.conditional_bonus && refs.conditionNames?.length) {
+    notes.push(
+      `+${pctLabel(mit.conditional_bonus.mitigation_per_type)} if cast while ${refs.conditionNames.join(" or ")} is active.`,
+    );
+  }
+  if (mit.shared_recast_group && refs.recastPartners?.length) {
+    notes.push(`Shares a recast with ${refs.recastPartners.join(", ")}.`);
+  }
+  if (mit.non_stacking_group) {
+    notes.push(
+      `Shared "${mit.non_stacking_group}" — only one copy applies across the party (re-casts refresh).`,
+    );
+  }
+  if (mit.max_charges > 1) {
+    notes.push(`${mit.max_charges} charges.`);
+  }
+  if (mit.gated_by != null && refs.parentName) {
+    notes.push(`Cast inside ${refs.parentName}.`);
+  }
+  if (mit.cooldown_reduce_on_absorb != null) {
+    notes.push(`Cooldown drops ${mit.cooldown_reduce_on_absorb}s if the shield is fully absorbed.`);
+  }
+  if (mit.mechanic === "utility") {
+    notes.push("Planner marker only — shows on the timeline but contributes nothing to the math.");
+  }
+  if (mit.mechanic === "invuln") {
+    notes.push("Takes no damage for the duration.");
+  }
+  return [...notes, ...(mit.reference_notes ?? [])];
 }
 
 export type CoverageOverrideMode = "force_include" | "force_exclude";

@@ -123,5 +123,8 @@ export const WAR_MITS: MitigationType[] = [
     consumes_many: ["war.thrill_of_battle", "war.damnation", "war.bloodwhetting"],
     barrier_bonus_per_dispelled_pct: 2,
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Shake_It_Off",
+    reference_notes: [
+      "On cast it ends Thrill of Battle, Damnation, and Bloodwhetting still running on the Warrior (their bars are trimmed). The shield starts at 15% max HP and gains +2 percentage points per effect consumed → 15 / 17 / 19 / 21%.",
+    ],
   },
 ];

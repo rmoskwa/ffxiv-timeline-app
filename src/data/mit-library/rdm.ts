@@ -28,5 +28,6 @@ export const RDM_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Magick_Barrier",
+    reference_notes: ["Despite the name, a flat magical reduction, not a shield."],
   },
 ];
