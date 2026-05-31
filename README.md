@@ -34,7 +34,13 @@ See the mitigation documentation ![here.](docs/mitigation-data.md)
 - **Linux** — Built against Ubuntu 22.04, so glibc ≥ 2.35 is required. The webview runs on WebKitGTK, which must be present on the host:
   - **Debian / Ubuntu** — install the `.deb`; `apt` pulls `libwebkit2gtk-4.1-0` automatically.
   - **Fedora / RHEL** — install the `.rpm`; `dnf` pulls `webkit2gtk4.1` automatically.
-  - **AppImage (any distro)** — the AppImage does *not* bundle WebKitGTK, so install it first. On Fedora: `sudo dnf install webkit2gtk4.1 gtk3 libsoup3`. A white screen with `Could not create default EGL display: EGL_BAD_PARAMETER` means these runtime libraries are missing.
+  - **AppImage (any distro)** — the AppImage does *not* bundle WebKitGTK, so install it first.
+
+ For example, on Fedora:
+  ```
+  sudo dnf install webkit2gtk4.1 gtk3 libsoup3
+  ```
+  A white screen with `Could not create default EGL display: EGL_BAD_PARAMETER` means these runtime libraries are missing.
 
 ## For Developers
 
