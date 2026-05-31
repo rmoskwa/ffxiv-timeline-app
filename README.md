@@ -28,7 +28,10 @@ See the mitigation documentation ![here.](docs/mitigation-data.md)
 2. Run the installer
 3. Launch from the Start menu. The app checks for updates on launch and prompts you when a new version is available.
 
-**Requirements:** Windows 10 or 11. Windows 11 ships with WebView2; on Windows 10, you may need to install it from <https://developer.microsoft.com/microsoft-edge/webview2/>.
+**Requirements:**
+
+- **Windows 10 or 11** — If installed offline on Windows 10, you may need to install WebView2. You can find it here: <https://developer.microsoft.com/microsoft-edge/webview2/>.
+- **Linux** — Built against Ubuntu 22.04 --> glibc ≥ 2.35 and webkit2gtk-4.1 are required.
 
 ## For Developers
 
