@@ -3309,7 +3309,9 @@ button {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, …) lets the tracks shrink below their content so long names
+     clip via the slot's ellipsis instead of widening the whole popover. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.25rem;
 }
 .target-picker-slot {
@@ -3357,6 +3359,9 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Flex items default to min-width: auto, which would refuse to shrink below
+     the name's intrinsic width and defeat the ellipsis above. */
+  min-width: 0;
 }
 
 /* Toggle-on-hover and inline picker overrides for the conflicts panel and
