@@ -3381,7 +3381,6 @@ button {
   grid-template-columns: 1fr;
 }
 
-.boss-marker-popover,
 .mit-bar-popover {
   position: absolute;
   top: 100%;
@@ -3393,16 +3392,8 @@ button {
    picker is open. Without this, .damage-chip / .boss-marker in lanes below
    would paint over the popover, since they sit in the same outer stacking
    context as this marker (z-index: 1). */
-.boss-marker.has-picker-open,
 .mit-bar.has-picker-open {
   z-index: 100;
-}
-.boss-marker-popover {
-  /* Boss marker uses translateX(-50%) on the parent; counter-center the popover. */
-  left: 50%;
-}
-.boss-marker-popover .target-picker {
-  transform: translateX(-50%);
 }
 
 /* ─── "Needs target" hint on markers and bars ─────────────────────────── */

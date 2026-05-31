@@ -9,17 +9,14 @@ import {
   MAX_FIGHT_DURATION_SEC,
   MAX_NAME_LEN,
   type Phase,
-  type Roster,
 } from "@/domain/types";
 import { useAbilityColorsStore } from "@/state/ability-colors-store";
-import { isRestoredView } from "@/state/history-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { abilityTextColor } from "./ability-color";
 import { BossPlacementPicker } from "./BossPlacementPicker";
 import { clampLabelCenter, packLabelRows } from "./boss-label-packing";
 import { PhaseDividers } from "./PhaseDividers";
 import { TimecodeField } from "./primitives/TimecodeField";
-import { TargetPicker } from "./TargetPicker";
 import {
   BOSS_PIN_HEIGHT,
   BOSS_TRACK_HEIGHT,
@@ -43,7 +40,6 @@ export function BossLane() {
   const phases = useTimelineStore((s) => s.timeline?.phases ?? EMPTY_PHASES);
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const addInstance = useTimelineStore((s) => s.addBossAbilityInstance);
-  const updateInstance = useTimelineStore((s) => s.updateBossAbilityInstance);
   // Boss-selection object (or null), not the derived id: re-selecting the same
   // boss from the conflicts panel stores a fresh object, changing this reference
   // so the centering effect below re-fires on repeat jumps (a stable id string
@@ -189,7 +185,6 @@ export function BossLane() {
               type={type}
               lethal={lethal}
               selected={selectedBossInstanceId === inst.id}
-              roster={roster}
               pxPerSec={pxPerSec}
               laneWidthPx={laneWidthPx}
               rowIndex={rowIndex}
@@ -197,7 +192,6 @@ export function BossLane() {
               phasePrefix={phasePrefixById.get(inst.id) ?? ""}
               labelColor={labelColor}
               onSelect={() => selectBossInstance(inst.id)}
-              onPickTargets={(ids) => updateInstance(inst.id, { target_slot_ids: ids })}
             />
           );
         })}
@@ -216,7 +210,6 @@ function BossMarker({
   type,
   lethal,
   selected,
-  roster,
   pxPerSec,
   laneWidthPx,
   rowIndex,
@@ -224,13 +217,11 @@ function BossMarker({
   phasePrefix,
   labelColor,
   onSelect,
-  onPickTargets,
 }: {
   instance: BossAbilityInstance;
   type: BossAbilityType;
   lethal: boolean;
   selected: boolean;
-  roster: Roster;
   pxPerSec: number;
   laneWidthPx: number;
   rowIndex: number;
@@ -238,7 +229,6 @@ function BossMarker({
   phasePrefix: string;
   labelColor: string | null;
   onSelect: () => void;
-  onPickTargets: (ids: string[]) => void;
 }) {
   const targeting = targetingForBoss(instance, type);
   const needsTarget = targeting.maxCount > 0;
@@ -247,14 +237,6 @@ function BossMarker({
   // CSS), so suppress the type color there; otherwise paint it inline (it
   // composes with the lethal red border and the selected blue halo).
   const typeColor = targetsUnset ? null : labelColor;
-
-  // Auto-opens the target picker on placement (the instance mounts with an
-  // unset target). Deliberately NOT reopened on later transitions into the
-  // unset state: an undo that clears a target leaves the picker closed instead
-  // of reprompting and trapping the user mid-undo. Re-target via the ConflictsPanel.
-  // isRestoredView guards the mount case too: an instance re-created by undo/redo
-  // remounts with an unset target but must not re-prompt — only fresh placement does.
-  const [targetPickerOpen, setTargetPickerOpen] = useState(targetsUnset && !isRestoredView());
 
   // Labels anchor to the bottom of the strip so that when the strip is taller
   // than its packed rows (MIN_BOSS_LABEL_STRIP_HEIGHT floor), the empty space
@@ -290,8 +272,7 @@ function BossMarker({
       className={
         `boss-marker${lethal ? " boss-marker--lethal" : ""}` +
         `${targetsUnset ? " boss-marker--needs-target" : ""}` +
-        `${selected ? " boss-marker--selected" : ""}` +
-        `${targetPickerOpen ? " has-picker-open" : ""}`
+        `${selected ? " boss-marker--selected" : ""}`
       }
       style={{ left: instance.effect_time * pxPerSec }}
       title={title}
@@ -330,18 +311,6 @@ function BossMarker({
         style={{ top: stripHeight, height: BOSS_PIN_HEIGHT }}
         aria-hidden
       />
-      {targetPickerOpen && needsTarget && (
-        <div className="boss-marker-popover" style={{ top: stripHeight + BOSS_PIN_HEIGHT + 4 }}>
-          <TargetPicker
-            roster={roster}
-            selectedIds={targeting.selection}
-            minSelections={targeting.minCount}
-            maxSelections={targeting.maxCount}
-            onChange={onPickTargets}
-            onClose={() => setTargetPickerOpen(false)}
-          />
-        </div>
-      )}
     </div>
   );
 }
