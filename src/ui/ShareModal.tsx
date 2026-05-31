@@ -267,6 +267,10 @@ export function ShareModal() {
                   {HEADER_TOGGLES.map(checkbox)}
                 </fieldset>
                 <fieldset className="share-option-group">
+                  <legend>Ability fields</legend>
+                  {FIELD_TOGGLES.map(checkbox)}
+                </fieldset>
+                <fieldset className="share-option-group">
                   <legend>Attribution</legend>
                   {ATTRIBUTIONS.map(([value, label]) => (
                     <label key={value} className="share-option">
@@ -279,10 +283,6 @@ export function ShareModal() {
                       <span>{label}</span>
                     </label>
                   ))}
-                </fieldset>
-                <fieldset className="share-option-group">
-                  <legend>Ability fields</legend>
-                  {FIELD_TOGGLES.map(checkbox)}
                 </fieldset>
                 <fieldset className="share-option-group">
                   <legend>Mitigation appearance</legend>
