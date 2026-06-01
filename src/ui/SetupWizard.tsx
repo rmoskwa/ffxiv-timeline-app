@@ -224,8 +224,12 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
                       style={{ background: jobColor(slot.job) }}
                       title={`Remove ${slot.job} from slot ${i + 1}`}
                     >
-                      <JobIcon job={slot.job} size={28} />
-                      <span>{slot.job}</span>
+                      <span className="roster-slot-label">
+                        <span className="roster-slot-icon">
+                          <JobIcon job={slot.job} size={28} />
+                        </span>
+                        {slot.job}
+                      </span>
                       <span className="remove-hint" aria-hidden="true">
                         ×
                       </span>
