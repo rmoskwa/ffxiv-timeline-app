@@ -198,8 +198,15 @@ button {
   gap: 0.3rem;
 }
 .roster-preview-slot {
+  /* Fixed height so every slot is identical regardless of contents. Empty and
+     filled slots carry their border/padding on different elements (the <li> vs.
+     the inner <button>), so under flex-grow they measured a few px apart and
+     filling a slot nudged its neighbours. A fixed height sidesteps that: 3.5rem
+     is the height slots already settle to, so the panel still spans the column. */
+  flex: 0 0 auto;
+  height: 3.5rem;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   font-size: 0.8rem;
 }
 .roster-preview-slot.empty {
@@ -216,8 +223,9 @@ button {
   align-items: center;
   gap: 0.5rem;
   width: 100%;
+  height: 100%;
   padding: 0.3rem 0.4rem;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 4px;
   color: #fff;
   font-weight: 600;
