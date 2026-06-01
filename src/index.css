@@ -2261,6 +2261,16 @@ button {
   background: rgba(255, 90, 90, 0.55);
   box-shadow: 0 0 3px rgba(255, 90, 90, 0.4);
 }
+/* The translucent gold guide is tuned for the dark canvas; over white it nearly
+   vanishes. Swap to a saturated amber (boss-theme tone) so the boss-hit lines
+   stay easy to distinguish, and deepen the lethal red likewise. */
+.lane-scroll.theme-light .damage-guide {
+  background: rgba(205, 124, 16, 0.65);
+}
+.lane-scroll.theme-light .damage-guide--lethal {
+  background: rgba(206, 40, 40, 0.7);
+  box-shadow: 0 0 3px rgba(206, 40, 40, 0.3);
+}
 
 /* Boss lane is a stack: a label strip (variable height) above the pin track. */
 .boss-lane-content {
