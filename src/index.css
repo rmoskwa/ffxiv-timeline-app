@@ -63,7 +63,7 @@ button {
 }
 .wizard-columns {
   display: grid;
-  grid-template-columns: 1fr 220px;
+  grid-template-columns: max-content 1fr 220px;
   gap: 1.25rem;
   align-items: start;
 }
@@ -85,8 +85,8 @@ button {
   font-weight: 600;
 }
 .job-picker-tiles {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 54px);
   gap: 0.35rem;
 }
 .job-picker-tile {
@@ -115,20 +115,57 @@ button {
 .job-picker-tile.selected:hover {
   filter: brightness(1.15);
 }
-.add-to-roster {
-  align-self: flex-start;
-  margin-top: 0.25rem;
+.wizard-add {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+}
+.wizard-add-btn {
+  width: 104px;
+  height: 80px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
   background: #2d4d3f;
   color: #cfe;
   border: 1px solid #4a8;
-  border-radius: 4px;
-  padding: 0.45rem 0.9rem;
-  font-weight: 600;
+  font-size: 2rem;
+  line-height: 1;
   cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
-.add-to-roster:disabled {
+.wizard-add-btn:not(:disabled) {
+  box-shadow: 0 0 0 4px rgba(74, 170, 136, 0.14);
+}
+.wizard-add-btn:not(:disabled):hover {
+  background: #366253;
+  transform: scale(1.06);
+  box-shadow: 0 0 0 5px rgba(74, 170, 136, 0.22);
+}
+.wizard-add-btn:not(:disabled):active {
+  transform: scale(0.96);
+}
+.wizard-add-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+.wizard-add-arrow {
+  display: block;
+  width: 44px;
+  height: 44px;
+}
+.wizard-add-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #8aa;
+  text-align: center;
+  white-space: nowrap;
 }
 .roster-preview {
   display: flex;

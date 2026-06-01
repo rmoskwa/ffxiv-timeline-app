@@ -167,18 +167,32 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="wizard-add">
             <button
               type="button"
-              className="add-to-roster"
+              className="wizard-add-btn"
               onClick={addToRoster}
               disabled={selected.size === 0 || remaining === 0}
+              aria-label="Add selected jobs to roster"
             >
+              <svg
+                className="wizard-add-arrow"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M13 4l8 8-8 8v-5H3V9h10V4z" />
+              </svg>
+            </button>
+            <span className="wizard-add-label">
               {selected.size === 0
                 ? "Add"
                 : willAdd < selected.size
-                  ? `Add (${willAdd} of ${selected.size} fit)`
-                  : `Add (${willAdd})`}
-            </button>
+                  ? `Add ${willAdd} of ${selected.size}`
+                  : `Add ${willAdd}`}
+            </span>
           </div>
 
           <div className="roster-preview">
