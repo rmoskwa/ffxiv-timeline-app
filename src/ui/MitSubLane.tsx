@@ -67,7 +67,7 @@ export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLane
       style={{ minHeight: subLaneHeight * Math.max(1, mitType.max_charges) }}
     >
       <div className="sub-lane-label" title={mitType.name}>
-        <MitIcon name={mitType.name} size={18} title={mitType.name} />
+        <MitIcon name={mitType.name} size={23} title={mitType.name} />
         <span className="sub-lane-name">{mitType.name}</span>
       </div>
       <div className="sub-lane-rows">

@@ -2801,10 +2801,14 @@ button {
   color: #1a1a1a;
   border-right-color: #d4d4d4;
 }
-/* lane-label--player-header is the inline-mode damage-chip row's label — kept
-   on its dark base (#1f1f1f / #ddd / #333 divider) so the whole chip lane,
-   including its label cell, matches dark mode. Also keeps light text legible on
-   the assigned-slot role-color fill (set inline). */
+/* The interleaved player-header carries the generic .lane-label class, so the
+   broad light-mode rule above would repaint its name #1a1a1a — unreadable on the
+   dark role-color fill set inline (jobColor) for assigned slots. Restore the
+   dark-mode light text there. Unset slots have no inline fill (they take the
+   #f3f3f3 base), so they keep the dark text from the generic rule. */
+.lane-scroll.theme-light .player-parent-lane:not(.is-unset) .lane-label--player-header {
+  color: #ddd;
+}
 .lane-scroll.theme-light .lane-label--ruler {
   background: #ececec;
 }
