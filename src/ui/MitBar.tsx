@@ -322,7 +322,13 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
         `${targetSlot ? " mit-bar--has-target" : ""}` +
         `${pickerOpen ? " has-picker-open" : ""}`
       }
-      style={{ left: geo.leftPx, height: mitBarHeight }}
+      style={
+        {
+          left: geo.leftPx,
+          height: mitBarHeight,
+          "--mit-color": jobColor(type.job),
+        } as React.CSSProperties
+      }
       title={title}
       data-mit-id={instance.id}
       onPointerDown={handlePointerDown}
@@ -334,7 +340,6 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
         className="mit-bar-duration"
         style={{
           width: geo.durationPx,
-          background: `color-mix(in srgb, ${jobColor(type.job)} 33%, transparent)`,
           ...(targetSlot && { outlineColor: jobColor(targetSlot.job) }),
         }}
       >
@@ -356,10 +361,7 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
       {geo.heldExtensionPx > 0 && (
         <div
           className="mit-bar-held-extension"
-          style={{
-            width: geo.heldExtensionPx,
-            background: `color-mix(in srgb, ${jobColor(type.job)} 16%, transparent)`,
-          }}
+          style={{ width: geo.heldExtensionPx }}
           aria-hidden
           title={`Drag the right edge to extend up to ${type.duration_seconds}s`}
         />
@@ -378,10 +380,7 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
       {geo.zoneExtensionPx > 0 && (
         <div
           className="mit-bar-zone-extension"
-          style={{
-            width: geo.zoneExtensionPx,
-            background: `color-mix(in srgb, ${jobColor(type.job)} 16%, transparent)`,
-          }}
+          style={{ width: geo.zoneExtensionPx }}
           aria-hidden
           title="Execution zone (extends past active duration)"
         />
@@ -397,11 +396,7 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
         <div
           key={`tier-${tier.offsetSec}`}
           className="mit-bar-tier"
-          style={{
-            left: tier.leftPx,
-            width: tier.widthPx,
-            background: `color-mix(in srgb, ${jobColor(type.job)} 60%, transparent)`,
-          }}
+          style={{ left: tier.leftPx, width: tier.widthPx }}
           aria-hidden
         />
       ))}
@@ -626,11 +621,13 @@ function ChildOverlay({
       {geo.innerBand && (
         <div
           className="mit-child-band mit-child-band--inner"
-          style={{
-            left: geo.innerBand.leftPx,
-            width: geo.innerBand.widthPx,
-            background: `color-mix(in srgb, ${childColor} 55%, transparent)`,
-          }}
+          style={
+            {
+              left: geo.innerBand.leftPx,
+              width: geo.innerBand.widthPx,
+              "--mit-color": childColor,
+            } as React.CSSProperties
+          }
           aria-hidden
         />
       )}

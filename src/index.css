@@ -1913,6 +1913,14 @@ button {
   overflow-x: auto;
   overflow-y: auto;
   background: #161616;
+  /* Opacity of the role-color fill on mit bars, mixed with `transparent` over
+     the lane background. The job color is supplied inline as --mit-color; these
+     percentages are theme-tuned (light mode bumps them so the bars stay legible
+     against white instead of washing out). */
+  --mit-fill-active: 33%;
+  --mit-fill-faint: 16%;
+  --mit-fill-strong: 60%;
+  --mit-fill-child: 55%;
 }
 .lane-content {
   display: flex;
@@ -2351,8 +2359,9 @@ button {
 }
 .mit-bar-duration {
   height: 100%;
-  /* Fallback only — actual fill is the owning-job's role color, set inline. */
-  background: #3a3a3a;
+  /* Fill is the owning-job's role color (--mit-color, set inline) mixed toward
+     transparent by a theme-tuned amount. #3a3a3a is the fallback if unset. */
+  background: color-mix(in srgb, var(--mit-color, #3a3a3a) var(--mit-fill-active), transparent);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 3px 0 0 3px;
   display: flex;
@@ -2409,6 +2418,7 @@ button {
    PRD §6.2. */
 .mit-bar-zone-extension {
   height: 100%;
+  background: color-mix(in srgb, var(--mit-color) var(--mit-fill-faint), transparent);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-left: none;
 }
@@ -2419,6 +2429,7 @@ button {
    right-edge resize handle; dragging the handle right consumes this zone. */
 .mit-bar-held-extension {
   height: 100%;
+  background: color-mix(in srgb, var(--mit-color) var(--mit-fill-faint), transparent);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-left: none;
   border-right: 1px dashed rgba(255, 255, 255, 0.4);
@@ -2506,6 +2517,7 @@ button {
   position: absolute;
   top: 0;
   height: 100%;
+  background: color-mix(in srgb, var(--mit-color) var(--mit-fill-strong), transparent);
   pointer-events: none;
   box-sizing: border-box;
   z-index: 1;
@@ -2549,6 +2561,7 @@ button {
   border-radius: 2px;
 }
 .mit-child-band--inner {
+  background: color-mix(in srgb, var(--mit-color) var(--mit-fill-child), transparent);
   pointer-events: none;
 }
 .mit-child-band--extension {
@@ -2754,6 +2767,12 @@ button {
 
 .lane-scroll.theme-light {
   background: #ffffff;
+  /* Role colors are dark/saturated; over white the dark-theme percentages wash
+     out to pastel. Deepen the fill so the bars read as solid colored bands. */
+  --mit-fill-active: 60%;
+  --mit-fill-faint: 34%;
+  --mit-fill-strong: 82%;
+  --mit-fill-child: 78%;
 }
 .lane-scroll.theme-light .lane-row,
 .lane-scroll.theme-light .player-parent-lane {
@@ -2777,24 +2796,24 @@ button {
   background: #ececec;
 }
 .lane-scroll.theme-light .lane-label--boss {
-  background: #fff1e0;
-  color: #b86200;
+  background: #f0c47e;
+  color: #663600;
 }
 .lane-scroll.theme-light .lane-label--boss .boss-name-input::placeholder {
-  color: rgba(184, 98, 0, 0.5);
+  color: rgba(102, 54, 0, 0.5);
 }
 .lane-scroll.theme-light .lane-label--boss .boss-name-input:hover,
 .lane-scroll.theme-light .lane-label--boss .boss-name-input:focus,
 .lane-scroll.theme-light .lane-label--boss .boss-length-input:hover,
 .lane-scroll.theme-light .lane-label--boss .boss-length-input:focus {
-  background: rgba(255, 255, 255, 0.7);
-  border-color: rgba(184, 98, 0, 0.5);
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(102, 54, 0, 0.45);
 }
 .lane-scroll.theme-light .lane-label--boss .boss-length-prefix {
-  color: rgba(184, 98, 0, 0.8);
+  color: rgba(102, 54, 0, 0.85);
 }
 .lane-scroll.theme-light .lane-row--boss {
-  border-bottom-color: #fff1e0;
+  border-bottom-color: #e6b262;
 }
 .lane-scroll.theme-light .player-header-track,
 .lane-scroll.theme-light .boss-lane-track,
@@ -2830,10 +2849,20 @@ button {
 .lane-scroll.theme-light .mit-bar-cooldown {
   background: repeating-linear-gradient(
     45deg,
-    rgba(80, 80, 80, 0.3) 0 6px,
-    rgba(80, 80, 80, 0.1) 6px 12px
+    rgba(45, 45, 45, 0.5) 0 6px,
+    rgba(45, 45, 45, 0.16) 6px 12px
   );
-  border-color: rgba(80, 80, 80, 0.45);
+  border-color: rgba(45, 45, 45, 0.55);
+}
+/* Phantom (shared-recast) cooldown stripe — same darkening as the real CD tail
+   so the two read alike on white. */
+.lane-scroll.theme-light .mit-shared-cd {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(45, 45, 45, 0.5) 0 6px,
+    rgba(45, 45, 45, 0.16) 6px 12px
+  );
+  border-color: rgba(45, 45, 45, 0.55);
 }
 .lane-scroll.theme-light .damage-chip {
   color: #000000;
