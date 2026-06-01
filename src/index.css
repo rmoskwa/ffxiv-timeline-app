@@ -2786,13 +2786,13 @@ button {
 }
 .lane-scroll.theme-light .lane-row,
 .lane-scroll.theme-light .player-parent-lane {
-  border-bottom-color: #d4d4d4;
+  border-bottom-color: #c4c4c4;
 }
 .lane-scroll.theme-light .player-header-row {
   border-bottom-color: #e6e6e6;
 }
 .lane-scroll.theme-light .sub-lane {
-  border-bottom-color: #ececec;
+  border-bottom-color: #d6d6d6;
 }
 .lane-scroll.theme-light .lane-label,
 .lane-scroll.theme-light .lane-label--player,
@@ -2853,8 +2853,8 @@ button {
     to right,
     transparent 0,
     transparent calc(var(--tick-px, 360px) - 1px),
-    rgba(0, 0, 0, 0.06) calc(var(--tick-px, 360px) - 1px),
-    rgba(0, 0, 0, 0.06) var(--tick-px, 360px)
+    rgba(0, 0, 0, 0.11) calc(var(--tick-px, 360px) - 1px),
+    rgba(0, 0, 0, 0.11) var(--tick-px, 360px)
   );
 }
 .lane-scroll.theme-light .mit-bar-duration {
