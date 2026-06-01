@@ -641,6 +641,54 @@ button {
 .roster-slot-trigger:focus-visible .roster-slot-hover-glyph {
   opacity: 1;
 }
+/* Reorder pill — reveal on hover / focus-within, mirroring the hover-glyph.
+   Kept in the DOM (opacity, not display:none) so the buttons stay keyboard-
+   reachable and :focus-within keeps the pill visible while tabbing through it. */
+.roster-slot-reorder {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+  padding: 1px 3px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  opacity: 0;
+  transition: opacity 80ms ease-in-out;
+  z-index: 5;
+}
+.roster-list li:hover .roster-slot-reorder,
+.roster-list li:focus-within .roster-slot-reorder {
+  opacity: 1;
+}
+.roster-slot-move {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: #fff;
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.roster-slot-move:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+.roster-slot-move:focus-visible {
+  outline: 2px solid #6cf;
+  outline-offset: 1px;
+}
+.roster-slot-move:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
 .roster-list li.unset {
   opacity: 0.6;
 }

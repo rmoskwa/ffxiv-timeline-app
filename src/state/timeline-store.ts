@@ -113,6 +113,12 @@ export interface TimelineStore {
   setSlotJob: (slotIdx: number, job: JobOrUnset) => void;
   setSlotLabel: (slotIdx: number, label: string | undefined) => void;
   setSlotHp: (slotIdx: number, hp: number | undefined) => void;
+  // Move the slot at `fromIdx` to `toIdx`, shifting the rest. A document
+  // mutation (ADR-0008): permutes the persisted roster AND every boss
+  // instance's position-keyed observed_damage[].damage_per_player in lockstep.
+  // No mit cascade (mits bind by slot ID), no confirmation. Out-of-range or
+  // no-op indices are ignored.
+  reorderSlot: (fromIdx: number, toIdx: number) => void;
   // Re-seed every default-derived, job-holding slot from the current Job HP
   // defaults. Skips hand-tuned (`hp_manual`) and `unset` slots; HP-only batch
   // that never routes through setSlotJob (so it cannot wipe mits).
@@ -366,6 +372,35 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         return { ...rest, job, hp: clampSlotHp(hp), hp_manual: true };
       }) as unknown as TimelineFile["roster"];
       return { timeline: touch({ ...s.timeline, roster }) };
+    }),
+
+  reorderSlot: (fromIdx, toIdx) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      const n = s.timeline.roster.length; // 8
+      if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= n || toIdx >= n) return s;
+
+      const move = <T>(arr: readonly T[]): T[] => {
+        const next = [...arr];
+        const [m] = next.splice(fromIdx, 1);
+        next.splice(toIdx, 0, m);
+        return next;
+      };
+
+      const roster = move(s.timeline.roster) as unknown as TimelineFile["roster"];
+      // Keep position-keyed observed damage aligned with the new order.
+      const boss_ability_instances = s.timeline.boss_ability_instances.map((inst) =>
+        inst.observed_damage.length === 0
+          ? inst
+          : {
+              ...inst,
+              observed_damage: inst.observed_damage.map((e) => ({
+                ...e,
+                damage_per_player: move(e.damage_per_player),
+              })),
+            },
+      );
+      return { timeline: touch({ ...s.timeline, roster, boss_ability_instances }) };
     }),
 
   applyJobDefaultsToRoster: () =>
