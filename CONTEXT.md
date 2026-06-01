@@ -31,7 +31,7 @@ The user action of dropping an **instance** onto the timeline — clicking the b
 _Avoid_: drop, drag, add
 
 **Player slot**:
-One of exactly eight positions in the roster. Holds a **job** (or `unset`), an optional name label, a max-HP value (`hp`), and an `hp_manual` flag. Mitigation instances bind to a slot, not to a job. A slot's `hp` is always concrete in the saved file — it travels with the timeline on **Export**, so a shared plan carries its HP pools rather than recomputing them on the recipient's machine. `hp_manual` distinguishes a **hand-tuned** slot (HP the user typed directly) from a **default-derived** slot (HP seeded from a **Job HP default**). Hand-tuned HP is *sticky*: it survives until the slot's **job** changes, and is never overwritten by a Job HP default re-apply.
+One of exactly eight positions in the roster. Holds a **job** (or `unset`), an optional name label (user-editable in the slot's **JobPicker**; falls back to the job code when blank, and applies to any slot regardless of job), a max-HP value (`hp`), and an `hp_manual` flag. Mitigation instances bind to a slot, not to a job. A slot's `hp` is always concrete in the saved file — it travels with the timeline on **Export**, so a shared plan carries its HP pools rather than recomputing them on the recipient's machine. `hp_manual` distinguishes a **hand-tuned** slot (HP the user typed directly) from a **default-derived** slot (HP seeded from a **Job HP default**). Hand-tuned HP is *sticky*: it survives until the slot's **job** changes, and is never overwritten by a Job HP default re-apply.
 _Avoid_: player, character, member, party member
 
 **Roster**:

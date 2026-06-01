@@ -558,7 +558,7 @@ button {
 }
 .roster-panel h3 {
   margin: 0;
-  font-size: 1.0rem;
+  font-size: 1rem;
   color: #888;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -816,6 +816,23 @@ button {
 }
 .job-picker-popover-close:hover {
   color: #fff;
+}
+.job-picker-rename {
+  margin-bottom: 0.5rem;
+}
+.job-picker-rename-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.35);
+  color: #f0f0f0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.75rem;
+}
+.job-picker-rename-input:focus-visible {
+  outline: 2px solid #6cf;
+  outline-offset: 1px;
 }
 .job-picker--compact .job-picker-tile {
   min-width: 44px;

@@ -13,6 +13,7 @@ export function RosterPanel() {
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const mits = useTimelineStore((s) => s.timeline?.mitigation_instances ?? []);
   const setSlotJob = useTimelineStore((s) => s.setSlotJob);
+  const setSlotLabel = useTimelineStore((s) => s.setSlotLabel);
   const setSlotHp = useTimelineStore((s) => s.setSlotHp);
   const reorderSlot = useTimelineStore((s) => s.reorderSlot);
   const openJobDefaults = useJobDefaultsModalStore((s) => s.open);
@@ -148,12 +149,14 @@ export function RosterPanel() {
                 <JobPicker
                   currentJob={slot.job}
                   slotIndex={i}
+                  currentName={slot.name_label}
                   mitCount={mitCountBySlotId.get(slot.id) ?? 0}
                   anchorRight={i >= roster.length / 2}
                   onPick={(job) => {
                     setSlotJob(i, job);
                     setOpenPickerIdx(null);
                   }}
+                  onRename={(name) => setSlotLabel(i, name)}
                   onClose={() => setOpenPickerIdx(null)}
                 />
               )}
