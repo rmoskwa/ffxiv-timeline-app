@@ -4441,16 +4441,21 @@ button {
 .mit-ref-head {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  /* Wrap (not shrink-to-overlap) when the name + effect can't share one line —
+     the narrow inspector (260px) lacks the room the Reference modal has, so the
+     effect drops to its own line rather than colliding with a long name. */
+  flex-wrap: wrap;
+  gap: 0.15rem 0.5rem;
 }
 .mit-ref-name {
   flex: 1;
-  min-width: 0;
   color: #e0e0e0;
   font-size: 0.88rem;
   font-weight: 600;
 }
 .mit-ref-effect {
+  flex-shrink: 0;
+  white-space: nowrap;
   color: #7dc4a0;
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
