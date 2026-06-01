@@ -61,6 +61,7 @@ Every tank has the permanent 20% Tank Mastery reduction inherently included.
 | Intervention | 10s | 8s | 10% (extra 15% layer first 4s; **+10% if cast under Rampart or Guardian**) | One ally |
 | Passage of Arms | 120s | 5–23s (held) | 15% | Whole party |
 | Hallowed Ground | 420s | 10s | Invulnerable (takes no damage) | Self |
+| Bulwark | 90s | 10s | 20% — *100% block modeled as a flat 20%* | Self |
 | Divine Veil | 90s | 30s | 10% max-HP shield | Whole party |
 
 ### Warrior (WAR)
