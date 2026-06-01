@@ -41,13 +41,15 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
 
   const filledCount = roster.filter((s) => s.job !== "unset").length;
   const remaining = ROSTER_SIZE - filledCount;
-  const willAdd = Math.min(selected.size, remaining);
+  const selectionFull = selected.size >= remaining;
 
   const toggleSelected = (job: Job) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(job)) next.delete(job);
-      else next.add(job);
+      // Cap the selection at the open roster slots so the user can never
+      // queue more jobs than will fit.
+      else if (next.size < remaining) next.add(job);
       return next;
     });
   };
@@ -161,6 +163,7 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
                         key={job}
                         className={tileClasses.join(" ")}
                         onClick={() => toggleSelected(job)}
+                        disabled={!isSelected && selectionFull}
                         aria-pressed={isSelected}
                         style={isSelected ? { background: jobColor(job) } : undefined}
                       >
@@ -192,11 +195,7 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
               </svg>
             </button>
             <span className="wizard-add-label">
-              {selected.size === 0
-                ? "Add"
-                : willAdd < selected.size
-                  ? `Add ${willAdd} of ${selected.size}`
-                  : `Add ${willAdd}`}
+              {selected.size === 0 ? "Add" : `Add ${selected.size}`}
             </span>
           </div>
 

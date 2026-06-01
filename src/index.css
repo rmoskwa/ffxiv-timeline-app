@@ -138,6 +138,14 @@ button {
   border-color: #555;
   background: #242424;
 }
+.job-picker-tile:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.job-picker-tile:disabled:hover {
+  border-color: #333;
+  background: #1a1a1a;
+}
 .job-picker-tile.selected {
   color: #fff;
   border-color: transparent;
