@@ -1913,6 +1913,14 @@ button {
   overflow-x: auto;
   overflow-y: auto;
   background: #161616;
+  /* Opacity of the role-color fill on mit bars, mixed with `transparent` over
+     the lane background. The job color is supplied inline as --mit-color; these
+     percentages are theme-tuned (light mode bumps them so the bars stay legible
+     against white instead of washing out). */
+  --mit-fill-active: 33%;
+  --mit-fill-faint: 16%;
+  --mit-fill-strong: 60%;
+  --mit-fill-child: 55%;
 }
 .lane-content {
   display: flex;
@@ -2253,6 +2261,16 @@ button {
   background: rgba(255, 90, 90, 0.55);
   box-shadow: 0 0 3px rgba(255, 90, 90, 0.4);
 }
+/* The translucent gold guide is tuned for the dark canvas; over white it nearly
+   vanishes. Swap to a saturated amber (boss-theme tone) so the boss-hit lines
+   stay easy to distinguish, and deepen the lethal red likewise. */
+.lane-scroll.theme-light .damage-guide {
+  background: rgba(205, 124, 16, 0.65);
+}
+.lane-scroll.theme-light .damage-guide--lethal {
+  background: rgba(206, 40, 40, 0.7);
+  box-shadow: 0 0 3px rgba(206, 40, 40, 0.3);
+}
 
 /* Boss lane is a stack: a label strip (variable height) above the pin track. */
 .boss-lane-content {
@@ -2351,8 +2369,9 @@ button {
 }
 .mit-bar-duration {
   height: 100%;
-  /* Fallback only — actual fill is the owning-job's role color, set inline. */
-  background: #3a3a3a;
+  /* Fill is the owning-job's role color (--mit-color, set inline) mixed toward
+     transparent by a theme-tuned amount. #3a3a3a is the fallback if unset. */
+  background: color-mix(in srgb, var(--mit-color, #3a3a3a) var(--mit-fill-active), transparent);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 3px 0 0 3px;
   display: flex;
@@ -2409,6 +2428,7 @@ button {
    PRD §6.2. */
 .mit-bar-zone-extension {
   height: 100%;
+  background: color-mix(in srgb, var(--mit-color) var(--mit-fill-faint), transparent);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-left: none;
 }
@@ -2419,6 +2439,7 @@ button {
    right-edge resize handle; dragging the handle right consumes this zone. */
 .mit-bar-held-extension {
   height: 100%;
+  background: color-mix(in srgb, var(--mit-color) var(--mit-fill-faint), transparent);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-left: none;
   border-right: 1px dashed rgba(255, 255, 255, 0.4);
@@ -2506,6 +2527,7 @@ button {
   position: absolute;
   top: 0;
   height: 100%;
+  background: color-mix(in srgb, var(--mit-color) var(--mit-fill-strong), transparent);
   pointer-events: none;
   box-sizing: border-box;
   z-index: 1;
@@ -2549,6 +2571,7 @@ button {
   border-radius: 2px;
 }
 .mit-child-band--inner {
+  background: color-mix(in srgb, var(--mit-color) var(--mit-fill-child), transparent);
   pointer-events: none;
 }
 .mit-child-band--extension {
@@ -2754,49 +2777,59 @@ button {
 
 .lane-scroll.theme-light {
   background: #ffffff;
+  /* Role colors are dark/saturated; over white the dark-theme percentages wash
+     out to pastel. Deepen the fill so the bars read as solid colored bands. */
+  --mit-fill-active: 60%;
+  --mit-fill-faint: 34%;
+  --mit-fill-strong: 82%;
+  --mit-fill-child: 78%;
 }
 .lane-scroll.theme-light .lane-row,
 .lane-scroll.theme-light .player-parent-lane {
-  border-bottom-color: #d4d4d4;
+  border-bottom-color: #c4c4c4;
 }
 .lane-scroll.theme-light .player-header-row {
   border-bottom-color: #e6e6e6;
 }
 .lane-scroll.theme-light .sub-lane {
-  border-bottom-color: #ececec;
+  border-bottom-color: #d6d6d6;
 }
 .lane-scroll.theme-light .lane-label,
 .lane-scroll.theme-light .lane-label--player,
-.lane-scroll.theme-light .sub-lane-label,
-.lane-scroll.theme-light .lane-label--player-header {
+.lane-scroll.theme-light .sub-lane-label {
   background: #f3f3f3;
-  color: #333;
+  color: #1a1a1a;
   border-right-color: #d4d4d4;
 }
+/* lane-label--player-header is the inline-mode damage-chip row's label — kept
+   on its dark base (#1f1f1f / #ddd / #333 divider) so the whole chip lane,
+   including its label cell, matches dark mode. Also keeps light text legible on
+   the assigned-slot role-color fill (set inline). */
 .lane-scroll.theme-light .lane-label--ruler {
   background: #ececec;
 }
 .lane-scroll.theme-light .lane-label--boss {
-  background: #fff1e0;
-  color: #b86200;
+  background: #f0c47e;
+  color: #663600;
 }
 .lane-scroll.theme-light .lane-label--boss .boss-name-input::placeholder {
-  color: rgba(184, 98, 0, 0.5);
+  color: rgba(102, 54, 0, 0.5);
 }
 .lane-scroll.theme-light .lane-label--boss .boss-name-input:hover,
 .lane-scroll.theme-light .lane-label--boss .boss-name-input:focus,
 .lane-scroll.theme-light .lane-label--boss .boss-length-input:hover,
 .lane-scroll.theme-light .lane-label--boss .boss-length-input:focus {
-  background: rgba(255, 255, 255, 0.7);
-  border-color: rgba(184, 98, 0, 0.5);
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(102, 54, 0, 0.45);
 }
 .lane-scroll.theme-light .lane-label--boss .boss-length-prefix {
-  color: rgba(184, 98, 0, 0.8);
+  color: rgba(102, 54, 0, 0.85);
 }
 .lane-scroll.theme-light .lane-row--boss {
-  border-bottom-color: #fff1e0;
+  border-bottom-color: #e6b262;
 }
-.lane-scroll.theme-light .player-header-track,
+/* player-header-track is the damage-chip track — intentionally NOT whitened;
+   it keeps its #000 base so the chip lanes read dark in both themes. */
 .lane-scroll.theme-light .boss-lane-track,
 .lane-scroll.theme-light .sub-lane-track {
   background: #ffffff;
@@ -2820,8 +2853,8 @@ button {
     to right,
     transparent 0,
     transparent calc(var(--tick-px, 360px) - 1px),
-    rgba(0, 0, 0, 0.06) calc(var(--tick-px, 360px) - 1px),
-    rgba(0, 0, 0, 0.06) var(--tick-px, 360px)
+    rgba(0, 0, 0, 0.11) calc(var(--tick-px, 360px) - 1px),
+    rgba(0, 0, 0, 0.11) var(--tick-px, 360px)
   );
 }
 .lane-scroll.theme-light .mit-bar-duration {
@@ -2830,39 +2863,24 @@ button {
 .lane-scroll.theme-light .mit-bar-cooldown {
   background: repeating-linear-gradient(
     45deg,
-    rgba(80, 80, 80, 0.3) 0 6px,
-    rgba(80, 80, 80, 0.1) 6px 12px
+    rgba(45, 45, 45, 0.5) 0 6px,
+    rgba(45, 45, 45, 0.16) 6px 12px
   );
-  border-color: rgba(80, 80, 80, 0.45);
+  border-color: rgba(45, 45, 45, 0.55);
 }
-.lane-scroll.theme-light .damage-chip {
-  color: #000000;
-  border-color: #3a8e4f;
+/* Phantom (shared-recast) cooldown stripe — same darkening as the real CD tail
+   so the two read alike on white. */
+.lane-scroll.theme-light .mit-shared-cd {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(45, 45, 45, 0.5) 0 6px,
+    rgba(45, 45, 45, 0.16) 6px 12px
+  );
+  border-color: rgba(45, 45, 45, 0.55);
 }
-.lane-scroll.theme-light .damage-chip-hp {
-  background: #a4dab3;
-}
-.lane-scroll.theme-light .damage-chip-missing {
-  background: #f4f4f4;
-}
-.lane-scroll.theme-light .damage-chip-shield {
-  background: #e89020;
-}
-.lane-scroll.theme-light .damage-chip--lethal {
-  border-color: #c33;
-}
-.lane-scroll.theme-light .damage-chip--lethal .damage-chip-missing {
-  background: #f7a8a8;
-}
-.lane-scroll.theme-light .damage-chip--zero {
-  border-color: #888;
-}
-/* Deepen the violet so the carried-HP glow stays legible against white. */
-.lane-scroll.theme-light .damage-chip--carried {
-  box-shadow:
-    0 0 0 2px #9b3cc8,
-    0 0 8px 2px rgba(155, 60, 200, 0.75);
-}
+/* Damage chips keep their dark-theme fills/borders/violet glow — the chip
+   track stays black in light mode (see player-header-track above), so the
+   higher-contrast dark values are correct against it. */
 
 /* ─── Chip-layout: separated modes (Top / Bottom) ─────────────────────── */
 /* The job gutter is a sticky 28px column to the LEFT of the existing 140px
@@ -2988,20 +3006,33 @@ button {
 .lane-scroll.theme-light .lane-row--boss .job-gutter--phantom {
   background: #fff1e0;
 }
+/* Damage chip lane stays dark in light mode. These overrides repeat the
+   dark-theme values rather than dropping out, because the generic .lane-row /
+   .lane-label light overrides out-specify the un-themed base rules and would
+   otherwise repaint the chip row/label light. */
 .lane-scroll.theme-light .chip-section-row {
-  border-bottom-color: #ececec;
+  border-bottom-color: #2a2a2a;
 }
 .lane-scroll.theme-light .chip-row-label {
-  background: #f3f3f3;
+  background: #1c1c1c;
 }
 .lane-scroll.theme-light .chip-row-track {
-  background: #ffffff;
+  background: #000000;
 }
 .lane-scroll.theme-light.chip-position-top .chip-section {
-  border-bottom-color: #fff1e0;
+  border-bottom-color: #2a1f15;
 }
 .lane-scroll.theme-light.chip-position-bottom .chip-section {
-  border-top-color: #fff1e0;
+  border-top-color: #2a1f15;
+}
+/* Unset rows dim via opacity, which reads fine over the dark canvas but
+   composites to grey over the white light-mode page. The chip lane is
+   intentionally dark in light mode, so keep unset rows fully opaque (still
+   dark) — over the dark canvas the 0.55 dimming barely changed a dark row
+   anyway, so nothing meaningful is lost. */
+.lane-scroll.theme-light .player-parent-lane.is-unset,
+.lane-scroll.theme-light .chip-section-row.is-unset {
+  opacity: 1;
 }
 .lane-scroll.theme-light .slot-mit-group + .slot-mit-group {
   border-top-color: #333333;
