@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { SLOT_HP_MAX, SLOT_HP_MIN, useTimelineStore } from "@/state/timeline-store";
+import { GearIcon } from "./GearIcon";
 import { JobIcon } from "./JobIcon";
 import { JobPicker } from "./JobPicker";
 import { NumberInput } from "./primitives/NumberInput";
@@ -31,7 +32,8 @@ export function RosterPanel() {
       <div className="roster-panel-header">
         <h3>Roster</h3>
         <button type="button" className="link-button" onClick={openJobDefaults}>
-          Configure defaults…
+          <GearIcon size={13} />
+          Configure job HP defaults
         </button>
       </div>
       <ol className="roster-list">

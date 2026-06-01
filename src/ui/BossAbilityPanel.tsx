@@ -83,11 +83,21 @@ export function BossAbilityPanel() {
 
   return (
     <section className="boss-panel">
-      <BossAbilityPanelHeader onImport={handleImport} onExport={handleExport} />
+      <header className="boss-panel-header">
+        <h3>Boss Abilities</h3>
+        <div className="boss-panel-header-actions">
+          <button type="button" className="link-button" onClick={handleImport}>
+            Import
+          </button>
+          <button type="button" className="link-button" onClick={handleExport}>
+            Export
+          </button>
+        </div>
+      </header>
       {!newTypeFormOpen && (
         <button
           type="button"
-          className="new-ability-toggle new-ability-toggle--row"
+          className="new-ability-toggle"
           onClick={() => setNewTypeFormOpen(true)}
         >
           + New Ability
@@ -117,28 +127,6 @@ export function BossAbilityPanel() {
         )}
       </div>
     </section>
-  );
-}
-
-function BossAbilityPanelHeader({
-  onImport,
-  onExport,
-}: {
-  onImport: () => void;
-  onExport: () => void;
-}) {
-  return (
-    <header className="boss-panel-header">
-      <h3>Boss Abilities</h3>
-      <div className="boss-panel-header-actions">
-        <button type="button" className="link-button" onClick={onImport}>
-          Import
-        </button>
-        <button type="button" className="link-button" onClick={onExport}>
-          Export
-        </button>
-      </div>
-    </header>
   );
 }
 

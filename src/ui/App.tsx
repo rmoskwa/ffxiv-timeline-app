@@ -22,6 +22,7 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { AbilityColorsModal } from "./AbilityColorsModal";
 import { AddPhaseModal } from "./AddPhaseModal";
 import { ClearTimelineModal, useClearTimelineModalStore } from "./ClearTimelineModal";
+import { ExportMenu } from "./ExportMenu";
 import { HelpModals, useHelpModalStore } from "./HelpModals";
 import { importErrorMessage } from "./import-error-message";
 import { JobDefaultsModal } from "./JobDefaultsModal";
@@ -33,6 +34,7 @@ import { RosterPanel } from "./RosterPanel";
 import { SetupWizard } from "./SetupWizard";
 import { ShareModal } from "./ShareModal";
 import { TimelineEditor } from "./TimelineEditor";
+import { OpenIcon, SaveIcon, TrashIcon } from "./ToolbarIcons";
 import { useAbilityColorsModalStore } from "./use-ability-colors-modal";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
 import { useBossImportExport } from "./use-boss-import-export";
@@ -276,16 +278,38 @@ export function App() {
             </p>
           </div>
           <div className="header-actions">
-            <button type="button" className="link-button" onClick={handleOpenTimeline}>
-              Open Timeline
-            </button>
-            <button type="button" className="link-button" onClick={handleSaveTimeline}>
-              Save Timeline
-            </button>
-            <button type="button" className="link-button" onClick={openAddPhase}>
-              Add Phase
-            </button>
-            <button type="button" className="link-button" onClick={handleDiscard}>
+            <div className="toolbar-group">
+              <button
+                type="button"
+                className="toolbar-btn"
+                onClick={handleOpenTimeline}
+                title="Open Timeline…"
+              >
+                <OpenIcon size={15} />
+                Open
+              </button>
+              <button
+                type="button"
+                className="toolbar-btn"
+                onClick={handleSaveTimeline}
+                title="Save Timeline…"
+              >
+                <SaveIcon size={15} />
+                Save
+              </button>
+            </div>
+            <span className="toolbar-divider" aria-hidden="true" />
+            <div className="toolbar-group">
+              <ExportMenu onShare={openShare} disabled={timeline === null} />
+            </div>
+            <span className="toolbar-spacer" aria-hidden="true" />
+            <button
+              type="button"
+              className="toolbar-btn toolbar-btn--danger"
+              onClick={handleDiscard}
+              title="Discard the current timeline"
+            >
+              <TrashIcon size={15} />
               Discard
             </button>
           </div>

@@ -14,6 +14,9 @@ export function PhasesPanel() {
   if (phases.length === 0) {
     return (
       <section className="phases-panel phases-panel--empty">
+        <header className="phases-panel-header">
+          <h3>Phases</h3>
+        </header>
         <button type="button" className="add-phase-toggle" onClick={openAddPhase}>
           + Add Phase
         </button>
