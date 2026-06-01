@@ -29,6 +29,9 @@ button {
   z-index: 100;
 }
 .wizard {
+  /* Shared by the roster column and the Create button so they stay the same
+     width — change in one place. */
+  --roster-w: 220px;
   background: #222;
   border: 1px solid #333;
   border-radius: 8px;
@@ -38,9 +41,36 @@ button {
   flex-direction: column;
   gap: 1rem;
 }
+.wizard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
 .wizard h2 {
   margin: 0;
   border: none;
+}
+.wizard-open-btn {
+  width: var(--roster-w);
+  background: #1e1e1e;
+  border: 1px solid #3d3d3d;
+  border-radius: 5px;
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #cfcfcf;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.wizard-open-btn:hover {
+  border-color: #4a8;
+  background: #232a27;
+  color: #9fe0c4;
 }
 .wizard .hint {
   margin: 0;
@@ -63,7 +93,7 @@ button {
 }
 .wizard-columns {
   display: grid;
-  grid-template-columns: 1fr 220px;
+  grid-template-columns: max-content 1fr var(--roster-w);
   gap: 1.25rem;
   align-items: start;
 }
@@ -85,8 +115,8 @@ button {
   font-weight: 600;
 }
 .job-picker-tiles {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 54px);
   gap: 0.35rem;
 }
 .job-picker-tile {
@@ -108,6 +138,14 @@ button {
   border-color: #555;
   background: #242424;
 }
+.job-picker-tile:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.job-picker-tile:disabled:hover {
+  border-color: #333;
+  background: #1a1a1a;
+}
 .job-picker-tile.selected {
   color: #fff;
   border-color: transparent;
@@ -115,20 +153,57 @@ button {
 .job-picker-tile.selected:hover {
   filter: brightness(1.15);
 }
-.add-to-roster {
-  align-self: flex-start;
-  margin-top: 0.25rem;
+.wizard-add {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+}
+.wizard-add-btn {
+  width: 104px;
+  height: 80px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
   background: #2d4d3f;
   color: #cfe;
   border: 1px solid #4a8;
-  border-radius: 4px;
-  padding: 0.45rem 0.9rem;
-  font-weight: 600;
+  font-size: 2rem;
+  line-height: 1;
   cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
-.add-to-roster:disabled {
+.wizard-add-btn:not(:disabled) {
+  box-shadow: 0 0 0 4px rgba(74, 170, 136, 0.14);
+}
+.wizard-add-btn:not(:disabled):hover {
+  background: #366253;
+  transform: scale(1.06);
+  box-shadow: 0 0 0 5px rgba(74, 170, 136, 0.22);
+}
+.wizard-add-btn:not(:disabled):active {
+  transform: scale(0.96);
+}
+.wizard-add-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+.wizard-add-arrow {
+  display: block;
+  width: 44px;
+  height: 44px;
+}
+.wizard-add-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #8aa;
+  text-align: center;
+  white-space: nowrap;
 }
 .roster-preview {
   display: flex;
@@ -161,8 +236,15 @@ button {
   gap: 0.3rem;
 }
 .roster-preview-slot {
+  /* Fixed height so every slot is identical regardless of contents. Empty and
+     filled slots carry their border/padding on different elements (the <li> vs.
+     the inner <button>), so under flex-grow they measured a few px apart and
+     filling a slot nudged its neighbours. A fixed height sidesteps that: 3.5rem
+     is the height slots already settle to, so the panel still spans the column. */
+  flex: 0 0 auto;
+  height: 3.5rem;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   font-size: 0.8rem;
 }
 .roster-preview-slot.empty {
@@ -177,18 +259,36 @@ button {
 .roster-preview-slot.filled button {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
   width: 100%;
+  height: 100%;
   padding: 0.3rem 0.4rem;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 4px;
   color: #fff;
   font-weight: 600;
   cursor: pointer;
-  text-align: left;
+  position: relative;
+}
+.roster-slot-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+/* Icon is out of flow so only the text measures for centering; it hangs off
+   the label's left edge, immediately left of the text. */
+.roster-slot-icon {
+  position: absolute;
+  right: 100%;
+  margin-right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
 }
 .roster-preview-slot.filled .remove-hint {
-  margin-left: auto;
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 1rem;
   opacity: 0;
   transition: opacity 0.1s;
@@ -200,16 +300,24 @@ button {
 .wizard-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  border-top: 1px solid #303030;
+  padding-top: 1rem;
+  margin-top: 0.2rem;
 }
 .wizard-actions button {
+  width: var(--roster-w);
   background: #4a8;
-  color: #111;
+  color: #08110c;
   border: none;
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
-  font-weight: 600;
+  border-radius: 5px;
+  padding: 0.66rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(74, 170, 136, 0.14);
+}
+.wizard-actions button:hover {
+  filter: brightness(1.08);
 }
 
 /* ─── App shell ───────────────────────────────────────────────────────── */

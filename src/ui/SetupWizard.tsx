@@ -41,13 +41,15 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
 
   const filledCount = roster.filter((s) => s.job !== "unset").length;
   const remaining = ROSTER_SIZE - filledCount;
-  const willAdd = Math.min(selected.size, remaining);
+  const selectionFull = selected.size >= remaining;
 
   const toggleSelected = (job: Job) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(job)) next.delete(job);
-      else next.add(job);
+      // Cap the selection at the open roster slots so the user can never
+      // queue more jobs than will fit.
+      else if (next.size < remaining) next.add(job);
       return next;
     });
   };
@@ -113,7 +115,12 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
   return (
     <div className="modal-backdrop">
       <form className="wizard" onSubmit={submit}>
-        <h2>New Timeline</h2>
+        <div className="wizard-head">
+          <h2>New Timeline</h2>
+          <button type="button" className="wizard-open-btn" onClick={openTimeline}>
+            Open existing timeline
+          </button>
+        </div>
         {hydrateError && (
           <p className="wizard-error" role="alert">
             Couldn't load the previous auto-save ({hydrateError.message}). Starting fresh.
@@ -125,8 +132,8 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
           </p>
         )}
         <p className="hint">
-          Pick jobs from the left and click Add. Click a roster tile to remove it. Unfilled slots
-          stay "unset" and can be set later.
+          Add jobs to the roster, or click a roster tile to remove it. Unfilled slots stay "unset"
+          and can be set later.
         </p>
 
         <label className="field">
@@ -156,6 +163,7 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
                         key={job}
                         className={tileClasses.join(" ")}
                         onClick={() => toggleSelected(job)}
+                        disabled={!isSelected && selectionFull}
                         aria-pressed={isSelected}
                         style={isSelected ? { background: jobColor(job) } : undefined}
                       >
@@ -167,18 +175,28 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="wizard-add">
             <button
               type="button"
-              className="add-to-roster"
+              className="wizard-add-btn"
               onClick={addToRoster}
               disabled={selected.size === 0 || remaining === 0}
+              aria-label="Add selected jobs to roster"
             >
-              {selected.size === 0
-                ? "Add"
-                : willAdd < selected.size
-                  ? `Add (${willAdd} of ${selected.size} fit)`
-                  : `Add (${willAdd})`}
+              <svg
+                className="wizard-add-arrow"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M13 4l8 8-8 8v-5H3V9h10V4z" />
+              </svg>
             </button>
+            <span className="wizard-add-label">
+              {selected.size === 0 ? "Add" : `Add ${selected.size}`}
+            </span>
           </div>
 
           <div className="roster-preview">
@@ -206,8 +224,12 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
                       style={{ background: jobColor(slot.job) }}
                       title={`Remove ${slot.job} from slot ${i + 1}`}
                     >
-                      <JobIcon job={slot.job} size={28} />
-                      <span>{slot.job}</span>
+                      <span className="roster-slot-label">
+                        <span className="roster-slot-icon">
+                          <JobIcon job={slot.job} size={28} />
+                        </span>
+                        {slot.job}
+                      </span>
                       <span className="remove-hint" aria-hidden="true">
                         ×
                       </span>
@@ -220,9 +242,6 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
         </div>
 
         <div className="wizard-actions">
-          <button type="button" onClick={openTimeline}>
-            Open Timeline
-          </button>
           <button type="submit">Create timeline</button>
         </div>
       </form>
