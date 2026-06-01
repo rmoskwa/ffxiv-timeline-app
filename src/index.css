@@ -383,25 +383,29 @@ button {
 }
 /* Export — the primary, valued endpoint. Warm gold against the cyan UI. */
 .toolbar-btn--export {
-  background: linear-gradient(180deg, #e7b955 0%, #d29a34 100%);
-  border-color: #f0cc73;
+  background: linear-gradient(180deg, #ecc163 0%, #dca743 100%);
+  border-color: #f4d488;
   color: #211603;
-  font-weight: 600;
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
     0 1px 2px rgba(0, 0, 0, 0.4);
 }
 .toolbar-btn--export:hover {
-  background: linear-gradient(180deg, #f3c869 0%, #e0a93f 100%);
+  background: linear-gradient(180deg, #f5cd72 0%, #e7b34d 100%);
   border-color: #ffdc88;
   color: #211603;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 0 0 1px rgba(240, 204, 115, 0.35),
+    0 0 0 1px rgba(244, 212, 136, 0.35),
     0 2px 12px rgba(224, 169, 59, 0.3);
 }
 .toolbar-btn--export:active {
-  background: linear-gradient(180deg, #d8ab44 0%, #c28f30 100%);
+  background: linear-gradient(180deg, #e0b54e 0%, #cc9c39 100%);
+}
+.toolbar-btn--export svg {
+  stroke-width: 2.25;
 }
 .toolbar-btn--export svg:last-child {
   transition: transform 120ms ease;
