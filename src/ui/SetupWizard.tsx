@@ -113,7 +113,12 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
   return (
     <div className="modal-backdrop">
       <form className="wizard" onSubmit={submit}>
-        <h2>New Timeline</h2>
+        <div className="wizard-head">
+          <h2>New Timeline</h2>
+          <button type="button" className="wizard-open-btn" onClick={openTimeline}>
+            Open existing timeline
+          </button>
+        </div>
         {hydrateError && (
           <p className="wizard-error" role="alert">
             Couldn't load the previous auto-save ({hydrateError.message}). Starting fresh.
@@ -125,8 +130,8 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
           </p>
         )}
         <p className="hint">
-          Pick jobs from the left and click Add. Click a roster tile to remove it. Unfilled slots
-          stay "unset" and can be set later.
+          Add jobs to the roster, or click a roster tile to remove it. Unfilled slots stay "unset"
+          and can be set later.
         </p>
 
         <label className="field">
@@ -234,9 +239,6 @@ export function SetupWizard({ hydrateError }: SetupWizardProps = {}) {
         </div>
 
         <div className="wizard-actions">
-          <button type="button" onClick={openTimeline}>
-            Open Timeline
-          </button>
           <button type="submit">Create timeline</button>
         </div>
       </form>

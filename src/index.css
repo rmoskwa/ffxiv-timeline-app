@@ -29,6 +29,9 @@ button {
   z-index: 100;
 }
 .wizard {
+  /* Shared by the roster column and the Create button so they stay the same
+     width — change in one place. */
+  --roster-w: 220px;
   background: #222;
   border: 1px solid #333;
   border-radius: 8px;
@@ -38,9 +41,36 @@ button {
   flex-direction: column;
   gap: 1rem;
 }
+.wizard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
 .wizard h2 {
   margin: 0;
   border: none;
+}
+.wizard-open-btn {
+  width: var(--roster-w);
+  background: #1e1e1e;
+  border: 1px solid #3d3d3d;
+  border-radius: 5px;
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #cfcfcf;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.wizard-open-btn:hover {
+  border-color: #4a8;
+  background: #232a27;
+  color: #9fe0c4;
 }
 .wizard .hint {
   margin: 0;
@@ -63,7 +93,7 @@ button {
 }
 .wizard-columns {
   display: grid;
-  grid-template-columns: max-content 1fr 220px;
+  grid-template-columns: max-content 1fr var(--roster-w);
   gap: 1.25rem;
   align-items: start;
 }
@@ -245,16 +275,24 @@ button {
 .wizard-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  border-top: 1px solid #303030;
+  padding-top: 1rem;
+  margin-top: 0.2rem;
 }
 .wizard-actions button {
+  width: var(--roster-w);
   background: #4a8;
-  color: #111;
+  color: #08110c;
   border: none;
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
-  font-weight: 600;
+  border-radius: 5px;
+  padding: 0.66rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(74, 170, 136, 0.14);
+}
+.wizard-actions button:hover {
+  filter: brightness(1.08);
 }
 
 /* ─── App shell ───────────────────────────────────────────────────────── */
