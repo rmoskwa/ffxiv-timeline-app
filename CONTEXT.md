@@ -12,7 +12,7 @@ _Avoid_: skill, attack, mechanic
 
 **Boss timeline**:
 The subset of a Timeline comprising `boss_ability_types` and `boss_ability_instances`, plus the timeline-level fields required to interpret them (`fight_duration_sec`, `boss_name`). The unit of **Import** / **Export** scoped to the **boss panel**. Distinct from *the* Timeline, which is the whole document (roster, mits, phase markers, notes, plus the boss timeline). A boss timeline is *part of* a Timeline, never its own standalone document.
-_Avoid_: boss plan, boss timeline file (the JSON file is called a *boss-timeline export*), boss schedule
+_Avoid_: boss plan, boss timeline file (the exported file is called a *boss-timeline export*, extension `.ffbt`), boss schedule
 
 **Mitigation**:
 A protective player action that reduces incoming damage (e.g. *Rampart*, *Reprisal*, *Oblation*). The library of mitigation types is bundled and not user-editable; users only place **instances**.
@@ -297,7 +297,7 @@ _Avoid_: phase boundary line, phase break, separator
 ### Imports
 
 **Import** / **Export**:
-Scoped data movement *into* or *out of* an already-open document — a subset of the document's contents, not the document itself. The live example is loading a **boss timeline** into the current Timeline (`useBossImportExport`). Round-trippable: an exported boss-timeline JSON can be re-imported. Distinct from **Open** / **Save** (whole-document file operations on standalone Timelines) and from **Share** (a one-way rendering that never returns to the app).
+Scoped data movement *into* or *out of* an already-open document — a subset of the document's contents, not the document itself. The live example is loading a **boss timeline** into the current Timeline (`useBossImportExport`). Round-trippable: an exported boss-timeline file can be re-imported. Exports carry app-specific extensions — `.fftl` (full Timeline) and `.ffbt` (boss-timeline) — purely to make our files identifiable among arbitrary JSON; the file content stays plain JSON and the extension is never inspected on import (which still accepts legacy `.json`). The extensions are cosmetic only — no OS file association, no double-click-to-open (ADR 0009). Distinct from **Open** / **Save** (whole-document file operations on standalone Timelines) and from **Share** (a one-way rendering that never returns to the app).
 _Avoid_: fetch, ingest, sync; never use "import" for opening a full Timeline from disk (use "Open" there); never use "export" for the one-way **Share** rendering
 
 ### Sharing

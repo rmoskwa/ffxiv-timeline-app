@@ -38,7 +38,14 @@ function ensureAppDataDir(): Promise<void> {
   return ensureDirPromise;
 }
 
-const JSON_FILTER = [{ name: "Timeline JSON", extensions: ["json"] }];
+// Export writes the app-specific extension only (.fftl / .ffbt) so our files are
+// identifiable; import also accepts legacy .json so files exported before the
+// extensions existed still load. The extension is cosmetic — deserialize()
+// validates by inner schema_version/kind and never inspects it (ADR 0009).
+const TIMELINE_EXPORT_FILTER = [{ name: "FFXIV Timeline", extensions: ["fftl"] }];
+const TIMELINE_IMPORT_FILTER = [{ name: "FFXIV Timeline", extensions: ["fftl", "json"] }];
+const BOSS_EXPORT_FILTER = [{ name: "FFXIV Boss Timeline", extensions: ["ffbt"] }];
+const BOSS_IMPORT_FILTER = [{ name: "FFXIV Boss Timeline", extensions: ["ffbt", "json"] }];
 
 // `defaults` feeds load-time HP normalization of pre-feature files (serialize.ts).
 export async function loadWorkingTimeline(
@@ -71,8 +78,8 @@ function sanitizeFilename(name: string): string {
 export async function exportTimelineDialog(timeline: TimelineFile): Promise<boolean> {
   const path = await saveDialog({
     title: "Export timeline",
-    defaultPath: `${sanitizeFilename(timeline.metadata.name)}.json`,
-    filters: JSON_FILTER,
+    defaultPath: `${sanitizeFilename(timeline.metadata.name)}.fftl`,
+    filters: TIMELINE_EXPORT_FILTER,
   });
   if (!path) return false;
   await writeTextFile(path, serialize(timeline));
@@ -88,7 +95,7 @@ export async function importTimelineDialog(
     title: "Import timeline",
     multiple: false,
     directory: false,
-    filters: JSON_FILTER,
+    filters: TIMELINE_IMPORT_FILTER,
   });
   if (!picked || typeof picked !== "string") return null;
   const text = await readTextFile(picked);
@@ -96,15 +103,15 @@ export async function importTimelineDialog(
 }
 
 // Returns true if the user picked a path and the file was written; false if
-// the user cancelled. Default filename is "<boss_name>-boss-timeline.json",
-// falling back to "boss-timeline.json" when boss_name sanitizes to empty.
+// the user cancelled. Default filename is "<boss_name>-boss-timeline.ffbt",
+// falling back to "boss-timeline.ffbt" when boss_name sanitizes to empty.
 export async function exportBossTimelineDialog(timeline: TimelineFile): Promise<boolean> {
   const cleaned = timeline.metadata.boss_name.replace(/[^a-zA-Z0-9 _.-]+/g, "").trim();
-  const defaultName = cleaned === "" ? "boss-timeline.json" : `${cleaned}-boss-timeline.json`;
+  const defaultName = cleaned === "" ? "boss-timeline.ffbt" : `${cleaned}-boss-timeline.ffbt`;
   const path = await saveDialog({
     title: "Export boss timeline",
     defaultPath: defaultName,
-    filters: JSON_FILTER,
+    filters: BOSS_EXPORT_FILTER,
   });
   if (!path) return false;
   await writeTextFile(path, serializeBossTimeline(timeline));
@@ -117,7 +124,7 @@ export async function importBossTimelineDialog(): Promise<BossTimelineFile | nul
     title: "Import boss timeline",
     multiple: false,
     directory: false,
-    filters: JSON_FILTER,
+    filters: BOSS_IMPORT_FILTER,
   });
   if (!picked || typeof picked !== "string") return null;
   const text = await readTextFile(picked);
