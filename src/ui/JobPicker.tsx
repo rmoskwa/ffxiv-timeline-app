@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Job, JobOrUnset } from "@/domain/types";
+import { type Job, type JobOrUnset, MAX_NAME_LEN } from "@/domain/types";
 import { JobIcon } from "./JobIcon";
 import { JOBS_BY_ROLE } from "./jobs-by-role";
 import { jobColor } from "./role-color";
@@ -7,6 +7,9 @@ import { jobColor } from "./role-color";
 interface JobPickerProps {
   currentJob: JobOrUnset;
   slotIndex: number;
+  // The slot's current name label, or undefined when it falls back to the job
+  // code. Seeds the rename field.
+  currentName?: string | undefined;
   // Number of mit instances currently bound to the slot. When > 0 and the
   // user picks a new job (or Clear), the picker shows a confirm step before
   // committing, because setSlotJob will drop them.
@@ -15,6 +18,9 @@ interface JobPickerProps {
   // tile so it doesn't overflow the viewport.
   anchorRight?: boolean;
   onPick: (job: JobOrUnset) => void;
+  // Commit a new name label. Empty string clears it back to the job-code
+  // fallback (the store normalizes/clears).
+  onRename: (name: string) => void;
   onClose: () => void;
 }
 
@@ -26,23 +32,46 @@ type PendingChange = { kind: "swap"; job: Job } | { kind: "clear" };
 export function JobPicker({
   currentJob,
   slotIndex,
+  currentName,
   mitCount,
   anchorRight = false,
   onPick,
+  onRename,
   onClose,
 }: JobPickerProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState<PendingChange | null>(null);
+  const [name, setName] = useState(currentName ?? "");
+  // Latest typed value, read by flushName from close paths that don't fire the
+  // input's blur (Esc, click-outside) without re-subscribing the effect.
+  const nameRef = useRef(currentName ?? "");
+  // Last value handed to onRename. Guards every flush so opening the picker to
+  // swap a job (and the redundant blur+close-path double-fire) never re-commits
+  // an unchanged name and needlessly bumps updated_at.
+  const committedRef = useRef(currentName ?? "");
+
+  const flushName = () => {
+    const v = nameRef.current;
+    if (v === committedRef.current) return;
+    committedRef.current = v;
+    onRename(v);
+  };
+
+  // Every dismissal saves the typed name (Esc included — no revert model).
+  const requestClose = () => {
+    flushName();
+    onClose();
+  };
 
   useEffect(() => {
     const onDocMouseDown = (e: MouseEvent) => {
       if (ref.current?.contains(e.target as Node)) return;
-      onClose();
+      requestClose();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (pending) setPending(null);
-        else onClose();
+        else requestClose();
       }
     };
     document.addEventListener("mousedown", onDocMouseDown);
@@ -51,15 +80,16 @@ export function JobPicker({
       document.removeEventListener("mousedown", onDocMouseDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [onClose, pending]);
+  });
 
   const commit = (next: JobOrUnset) => {
+    flushName();
     onPick(next);
   };
 
   const handlePickJob = (job: Job) => {
     if (job === currentJob) {
-      onClose();
+      requestClose();
       return;
     }
     if (mitCount > 0) {
@@ -118,11 +148,32 @@ export function JobPicker({
         <button
           type="button"
           className="job-picker-popover-close"
-          onClick={onClose}
+          onClick={requestClose}
           aria-label="Close picker"
         >
           ×
         </button>
+      </div>
+      <div className="job-picker-rename">
+        <input
+          type="text"
+          className="job-picker-rename-input"
+          value={name}
+          placeholder={currentJob}
+          maxLength={MAX_NAME_LEN}
+          aria-label={`Rename slot ${slotIndex + 1}`}
+          onChange={(e) => {
+            nameRef.current = e.target.value;
+            setName(e.target.value);
+          }}
+          onBlur={flushName}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              requestClose();
+            }
+          }}
+        />
       </div>
       <div className="job-picker job-picker--compact">
         {JOBS_BY_ROLE.map((group) => (
