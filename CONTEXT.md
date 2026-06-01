@@ -35,8 +35,12 @@ One of exactly eight positions in the roster. Holds a **job** (or `unset`), an o
 _Avoid_: player, character, member, party member
 
 **Roster**:
-The 8-slot composition for a timeline. Travels with the timeline file, not the app. Any composition allowed; duplicates allowed.
+The 8-slot composition for a timeline. Travels with the timeline file, not the app. Any composition allowed; duplicates allowed. The **Slot order** is significant.
 _Avoid_: party, group, team
+
+**Slot order**:
+The top-to-bottom sequence of the 8 **player slots**, encoded by their position in the **Roster** array. A document-level property — it travels on **Export** / share and is the single canonical order that the **RosterPanel**, **canvas** player lanes, and **Simple Timeline View** slot columns all reflect; there is no per-view order. User-reorderable. Distinct from **Mit lane layout**, which orders **Sub-lanes** *within* a slot and is a per-viewer app preference, not part of the timeline file.
+_Avoid_: roster order, slot index (as a user-facing term), lane order
 
 **Job**:
 The specific playable FFXIV class a **player slot** is set to (e.g. `PLD`, `WAR`, `WHM`, `BLM`). One of the 21 supported jobs, plus the sentinel `unset`. Determines which mitigation library entries can be placed on the slot. Stored on the slot; distinct from **Role**.
