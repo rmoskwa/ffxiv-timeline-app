@@ -10,6 +10,8 @@ import type { MitigationType } from "@/domain/types";
 // or Guardian (cast-time snapshot, applies for the full active window).
 // Passage of Arms is a first-class held ability: the cast applies a 5s effect
 // that refreshes while held, up to a 23s active window (18s max hold + 5s tail).
+// Bulwark's 100% block (deterministic ~20%/hit) is approximated as a flat 20%
+// multiplicative reduction — functionally a second Rampart; see reference note.
 export const PLD_MITS: MitigationType[] = [
   {
     id: "pld.rampart",
@@ -116,6 +118,19 @@ export const PLD_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "invuln",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Hallowed_Ground",
+  },
+  {
+    id: "pld.bulwark",
+    name: "Bulwark",
+    job: "PLD",
+    cooldown_seconds: 90,
+    duration_seconds: 10,
+    mitigation_per_type: { all: 20 },
+    affects: "self",
+    max_charges: 1,
+    mechanic: "mit",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Bulwark",
+    reference_notes: ["Block modeled as a flat 20% multiplicative reduction."],
   },
   {
     id: "pld.divine_veil",
