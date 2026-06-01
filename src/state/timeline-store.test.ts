@@ -10,6 +10,7 @@ import {
   MAX_PHASES,
   TIMELINE_SCHEMA_VERSION,
 } from "@/domain/types";
+import { isDocumentBoundary, useHistoryStore } from "./history-store";
 import {
   EmptyNameError,
   LimitExceededError,
@@ -1462,5 +1463,140 @@ describe("timeline-store — Full heal flag (toggleChipNoFullHeal)", () => {
     useTimelineStore.getState().toggleChipNoFullHeal(999, s0);
     expect(useTimelineStore.getState().timeline).toBe(before);
     expect(flagsOf(instId)).toEqual([]);
+  });
+});
+
+// ─── Slot reorder ──────────────────────────────
+describe("timeline-store — reorderSlot", () => {
+  beforeEach(freshTimeline);
+
+  // Mirrors use-history-recorder.ts so undo/redo can be exercised in this unit
+  // test (see history-store.test.ts startRecorder).
+  function startRecorder(): () => void {
+    return useTimelineStore.subscribe((state, prevState) => {
+      const prev = prevState.timeline;
+      const next = state.timeline;
+      if (next === prev) return;
+      const { record, reset } = useHistoryStore.getState();
+      if (isDocumentBoundary(prev, next)) reset();
+      else if (prev !== null) record(prev);
+    });
+  }
+
+  function slotIds(): string[] {
+    return (useTimelineStore.getState().timeline?.roster ?? []).map((s) => s.id);
+  }
+
+  it("permutes the roster for an adjacent move", () => {
+    const ids = slotIds();
+    useTimelineStore.getState().reorderSlot(0, 1);
+    expect(slotIds()).toEqual([ids[1], ids[0], ids[2], ids[3], ids[4], ids[5], ids[6], ids[7]]);
+  });
+
+  it("permutes the roster for a far move (last → first)", () => {
+    const ids = slotIds();
+    useTimelineStore.getState().reorderSlot(7, 0);
+    expect(slotIds()).toEqual([ids[7], ids[0], ids[1], ids[2], ids[3], ids[4], ids[5], ids[6]]);
+  });
+
+  it("permutes damage_per_player in lockstep with the roster", () => {
+    const tl = useTimelineStore.getState().timeline;
+    if (!tl) throw new Error("no timeline");
+    const typeId = useTimelineStore.getState().addBossAbilityType({
+      name: "RW",
+      base_damage: 1000,
+      damage_type: "magical",
+      target_pattern: "raidwide",
+      boss_targetable: true,
+    });
+    const instId = useTimelineStore.getState().addBossAbilityInstance({
+      type_id: typeId,
+      effect_time: 10,
+      target_slot_ids: [],
+    });
+    // Seed a position-keyed observed_damage entry directly (no public action yet).
+    const seeded = useTimelineStore.getState().timeline;
+    if (!seeded) throw new Error("no timeline");
+    useTimelineStore.setState({
+      timeline: {
+        ...seeded,
+        boss_ability_instances: seeded.boss_ability_instances.map((i) =>
+          i.id === instId
+            ? {
+                ...i,
+                observed_damage: [
+                  {
+                    source_label: "Sample",
+                    imported_at: "2026-01-01T00:00:00.000Z",
+                    damage_per_player: [0, 1, 2, 3, 4, 5, 6, 7],
+                  },
+                ],
+              }
+            : i,
+        ),
+      },
+    });
+
+    useTimelineStore.getState().reorderSlot(0, 2);
+
+    const inst = useTimelineStore
+      .getState()
+      .timeline?.boss_ability_instances.find((i) => i.id === instId);
+    // move([0..7], 0 → 2): drop index 0, reinsert at 2.
+    expect(inst?.observed_damage[0].damage_per_player).toEqual([1, 2, 0, 3, 4, 5, 6, 7]);
+  });
+
+  it("leaves mits, selection, and HP/labels untouched", () => {
+    const s0 = rosterSlotId(0);
+    useTimelineStore.getState().setSlotHp(0, 180_000);
+    useTimelineStore.getState().setSlotLabel(0, "MT");
+    const mitId = useTimelineStore.getState().addMitigationInstance({
+      type_id: RAMPART,
+      player_slot_id: s0,
+      effect_time: 10,
+      target_slot_ids: [],
+    });
+    useTimelineStore.getState().selectMitInstance(mitId);
+    const mitsBefore = useTimelineStore.getState().timeline?.mitigation_instances;
+
+    useTimelineStore.getState().reorderSlot(0, 3);
+
+    const tl = useTimelineStore.getState().timeline;
+    // Mit array is identical (binds by slot ID, not position).
+    expect(tl?.mitigation_instances).toBe(mitsBefore);
+    expect(useTimelineStore.getState().selectedInstance).toEqual({ kind: "mit", id: mitId });
+    // The slot's HP/label travels with it to index 3.
+    const moved = tl?.roster.find((sl) => sl.id === s0);
+    expect(moved?.hp).toBe(180_000);
+    expect(moved?.name_label).toBe("MT");
+    expect(tl?.roster[3].id).toBe(s0);
+  });
+
+  it("is a no-op for from === to and out-of-range indices", () => {
+    const before = useTimelineStore.getState().timeline;
+    useTimelineStore.getState().reorderSlot(2, 2);
+    expect(useTimelineStore.getState().timeline).toBe(before);
+    useTimelineStore.getState().reorderSlot(-1, 3);
+    expect(useTimelineStore.getState().timeline).toBe(before);
+    useTimelineStore.getState().reorderSlot(0, 8);
+    expect(useTimelineStore.getState().timeline).toBe(before);
+  });
+
+  it("undo restores the prior order in one step; redo re-applies", () => {
+    const stop = startRecorder();
+    try {
+      const ids = slotIds();
+      useTimelineStore.getState().reorderSlot(0, 1);
+      expect(slotIds()).toEqual([ids[1], ids[0], ...ids.slice(2)]);
+      expect(useHistoryStore.getState().past).toHaveLength(1);
+
+      useHistoryStore.getState().undo();
+      expect(slotIds()).toEqual(ids);
+
+      useHistoryStore.getState().redo();
+      expect(slotIds()).toEqual([ids[1], ids[0], ...ids.slice(2)]);
+    } finally {
+      stop();
+    }
   });
 });

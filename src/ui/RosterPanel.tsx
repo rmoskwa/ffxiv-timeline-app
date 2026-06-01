@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { SLOT_HP_MAX, SLOT_HP_MIN, useTimelineStore } from "@/state/timeline-store";
 import { GearIcon } from "./GearIcon";
 import { JobIcon } from "./JobIcon";
@@ -14,10 +14,30 @@ export function RosterPanel() {
   const mits = useTimelineStore((s) => s.timeline?.mitigation_instances ?? []);
   const setSlotJob = useTimelineStore((s) => s.setSlotJob);
   const setSlotHp = useTimelineStore((s) => s.setSlotHp);
+  const reorderSlot = useTimelineStore((s) => s.reorderSlot);
   const openJobDefaults = useJobDefaultsModalStore((s) => s.open);
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
   const toggleSlot = useViewStore((s) => s.toggleSlot);
   const [openPickerIdx, setOpenPickerIdx] = useState<number | null>(null);
+  // The slot + arrow direction last moved, so focus can follow it after the
+  // reorder re-renders (the clicked button is now at a different index).
+  const lastMovedRef = useRef<{ slotId: string; dir: "left" | "right" } | null>(null);
+
+  // After a reorder, refocus the same-direction arrow on the moved slot. If that
+  // arrow is now disabled (the slot reached an end), focus the opposite arrow so
+  // focus is never dropped onto a disabled control.
+  useLayoutEffect(() => {
+    const moved = lastMovedRef.current;
+    if (!moved) return;
+    lastMovedRef.current = null;
+    const sel = (dir: string) =>
+      document.querySelector<HTMLButtonElement>(
+        `[data-reorder-slot-id="${moved.slotId}"][data-reorder-dir="${dir}"]`,
+      );
+    const same = sel(moved.dir);
+    const target = same && !same.disabled ? same : sel(moved.dir === "left" ? "right" : "left");
+    target?.focus();
+  });
 
   const mitCountBySlotId = useMemo(() => {
     const m = new Map<string, number>();
@@ -90,6 +110,40 @@ export function RosterPanel() {
               >
                 {isHidden ? "Show" : "Hide"}
               </button>
+              <div className="roster-slot-reorder">
+                <button
+                  type="button"
+                  className="roster-slot-move"
+                  disabled={i === 0}
+                  aria-label={`Move ${slot.name_label ?? slot.job} left`}
+                  data-reorder-slot-id={slot.id}
+                  data-reorder-dir="left"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    setOpenPickerIdx(null);
+                    lastMovedRef.current = { slotId: slot.id, dir: "left" };
+                    reorderSlot(i, i - 1);
+                  }}
+                >
+                  ◀
+                </button>
+                <button
+                  type="button"
+                  className="roster-slot-move"
+                  disabled={i === roster.length - 1}
+                  aria-label={`Move ${slot.name_label ?? slot.job} right`}
+                  data-reorder-slot-id={slot.id}
+                  data-reorder-dir="right"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    setOpenPickerIdx(null);
+                    lastMovedRef.current = { slotId: slot.id, dir: "right" };
+                    reorderSlot(i, i + 1);
+                  }}
+                >
+                  ▶
+                </button>
+              </div>
               {pickerOpen && (
                 <JobPicker
                   currentJob={slot.job}
