@@ -2,7 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { confirm as confirmDialog, message as messageDialog } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MAX_NAME_LEN, TIMELINE_SCHEMA_VERSION } from "@/domain/types";
+import { MAX_NAME_LEN } from "@/domain/types";
 import {
   deleteWorkingTimeline,
   exportTimelineDialog,
@@ -273,9 +273,7 @@ export function App() {
         <header className="app-header">
           <div>
             <FightNameInput />
-            <p className="subtitle">
-              schema v{TIMELINE_SCHEMA_VERSION} · {savedLabel}
-            </p>
+            <p className="subtitle">{savedLabel}</p>
           </div>
           <div className="header-actions">
             <div className="toolbar-group">
