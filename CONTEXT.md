@@ -203,11 +203,23 @@ _Avoid_: number-input, numeric-input (as a component name — there is no shared
 ### State & validation
 
 **Conflict**:
-A flagged problem in the current timeline detected by pure-function inspection. Kinds: `orphan_mit`, `unset_target`. Distinct from a validation *error* — a timeline with conflicts is still loadable and editable.
+A flagged problem in the current timeline detected by pure-function inspection. Kinds: `orphan_mit` (a **Mitigation** whose required **Job** no longer matches its **player slot**), `unset_target` (a boss or mitigation instance whose required **Targeting** hasn't been picked), and `missing_consumed_mit` (a **Consume** mit fired with no active, unabsorbed source pool on its caster — see **Consume**). Distinct from a validation *error* — a timeline with conflicts is still loadable and editable.
 
 Cooldown overlap is *not* a conflict kind: two Bars on the same sub-lane (same slot + mit type) can never have overlapping `[effect_time, effect_time + cooldown_seconds]` ranges by construction — see the **Bar** entry. Placement and drag both snap `effect_time` to the earliest legal value.
 
 _Avoid_: error, warning, problem
+
+**Survival evaluation**:
+The pure, ordered computation that derives everything the **canvas** needs to answer "will the party survive?" — the per-time **damage chip** data (and the **Lethal** flags read off it) together with the active **Conflict** set. Owned by one domain module (`evaluateTimeline`, `src/domain/evaluate-timeline.ts`); the React layer only caches its result per Timeline reference (`use-derived.ts`). The steps run in order — **gating pass** → **Conflict** detection → **display pass** → per-time aggregation — and the whole thing is pure (the mit-library lookup is injected), so any surface can run it, not only the canvas hook. Colloquially the *survival math* — the long-standing phrase in prose and elsewhere in this glossary. The **Simple Timeline View** deliberately runs none of it.
+_Avoid_: damage pipeline, lethality engine, derived timeline (the former type name), derived bundle
+
+**Gating pass**:
+The first step of the **survival evaluation**: a damage walk over *non-consumer* mits only — those whose type has no `consumes` field (see **Consume**) — producing each **barrier pool**'s `absorbed_at` free of consumer interference. Its result feeds **Conflict** detection, so a **Consume** whose source pool was already **Absorbed** is caught (the `missing_consumed_mit` "absorbed Coat gates Grassa" case), and is reused at **Auto-spawn** time to decide whether a gated consumer child is worth materializing. Distinct from the **display pass**, which excludes *conflicted* mits rather than *consumers*.
+_Avoid_: probe pass, pre-pass, consumer-excluded pass
+
+**Display pass**:
+The damage walk that produces the **damage chip** data, run by the **survival evaluation** after **Conflict** detection over the *conflict-filtered* mit set (every mit not in the active **Conflict** set). A conflicted mit therefore stays visible on the **canvas** but contributes nothing to the damage math until the user resolves it. Named for what it feeds — the on-screen chips — as opposed to the **gating pass**, whose output is internal.
+_Avoid_: render pass, final pass, damage pass
 
 **Schema version**:
 The integer at the root of a saved timeline file. The deserializer strict-rejects anything that doesn't match the current version — no migrators in tree — so now that the app has outside users, bumping it strands their saved files. Currently `2` (bumped from `1` when `no_full_heal_slot_ids` was added to `BossAbilityInstance`).
