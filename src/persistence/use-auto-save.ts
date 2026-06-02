@@ -3,6 +3,7 @@
 // assignment itself is never echoed back to disk.
 
 import { useEffect, useState } from "react";
+import type { StoreApi } from "zustand";
 import { useAbilityColorsStore } from "@/state/ability-colors-store";
 import { useJobHpDefaultsStore } from "@/state/job-hp-defaults-store";
 import { useMitLaneLayoutStore } from "@/state/mit-lane-layout-store";
@@ -69,145 +70,94 @@ export function useAutoSave(enabled: boolean): AutoSaveStatus {
   return { lastSavedAt, error };
 }
 
-// Mirror of useAutoSave for the app-global Job HP defaults. Mounted only after
-// hydration completes (the load via setAll is treated as the baseline, never
-// echoed back to disk). Runs independently of the working timeline — config can
-// be edited from the Settings menu even with no timeline open.
+// One app-global preference's debounced auto-save lifecycle, lifted out of the
+// four near-identical hooks below. Subscribes `select(store)` and, on each
+// change, (re)arms a DEBOUNCE_MS save; the returned teardown unsubscribes and
+// flushes any pending change so a quick app-close doesn't lose the last edit.
+// `label` names the preference in the console on a save failure.
+function subscribeWithDebouncedSave<S, V>(
+  store: StoreApi<S>,
+  select: (state: S) => V,
+  save: (value: V) => Promise<void>,
+  label: string,
+): () => void {
+  let timeoutId: number | null = null;
+  let baseline = select(store.getState());
+
+  const flush = (value: V) => {
+    void save(value).catch((e: unknown) => {
+      console.error(`${label} save failed:`, e);
+    });
+  };
+
+  const unsubscribe = store.subscribe((state) => {
+    const next = select(state);
+    if (next === baseline) return;
+    baseline = next;
+    if (timeoutId !== null) clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => {
+      timeoutId = null;
+      flush(next);
+    }, DEBOUNCE_MS);
+  });
+
+  return () => {
+    unsubscribe();
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      flush(select(store.getState()));
+    }
+  };
+}
+
+// The four app-global preferences each auto-save independently of the working
+// timeline, mounted only after hydration (the load via setAll/setConfig is the
+// baseline and is never echoed back to disk). Each can be edited from the
+// Settings menu with no timeline open.
 export function useJobHpDefaultsAutoSave(enabled: boolean): void {
   useEffect(() => {
     if (!enabled) return;
-
-    let timeoutId: number | null = null;
-    let baseline = useJobHpDefaultsStore.getState().defaults;
-
-    const unsubscribe = useJobHpDefaultsStore.subscribe((state) => {
-      const next = state.defaults;
-      if (next === baseline) return;
-      baseline = next;
-      if (timeoutId !== null) clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(() => {
-        timeoutId = null;
-        void saveJobHpDefaults(next).catch((e: unknown) => {
-          console.error("Job HP defaults save failed:", e);
-        });
-      }, DEBOUNCE_MS);
-    });
-
-    return () => {
-      unsubscribe();
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
-        void saveJobHpDefaults(useJobHpDefaultsStore.getState().defaults).catch((e: unknown) => {
-          console.error("Job HP defaults save failed:", e);
-        });
-      }
-    };
+    return subscribeWithDebouncedSave(
+      useJobHpDefaultsStore,
+      (s) => s.defaults,
+      saveJobHpDefaults,
+      "Job HP defaults",
+    );
   }, [enabled]);
 }
 
-// Mirror of useJobHpDefaultsAutoSave for the app-global ability colors. Mounted
-// only after hydration completes (the load via setConfig is treated as the
-// baseline, never echoed back to disk). Runs independently of the working
-// timeline — colors can be edited from the Settings menu with no timeline open.
 export function useAbilityColorsAutoSave(enabled: boolean): void {
   useEffect(() => {
     if (!enabled) return;
-
-    let timeoutId: number | null = null;
-    let baseline = useAbilityColorsStore.getState().config;
-
-    const unsubscribe = useAbilityColorsStore.subscribe((state) => {
-      const next = state.config;
-      if (next === baseline) return;
-      baseline = next;
-      if (timeoutId !== null) clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(() => {
-        timeoutId = null;
-        void saveAbilityColors(next).catch((e: unknown) => {
-          console.error("Ability colors save failed:", e);
-        });
-      }, DEBOUNCE_MS);
-    });
-
-    return () => {
-      unsubscribe();
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
-        void saveAbilityColors(useAbilityColorsStore.getState().config).catch((e: unknown) => {
-          console.error("Ability colors save failed:", e);
-        });
-      }
-    };
+    return subscribeWithDebouncedSave(
+      useAbilityColorsStore,
+      (s) => s.config,
+      saveAbilityColors,
+      "Ability colors",
+    );
   }, [enabled]);
 }
 
-// Mirror of useAbilityColorsAutoSave for the app-global Mit lane layout. Mounted
-// only after hydration completes (the load via setAll is treated as the
-// baseline, never echoed back to disk). Runs independently of the working
-// timeline — the layout can be edited from the Settings menu with no timeline open.
 export function useMitLaneLayoutAutoSave(enabled: boolean): void {
   useEffect(() => {
     if (!enabled) return;
-
-    let timeoutId: number | null = null;
-    let baseline = useMitLaneLayoutStore.getState().layout;
-
-    const unsubscribe = useMitLaneLayoutStore.subscribe((state) => {
-      const next = state.layout;
-      if (next === baseline) return;
-      baseline = next;
-      if (timeoutId !== null) clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(() => {
-        timeoutId = null;
-        void saveMitLaneLayout(next).catch((e: unknown) => {
-          console.error("Mit lane layout save failed:", e);
-        });
-      }, DEBOUNCE_MS);
-    });
-
-    return () => {
-      unsubscribe();
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
-        void saveMitLaneLayout(useMitLaneLayoutStore.getState().layout).catch((e: unknown) => {
-          console.error("Mit lane layout save failed:", e);
-        });
-      }
-    };
+    return subscribeWithDebouncedSave(
+      useMitLaneLayoutStore,
+      (s) => s.layout,
+      saveMitLaneLayout,
+      "Mit lane layout",
+    );
   }, [enabled]);
 }
 
-// Mirror of useMitLaneLayoutAutoSave for the app-global Share options. Mounted
-// only after hydration completes (the load via setAll is treated as the baseline,
-// never echoed back to disk).
 export function useShareOptionsAutoSave(enabled: boolean): void {
   useEffect(() => {
     if (!enabled) return;
-
-    let timeoutId: number | null = null;
-    let baseline = useShareOptionsStore.getState().options;
-
-    const unsubscribe = useShareOptionsStore.subscribe((state) => {
-      const next = state.options;
-      if (next === baseline) return;
-      baseline = next;
-      if (timeoutId !== null) clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(() => {
-        timeoutId = null;
-        void saveShareOptions(next).catch((e: unknown) => {
-          console.error("Share options save failed:", e);
-        });
-      }, DEBOUNCE_MS);
-    });
-
-    return () => {
-      unsubscribe();
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
-        void saveShareOptions(useShareOptionsStore.getState().options).catch((e: unknown) => {
-          console.error("Share options save failed:", e);
-        });
-      }
-    };
+    return subscribeWithDebouncedSave(
+      useShareOptionsStore,
+      (s) => s.options,
+      saveShareOptions,
+      "Share options",
+    );
   }, [enabled]);
 }
