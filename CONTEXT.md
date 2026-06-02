@@ -59,7 +59,7 @@ The colloquial role group covering **roles** that primarily keep the party alive
 _Avoid_: utility, sustain, frontline
 
 **Job HP default**:
-An app-global, per-**job** max-HP value the user configures once (e.g. `WAR` → 148000) so a newly assigned **player slot** doesn't fall back to the 100,000 baseline. Stored with the app, never in a timeline file — it's a personal authoring convenience representing the user's *typical* roster baseline; per-roster deviations are **hand-tuned** slot overrides. When a job is assigned to a slot, its Job HP default seeds the slot's `hp` as **default-derived**. No Job HP default for a job ⇒ that job's slots fall back to the 100,000 baseline. Distinct from a slot's `hp`: the Job HP default is the *template*, while `hp` is the concrete per-slot value that feeds the damage math and travels with the timeline file.
+An app-global, per-**job** max-HP value the user configures once (e.g. `WAR` → 148000) so a newly assigned **player slot** doesn't fall back to the `PLAYER_MAX_HP` baseline. Stored with the app, never in a timeline file — it's a personal authoring convenience representing the user's *typical* roster baseline; per-roster deviations are **hand-tuned** slot overrides. When a job is assigned to a slot, its Job HP default seeds the slot's `hp` as **default-derived**. No Job HP default for a job ⇒ that job's slots fall back to the `PLAYER_MAX_HP` baseline. Distinct from a slot's `hp`: the Job HP default is the *template*, while `hp` is the concrete per-slot value that feeds the damage math and travels with the timeline file.
 _Avoid_: HP preset, saved HP, base HP, HP profile, locked HP
 
 **Phase**:
@@ -181,7 +181,7 @@ A computed property of a **damage chip** (a player's aggregated **hit**s at one 
 _Avoid_: deadly, fatal, kill
 
 **HP**:
-A player slot's maximum hit points, edited per-slot in the **ROSTER** panel. The cap (not the moment-to-moment value — that is **Carried HP**) that drives the per-player **Lethal** threshold. Stored on the slot (`PlayerSlot.hp`); when omitted, falls back to the party-wide `PLAYER_MAX_HP` constant. Clamped at the store boundary to `[SLOT_HP_MIN, SLOT_HP_MAX]` (1k–999k).
+A player slot's maximum hit points, edited per-slot in the **ROSTER** panel. The cap (not the moment-to-moment value — that is **Carried HP**) that drives the per-player **Lethal** threshold. Stored on the slot (`PlayerSlot.hp`); when omitted, falls back to the party-wide `PLAYER_MAX_HP` constant. Clamped at the store boundary to `[SLOT_HP_MIN, SLOT_HP_MAX]`.
 _Avoid_: hitpoints, max-hp, health, hp_max
 
 **Full heal**:
@@ -222,7 +222,7 @@ The damage walk that produces the **damage chip** data, run by the **survival ev
 _Avoid_: render pass, final pass, damage pass
 
 **Schema version**:
-The integer at the root of a saved timeline file. The deserializer strict-rejects anything that doesn't match the current version — no migrators in tree — so now that the app has outside users, bumping it strands their saved files. Currently `2` (bumped from `1` when `no_full_heal_slot_ids` was added to `BossAbilityInstance`).
+The integer at the root of a saved timeline file. The deserializer strict-rejects anything that doesn't match the current version — no migrators in tree — so now that the app has outside users, bumping it strands their saved files. The current value is the `TIMELINE_SCHEMA_VERSION` constant (`src/domain/types.ts`) — the source of truth; it was last bumped from `1` when `no_full_heal_slot_ids` was added to `BossAbilityInstance`.
 _Avoid_: file version, format version
 
 ### Canvas
