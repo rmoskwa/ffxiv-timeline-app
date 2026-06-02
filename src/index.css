@@ -2232,6 +2232,7 @@ button {
 }
 .lane-label--ruler {
   background: #1f1f1f;
+  justify-content: center;
 }
 .lane-label--boss {
   background: #2a1f15;

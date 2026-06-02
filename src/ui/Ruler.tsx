@@ -52,7 +52,7 @@ function AbsoluteRulerRow({
   return (
     <div className="lane-row lane-row--ruler" aria-hidden>
       {chipPosition !== "interleaved" && <PhantomGutter />}
-      <div className="lane-label lane-label--ruler" />
+      <div className="lane-label lane-label--ruler">Total Time</div>
       <div className="lane-track ruler-track" style={{ width: laneWidthPx }}>
         {ticks.map((t) => {
           const isLabeled = t % labelInterval === 0;
@@ -92,7 +92,7 @@ function PhaseRelativeRulerRow({
   return (
     <div className="lane-row lane-row--ruler lane-row--ruler-phase-relative" aria-hidden>
       {chipPosition !== "interleaved" && <PhantomGutter />}
-      <div className="lane-label lane-label--ruler" />
+      <div className="lane-label lane-label--ruler">Phase Time</div>
       <div
         className="lane-track ruler-track ruler-track--phase-relative"
         style={{ width: laneWidthPx }}
