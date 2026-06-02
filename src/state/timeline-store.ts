@@ -4,7 +4,7 @@
 import { create } from "zustand";
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
 import { hitLandsOn, resolveHit } from "@/domain/coverage";
-import { computeDamageTimeline, type MitInstanceState } from "@/domain/damage";
+import { computeGatingStates } from "@/domain/evaluate-timeline";
 import { clampSlotHp, resolveDefaultHp } from "@/domain/job-hp";
 import {
   normalizeNameForCompare,
@@ -859,21 +859,15 @@ function autoSpawnChildren(
   // Only need to compute parent absorbed_at if any child has `consumes`.
   let parentAbsorbedAt: number | null = null;
   if (gatedChildren.some((ct) => ct.consumes === parent.type_id)) {
-    const probeMits = [
-      ...timeline.mitigation_instances.filter((m) => {
-        const mt = getMitById(m.type_id);
-        return mt != null && mt.consumes == null;
-      }),
-      parent,
-    ];
-    const states = new Map<string, MitInstanceState>();
-    computeDamageTimeline(
+    // The same gating pass the survival evaluation runs, but over the committed
+    // mits plus the not-yet-committed parent — we only need the parent pool's
+    // absorbed_at to decide whether its consuming child is worth spawning.
+    const states = computeGatingStates(
+      [...timeline.mitigation_instances, parent],
       timeline.boss_ability_instances,
       timeline.boss_ability_types,
-      probeMits,
-      getMitById,
       timeline.roster,
-      states,
+      getMitById,
     );
     parentAbsorbedAt = states.get(parent.id)?.absorbed_at ?? null;
   }
