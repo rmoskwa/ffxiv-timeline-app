@@ -317,7 +317,11 @@ _Avoid_: fetch, ingest, sync; never use "import" for opening a full Timeline fro
 The one-way movement of timeline information *out* of the app into an external presentation format — for humans (and later other tools), never back into this app. The mirror of **Imports**, which round-trip.
 
 **Share**:
-Producing a human-facing rendering of a **Slice** of the Timeline in an external format, delivered to the clipboard for pasting elsewhere — Discord-flavored markdown today, possibly `.xlsx` later. One-way: a Share can never be re-imported, which is exactly what distinguishes it from **Export** (a boss-timeline Export round-trips). The Discord rendering reuses the **Simple Timeline View**'s temporal-presence model — a mitigation reads as *present* on every **hit** its **active window** covers — but emits a per-**Boss ability** text digest grouped by **Phase** rather than a grid, because Discord renders no markdown tables.
+Producing a human-facing rendering of the Timeline in an external format, delivered to the clipboard or a file for use elsewhere — never back into this app. One-way: a Share can never be re-imported, which is exactly what distinguishes it from **Export** (a boss-timeline Export round-trips). Two formats today (`.xlsx` possibly later):
+
+- **Markdown Share** (Discord): a per-**Boss ability** text digest of a **Slice**, grouped by **Phase**, copied to the clipboard. Reuses the **Simple Timeline View**'s temporal-presence model — a mitigation reads as *present* on every **hit** its **active window** covers — emitting a list rather than a grid, because Discord renders no markdown tables.
+- **Image Share** (PNG): a raster of the **Simple Timeline View** grid, saved to a file or copied to the clipboard. Captures the *whole* grid (no **Slice**) and inherits the view's live display state — **Coverage marker** visibility, slot hide/show, icon and column size — so the image matches what is on screen, with a user-typed title and an optional auto-hide of mitigation-free rows.
+
 _Avoid_: export (reserved for round-trippable data movement), dump, post
 
 **Slice**:
