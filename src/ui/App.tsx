@@ -11,6 +11,7 @@ import {
 import {
   useAbilityColorsAutoSave,
   useAutoSave,
+  useImageExportOptionsAutoSave,
   useJobHpDefaultsAutoSave,
   useMitLaneLayoutAutoSave,
   useShareOptionsAutoSave,
@@ -24,6 +25,7 @@ import { AddPhaseModal } from "./AddPhaseModal";
 import { ClearTimelineModal, useClearTimelineModalStore } from "./ClearTimelineModal";
 import { ExportMenu } from "./ExportMenu";
 import { HelpModals, useHelpModalStore } from "./HelpModals";
+import { ImageExportModal } from "./ImageExportModal";
 import { importErrorMessage } from "./import-error-message";
 import { JobDefaultsModal } from "./JobDefaultsModal";
 import { type Menu, MenuBar } from "./MenuBar";
@@ -38,7 +40,9 @@ import { OpenIcon, SaveIcon, TrashIcon } from "./ToolbarIcons";
 import { useAbilityColorsModalStore } from "./use-ability-colors-modal";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
 import { useBossImportExport } from "./use-boss-import-export";
+import { useEditorViewStore } from "./use-editor-view";
 import { useHistoryRecorder } from "./use-history-recorder";
+import { useImageExportModalStore } from "./use-image-export-modal";
 import { useJobDefaultsModalStore } from "./use-job-defaults-modal";
 import { useMitLaneLayoutModalStore } from "./use-mit-lane-layout-modal";
 import { useMitReferenceModalStore } from "./use-mit-reference-modal";
@@ -64,6 +68,8 @@ export function App() {
   const openMitLaneLayout = useMitLaneLayoutModalStore((s) => s.open);
   const openMitReference = useMitReferenceModalStore((s) => s.open);
   const openShare = useShareModalStore((s) => s.open);
+  const openImageExport = useImageExportModalStore((s) => s.open);
+  const editorView = useEditorViewStore((s) => s.view);
   const showHelp = useHelpModalStore((s) => s.show);
   const jobHpDefaults = useJobHpDefaultsStore((s) => s.defaults);
   const { handleImport: handleBossImport, handleExport: handleBossExport } = useBossImportExport();
@@ -78,6 +84,7 @@ export function App() {
   useAbilityColorsAutoSave(hydrated);
   useMitLaneLayoutAutoSave(hydrated);
   useShareOptionsAutoSave(hydrated);
+  useImageExportOptionsAutoSave(hydrated);
   // Record edits for undo/redo once hydrated. Resets itself on a document
   // boundary (New / Open / Discard) — see use-history-recorder.ts.
   useHistoryRecorder(hydrated);
@@ -298,7 +305,12 @@ export function App() {
             </div>
             <span className="toolbar-divider" aria-hidden="true" />
             <div className="toolbar-group">
-              <ExportMenu onShare={openShare} disabled={timeline === null} />
+              <ExportMenu
+                onShare={openShare}
+                onImage={openImageExport}
+                imageAvailable={editorView === "simple"}
+                disabled={timeline === null}
+              />
             </div>
             <span className="toolbar-spacer" aria-hidden="true" />
             <button
@@ -324,6 +336,7 @@ export function App() {
         <MitLaneLayoutModal />
         <MitReferenceModal />
         <ShareModal />
+        <ImageExportModal />
       </div>
       <HelpModals />
     </div>
