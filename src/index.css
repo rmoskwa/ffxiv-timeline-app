@@ -2232,6 +2232,7 @@ button {
 }
 .lane-label--ruler {
   background: #1f1f1f;
+  justify-content: center;
 }
 .lane-label--boss {
   background: #2a1f15;
@@ -4694,7 +4695,17 @@ button {
   bottom: 0;
 }
 .lane-row--ruler-phase-relative {
+  /* Opaque fill so the dashed border's gaps reveal this row's own background
+     rather than the timeline content scrolling behind the pinned header. */
+  background: #1f1f1f;
   border-bottom: 1px dashed #333;
+}
+/* The phase-relative row and absolute ruler row both carry .lane-row--ruler,
+   so both pin at top:0 and overlap — with equal z-index the later-painted
+   absolute row hides the phase row on scroll. When the phase row is present,
+   pin the absolute row directly below it (offset by the 28px row height). */
+.lane-row--ruler-phase-relative + .lane-row--ruler {
+  top: 28px;
 }
 
 /* ─── Boss panel — per-phase grouping ────────────────────────────────── */
@@ -4764,6 +4775,7 @@ button {
   opacity: 0.25;
 }
 .theme-light .lane-row--ruler-phase-relative {
+  background: #ececec;
   border-bottom-color: #d4d4d4;
 }
 
