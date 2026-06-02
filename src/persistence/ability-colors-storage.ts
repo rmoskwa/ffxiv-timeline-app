@@ -1,21 +1,10 @@
-// Tauri FS wiring for the app-global Ability color defaults. Mirrors
-// job-hp-defaults-storage.ts: a single JSON file in the app data directory,
-// loaded on boot and auto-saved on change. Separate from the working timeline —
-// these are personal config, not part of any shared plan.
+// Forgiving parse + persistence config for the app-global Ability color defaults.
+// The load/save/ensure-dir shell is the shared persistedPreference factory; only
+// the forgiving parse and the file name live here. Separate from the working
+// timeline — personal config, not part of any shared plan.
 
-import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import type { AbilityColorConfig, SurfacedScheme } from "@/state/ability-colors-store";
-
-const COLORS_FILE = "ability-colors.json";
-const FILE_OPTS = { baseDir: BaseDirectory.AppData } as const;
-
-// Mirror storage.ts: writeTextFile won't create the AppData folder, so ensure
-// it once per session before the first save.
-let ensureDirPromise: Promise<void> | null = null;
-function ensureAppDataDir(): Promise<void> {
-  ensureDirPromise ??= mkdir("", { baseDir: BaseDirectory.AppData, recursive: true });
-  return ensureDirPromise;
-}
+import { persistedPreference } from "./persisted-preference";
 
 const DAMAGE_TYPES: ReadonlySet<string> = new Set(["magical", "physical", "unaspected"]);
 const TARGET_PATTERNS: ReadonlySet<string> = new Set(["raidwide", "targeted", "stack"]);
@@ -62,13 +51,11 @@ export function parseAbilityColors(json: string): AbilityColorConfig {
   };
 }
 
-export async function loadAbilityColors(): Promise<AbilityColorConfig> {
-  if (!(await exists(COLORS_FILE, FILE_OPTS))) return emptyConfig();
-  const text = await readTextFile(COLORS_FILE, FILE_OPTS);
-  return parseAbilityColors(text);
-}
+const abilityColorsStorage = persistedPreference<AbilityColorConfig>({
+  file: "ability-colors.json",
+  fallback: emptyConfig,
+  parse: parseAbilityColors,
+});
 
-export async function saveAbilityColors(config: AbilityColorConfig): Promise<void> {
-  await ensureAppDataDir();
-  await writeTextFile(COLORS_FILE, JSON.stringify(config, null, 2), FILE_OPTS);
-}
+export const loadAbilityColors = abilityColorsStorage.load;
+export const saveAbilityColors = abilityColorsStorage.save;

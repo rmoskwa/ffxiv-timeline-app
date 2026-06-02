@@ -1,46 +1,13 @@
-// Tauri FS wiring for the app-global Job HP defaults. Mirrors storage.ts: a
-// single JSON file in the app data directory, loaded on boot and auto-saved on
-// change. Separate from the working timeline — these are personal config, not
-// part of any shared plan.
+// Forgiving parse + persistence config for the app-global Job HP defaults. The
+// load/save/ensure-dir shell is the shared persistedPreference factory; only the
+// forgiving parse and the file name live here. Separate from the working
+// timeline — personal config, not part of any shared plan.
 
-import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { clampSlotHp, type JobHpDefaults } from "@/domain/job-hp";
-import type { Job } from "@/domain/types";
+import { ALL_JOBS, type Job } from "@/domain/types";
+import { persistedPreference } from "./persisted-preference";
 
-const DEFAULTS_FILE = "job-hp-defaults.json";
-const FILE_OPTS = { baseDir: BaseDirectory.AppData } as const;
-
-// Mirror storage.ts: writeTextFile won't create the AppData folder, so ensure
-// it once per session before the first save.
-let ensureDirPromise: Promise<void> | null = null;
-function ensureAppDataDir(): Promise<void> {
-  ensureDirPromise ??= mkdir("", { baseDir: BaseDirectory.AppData, recursive: true });
-  return ensureDirPromise;
-}
-
-const JOBS: ReadonlySet<string> = new Set([
-  "PLD",
-  "WAR",
-  "DRK",
-  "GNB",
-  "WHM",
-  "SCH",
-  "AST",
-  "SGE",
-  "MNK",
-  "DRG",
-  "NIN",
-  "SAM",
-  "RPR",
-  "VPR",
-  "BRD",
-  "MCH",
-  "DNC",
-  "BLM",
-  "SMN",
-  "RDM",
-  "PCT",
-]);
+const JOBS: ReadonlySet<string> = new Set(ALL_JOBS);
 
 // Forgiving parse: keep only known jobs with a finite positive number, clamped
 // to the slot-HP range. A corrupt or hand-edited file degrades to a partial map
@@ -62,13 +29,11 @@ export function parseJobHpDefaults(json: string): JobHpDefaults {
   return out;
 }
 
-export async function loadJobHpDefaults(): Promise<JobHpDefaults> {
-  if (!(await exists(DEFAULTS_FILE, FILE_OPTS))) return {};
-  const text = await readTextFile(DEFAULTS_FILE, FILE_OPTS);
-  return parseJobHpDefaults(text);
-}
+const jobHpDefaultsStorage = persistedPreference<JobHpDefaults>({
+  file: "job-hp-defaults.json",
+  fallback: () => ({}),
+  parse: parseJobHpDefaults,
+});
 
-export async function saveJobHpDefaults(defaults: JobHpDefaults): Promise<void> {
-  await ensureAppDataDir();
-  await writeTextFile(DEFAULTS_FILE, JSON.stringify(defaults, null, 2), FILE_OPTS);
-}
+export const loadJobHpDefaults = jobHpDefaultsStorage.load;
+export const saveJobHpDefaults = jobHpDefaultsStorage.save;

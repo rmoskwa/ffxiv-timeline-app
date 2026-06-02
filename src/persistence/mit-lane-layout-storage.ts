@@ -1,46 +1,13 @@
-// Tauri FS wiring for the app-global Mit lane layout. Mirrors
-// job-hp-defaults-storage.ts / ability-colors-storage.ts: a single JSON file in
-// the app data directory, loaded on boot and auto-saved on change. Separate from
-// the working timeline — personal config, not part of any shared plan.
+// Forgiving parse + persistence config for the app-global Mit lane layout. The
+// load/save/ensure-dir shell is the shared persistedPreference factory; only the
+// forgiving parse and the file name live here. Separate from the working
+// timeline — personal config, not part of any shared plan.
 
-import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import type { Job } from "@/domain/types";
+import { ALL_JOBS, type Job } from "@/domain/types";
 import type { MitLaneEntry, MitLaneLayout } from "@/state/mit-lane-layout-store";
+import { persistedPreference } from "./persisted-preference";
 
-const LAYOUT_FILE = "mit-lane-layout.json";
-const FILE_OPTS = { baseDir: BaseDirectory.AppData } as const;
-
-// Mirror storage.ts: writeTextFile won't create the AppData folder, so ensure
-// it once per session before the first save.
-let ensureDirPromise: Promise<void> | null = null;
-function ensureAppDataDir(): Promise<void> {
-  ensureDirPromise ??= mkdir("", { baseDir: BaseDirectory.AppData, recursive: true });
-  return ensureDirPromise;
-}
-
-const JOBS: ReadonlySet<string> = new Set([
-  "PLD",
-  "WAR",
-  "DRK",
-  "GNB",
-  "WHM",
-  "SCH",
-  "AST",
-  "SGE",
-  "MNK",
-  "DRG",
-  "NIN",
-  "SAM",
-  "RPR",
-  "VPR",
-  "BRD",
-  "MCH",
-  "DNC",
-  "BLM",
-  "SMN",
-  "RDM",
-  "PCT",
-]);
+const JOBS: ReadonlySet<string> = new Set(ALL_JOBS);
 
 // Shape-only parse of one job's entry array: keep only entries with a string
 // `typeId`, coercing a missing/non-boolean `hidden` to false. Does NOT validate
@@ -79,13 +46,11 @@ export function parseMitLaneLayout(json: string): MitLaneLayout {
   return out;
 }
 
-export async function loadMitLaneLayout(): Promise<MitLaneLayout> {
-  if (!(await exists(LAYOUT_FILE, FILE_OPTS))) return {};
-  const text = await readTextFile(LAYOUT_FILE, FILE_OPTS);
-  return parseMitLaneLayout(text);
-}
+const mitLaneLayoutStorage = persistedPreference<MitLaneLayout>({
+  file: "mit-lane-layout.json",
+  fallback: () => ({}),
+  parse: parseMitLaneLayout,
+});
 
-export async function saveMitLaneLayout(layout: MitLaneLayout): Promise<void> {
-  await ensureAppDataDir();
-  await writeTextFile(LAYOUT_FILE, JSON.stringify(layout, null, 2), FILE_OPTS);
-}
+export const loadMitLaneLayout = mitLaneLayoutStorage.load;
+export const saveMitLaneLayout = mitLaneLayoutStorage.save;

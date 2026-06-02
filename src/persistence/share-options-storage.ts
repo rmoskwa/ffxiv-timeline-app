@@ -1,22 +1,11 @@
-// Tauri FS wiring for the app-global Share options. Mirrors
-// ability-colors-storage.ts / mit-lane-layout-storage.ts: a single JSON file in
-// the app data directory, loaded on boot and auto-saved on change. Separate from
-// the working timeline — personal config, not part of any shared plan.
+// Forgiving parse + persistence config for the app-global Share options. The
+// load/save/ensure-dir shell is the shared persistedPreference factory; only the
+// forgiving parse and the file name live here. Separate from the working
+// timeline — personal config, not part of any shared plan.
 
-import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { DEFAULT_SHARE_OPTIONS } from "@/state/share-options-store";
 import type { ShareAttribution, ShareOptions } from "@/ui/share-markdown";
-
-const OPTIONS_FILE = "share-options.json";
-const FILE_OPTS = { baseDir: BaseDirectory.AppData } as const;
-
-// Mirror storage.ts: writeTextFile won't create the AppData folder, so ensure it
-// once per session before the first save.
-let ensureDirPromise: Promise<void> | null = null;
-function ensureAppDataDir(): Promise<void> {
-  ensureDirPromise ??= mkdir("", { baseDir: BaseDirectory.AppData, recursive: true });
-  return ensureDirPromise;
-}
+import { persistedPreference } from "./persisted-preference";
 
 const ATTRIBUTIONS: ReadonlySet<string> = new Set<ShareAttribution>([
   "job",
@@ -61,13 +50,11 @@ export function parseShareOptions(json: string): ShareOptions {
   };
 }
 
-export async function loadShareOptions(): Promise<ShareOptions> {
-  if (!(await exists(OPTIONS_FILE, FILE_OPTS))) return { ...DEFAULT_SHARE_OPTIONS };
-  const text = await readTextFile(OPTIONS_FILE, FILE_OPTS);
-  return parseShareOptions(text);
-}
+const shareOptionsStorage = persistedPreference<ShareOptions>({
+  file: "share-options.json",
+  fallback: () => ({ ...DEFAULT_SHARE_OPTIONS }),
+  parse: parseShareOptions,
+});
 
-export async function saveShareOptions(options: ShareOptions): Promise<void> {
-  await ensureAppDataDir();
-  await writeTextFile(OPTIONS_FILE, JSON.stringify(options, null, 2), FILE_OPTS);
-}
+export const loadShareOptions = shareOptionsStorage.load;
+export const saveShareOptions = shareOptionsStorage.save;

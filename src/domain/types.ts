@@ -45,6 +45,34 @@ export type Job =
   | "RDM"
   | "PCT";
 
+// Runtime list of every Job, in role order — the companion the `Job` union can't
+// provide at runtime. Single source for job-membership tests and job iteration
+// (e.g. the forgiving preference parsers in src/persistence/). `satisfies` rejects
+// any entry that isn't a Job.
+export const ALL_JOBS = [
+  "PLD",
+  "WAR",
+  "DRK",
+  "GNB",
+  "WHM",
+  "SCH",
+  "AST",
+  "SGE",
+  "MNK",
+  "DRG",
+  "NIN",
+  "SAM",
+  "RPR",
+  "VPR",
+  "BRD",
+  "MCH",
+  "DNC",
+  "BLM",
+  "SMN",
+  "RDM",
+  "PCT",
+] as const satisfies readonly Job[];
+
 export type JobOrUnset = Job | "unset";
 
 export type Role = "tank" | "healer" | "melee" | "ranged" | "caster" | "unset";
