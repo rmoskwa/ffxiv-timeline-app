@@ -5,11 +5,13 @@
 import { useEffect, useState } from "react";
 import type { StoreApi } from "zustand";
 import { useAbilityColorsStore } from "@/state/ability-colors-store";
+import { useImageExportOptionsStore } from "@/state/image-export-options-store";
 import { useJobHpDefaultsStore } from "@/state/job-hp-defaults-store";
 import { useMitLaneLayoutStore } from "@/state/mit-lane-layout-store";
 import { useShareOptionsStore } from "@/state/share-options-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { saveAbilityColors } from "./ability-colors-storage";
+import { saveImageExportOptions } from "./image-export-options-storage";
 import { saveJobHpDefaults } from "./job-hp-defaults-storage";
 import { saveMitLaneLayout } from "./mit-lane-layout-storage";
 import { saveShareOptions } from "./share-options-storage";
@@ -158,6 +160,18 @@ export function useShareOptionsAutoSave(enabled: boolean): void {
       (s) => s.options,
       saveShareOptions,
       "Share options",
+    );
+  }, [enabled]);
+}
+
+export function useImageExportOptionsAutoSave(enabled: boolean): void {
+  useEffect(() => {
+    if (!enabled) return;
+    return subscribeWithDebouncedSave(
+      useImageExportOptionsStore,
+      (s) => s.options,
+      saveImageExportOptions,
+      "Image export options",
     );
   }, [enabled]);
 }
