@@ -227,7 +227,8 @@ export interface MitigationType {
   // Only meaningful when `gated_by` is set. When omitted, defaults to the
   // parent's `duration_seconds`. Set only for AST Sun Sign (30s, exceeds
   // Neutral Sect's 20s active by 10s — the Suntouched buff outlives its parent)
-  // and WHM Divine Caress (10s, shorter than Temperance's 20s active).
+  // and WHM Divine Caress (30s, exceeds Temperance's 20s active by 10s — the
+  // Divine Grace buff outlives its parent).
   execution_zone_seconds?: number;
   // Inner sub-windows that boost `mitigation_per_type` while active. Each tier
   // applies multiplicatively on top of the outer mit for any hit whose
