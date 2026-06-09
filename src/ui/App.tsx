@@ -37,6 +37,7 @@ import { SetupWizard } from "./SetupWizard";
 import { ShareModal } from "./ShareModal";
 import { TimelineEditor } from "./TimelineEditor";
 import { OpenIcon, SaveIcon, TrashIcon } from "./ToolbarIcons";
+import { UpdateNoticeModal } from "./UpdateNoticeModal";
 import { useAbilityColorsModalStore } from "./use-ability-colors-modal";
 import { useAddPhaseModalStore } from "./use-add-phase-modal";
 import { useBossImportExport } from "./use-boss-import-export";
@@ -48,6 +49,7 @@ import { useMitLaneLayoutModalStore } from "./use-mit-lane-layout-modal";
 import { useMitReferenceModalStore } from "./use-mit-reference-modal";
 import { useShareModalStore } from "./use-share-modal";
 import { useUpdateCheck } from "./use-update-check";
+import { useUpdateNoticeStore } from "./use-update-notice";
 
 const GITHUB_URL = "https://github.com/rmoskwa/ffxiv-timeline-app";
 
@@ -71,6 +73,10 @@ export function App() {
   const openImageExport = useImageExportModalStore((s) => s.open);
   const setEditorView = useEditorViewStore((s) => s.setView);
   const showHelp = useHelpModalStore((s) => s.show);
+  // Deferred Update: a pending update whose Notice is closed surfaces as the
+  // menu-bar button (hidden while the Notice itself is up).
+  const updateDeferred = useUpdateNoticeStore((s) => s.pending !== null && !s.isOpen);
+  const openUpdateNotice = useUpdateNoticeStore((s) => s.open);
   const jobHpDefaults = useJobHpDefaultsStore((s) => s.defaults);
   const { handleImport: handleBossImport, handleExport: handleBossExport } = useBossImportExport();
 
@@ -245,15 +251,27 @@ export function App() {
   );
 
   const menuBarRightSlot = (
-    <button
-      type="button"
-      className="menu-bar-icon-button"
-      onClick={handleOpenGitHub}
-      title="View on GitHub"
-      aria-label="View on GitHub"
-    >
-      <OctocatIcon size={18} />
-    </button>
+    <>
+      {updateDeferred && (
+        <button
+          type="button"
+          className="menu-bar-update-button"
+          onClick={openUpdateNotice}
+          title="A new version is ready to install"
+        >
+          Update available
+        </button>
+      )}
+      <button
+        type="button"
+        className="menu-bar-icon-button"
+        onClick={handleOpenGitHub}
+        title="View on GitHub"
+        aria-label="View on GitHub"
+      >
+        <OctocatIcon size={18} />
+      </button>
+    </>
   );
 
   if (!hydrated) {
@@ -270,6 +288,7 @@ export function App() {
         <MitLaneLayoutModal />
         <MitReferenceModal />
         <HelpModals />
+        <UpdateNoticeModal />
       </div>
     );
   }
@@ -345,6 +364,7 @@ export function App() {
         <ImageExportModal />
       </div>
       <HelpModals />
+      <UpdateNoticeModal />
     </div>
   );
 }
