@@ -149,8 +149,7 @@ export function ImageExportModal() {
         </div>
 
         <p className="image-export-hint">
-          Captures the Simple view exactly as shown — coverage markers, hidden slots, and icon /
-          column sizes included. PNG, on a solid background.
+          Captures the Simple view exactly as shown. Exported .png is fit to scale.
         </p>
 
         <label className="image-export-field">
@@ -180,7 +179,7 @@ export function ImageExportModal() {
             {status === "idle" ? "" : STATUS_TEXT[status]}
           </span>
           <button type="button" onClick={handleSave} disabled={busy}>
-            Save…
+            Save
           </button>
           <button type="button" onClick={handleCopy} disabled={busy}>
             Copy
