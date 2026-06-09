@@ -69,7 +69,7 @@ export function App() {
   const openMitReference = useMitReferenceModalStore((s) => s.open);
   const openShare = useShareModalStore((s) => s.open);
   const openImageExport = useImageExportModalStore((s) => s.open);
-  const editorView = useEditorViewStore((s) => s.view);
+  const setEditorView = useEditorViewStore((s) => s.setView);
   const showHelp = useHelpModalStore((s) => s.show);
   const jobHpDefaults = useJobHpDefaultsStore((s) => s.defaults);
   const { handleImport: handleBossImport, handleExport: handleBossExport } = useBossImportExport();
@@ -132,6 +132,13 @@ export function App() {
   const handleOpenGitHub = useCallback(async () => {
     await openUrl(GITHUB_URL);
   }, []);
+
+  // Image export rasters the live Simple grid, so make sure that view is
+  // mounted before the dialog opens (capture itself runs later, on Save/Copy).
+  const handleImageExport = useCallback(() => {
+    setEditorView("simple");
+    openImageExport();
+  }, [setEditorView, openImageExport]);
 
   const menus = useMemo<Menu[]>(
     () => [
@@ -307,8 +314,7 @@ export function App() {
             <div className="toolbar-group">
               <ExportMenu
                 onShare={openShare}
-                onImage={openImageExport}
-                imageAvailable={editorView === "simple"}
+                onImage={handleImageExport}
                 disabled={timeline === null}
               />
             </div>

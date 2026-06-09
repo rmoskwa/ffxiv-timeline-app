@@ -79,8 +79,8 @@ export function ImageExportModal() {
   // Resolve the live grid and theme colors, then raster — holding "Capturing…"
   // in the status line while the raster runs (a large grid takes a couple of
   // seconds). Returns null (with an error status) if the grid node is missing —
-  // shouldn't happen behind the availability gate, but the delivery handlers
-  // guard on it anyway.
+  // shouldn't happen since opening the dialog switches to the Simple view, but
+  // the delivery handlers guard on it anyway.
   const capture = async (errorStatus: "save-error" | "copy-error"): Promise<Blob | null> => {
     const gridEl = document.querySelector<HTMLElement>(".simple-grid");
     if (!gridEl) {

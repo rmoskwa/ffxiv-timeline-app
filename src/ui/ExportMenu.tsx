@@ -1,7 +1,7 @@
 // The Export hub: a single gold accent button that opens a menu of output
 // formats. Markdown (Discord) routes to the Share modal and Image (.png) to the
-// Image Export dialog (live, but only while the Simple Timeline View is active —
-// it rasters that grid); the spreadsheet/CSV rows are placeholders for deferred
+// Image Export dialog (rasters the Simple grid — the app auto-switches to the
+// Simple view if needed); the spreadsheet/CSV rows are placeholders for deferred
 // export features, shown disabled with a "Soon" badge so users can see where
 // they'll land without the layout shifting when they ship.
 //
@@ -25,22 +25,15 @@ interface ExportRow {
   onClick?: () => void;
   // Not-yet-implemented placeholder: shown disabled with a "Soon" badge.
   soon?: boolean;
-  // Available-but-gated (right view/state needed): shown inactive with this
-  // tooltip, but kept focusable (aria-disabled, not disabled) so the reason is
-  // reachable on hover and announced.
-  gatedReason?: string | undefined;
 }
 
 interface ExportMenuProps {
   onShare: () => void;
   onImage: () => void;
-  // Image Share rasters the live Simple grid, so it's only available while the
-  // Simple Timeline View is active (the grid must be in the DOM).
-  imageAvailable: boolean;
   disabled?: boolean;
 }
 
-export function ExportMenu({ onShare, onImage, imageAvailable, disabled }: ExportMenuProps) {
+export function ExportMenu({ onShare, onImage, disabled }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
@@ -51,13 +44,7 @@ export function ExportMenu({ onShare, onImage, imageAvailable, disabled }: Expor
     { label: "Markdown", hint: "Discord", Icon: FileTextIcon, onClick: onShare },
     { label: "Spreadsheet", hint: ".xlsx", Icon: TableIcon, soon: true },
     { label: "CSV", hint: ".csv", Icon: TableIcon, soon: true },
-    {
-      label: "Image",
-      hint: ".png",
-      Icon: ImageIcon,
-      onClick: onImage,
-      gatedReason: imageAvailable ? undefined : "Switch to the Simple view to export an image.",
-    },
+    { label: "Image", hint: ".png", Icon: ImageIcon, onClick: onImage },
   ];
 
   // Close on outside pointerdown or Escape; restore focus to the trigger on Esc.
@@ -124,11 +111,6 @@ export function ExportMenu({ onShare, onImage, imageAvailable, disabled }: Expor
       {open && (
         <div id={panelId} role="menu" aria-label="Export timeline" className="export-menu-panel">
           {rows.map((row, idx) => {
-            const gated = row.gatedReason != null;
-            // Soon rows use native :disabled (and skip keyboard focus); the
-            // view-gated row stays focusable via aria-disabled so its tooltip is
-            // reachable. Both are inactive — neither runs its onClick.
-            const inactive = row.soon === true || gated;
             return (
               <button
                 key={row.label}
@@ -136,10 +118,8 @@ export function ExportMenu({ onShare, onImage, imageAvailable, disabled }: Expor
                 role="menuitem"
                 className="export-menu-item"
                 disabled={row.soon === true}
-                aria-disabled={gated || undefined}
-                title={row.gatedReason}
                 onClick={() => {
-                  if (inactive) return;
+                  if (row.soon === true) return;
                   row.onClick?.();
                   close();
                 }}
