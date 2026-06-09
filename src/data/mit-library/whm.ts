@@ -65,9 +65,10 @@ export const WHM_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "utility",
     gated_by: "whm.temperance",
-    // 10s execution zone — shorter than Temperance's 20s active. Divine Caress
-    // can only be cast in the first half of Temperance's window.
-    execution_zone_seconds: 10,
+    // 30s execution zone — the Divine Grace buff outlives Temperance's 20s
+    // active by 10s, so Divine Caress is castable for the full 30s after the
+    // Temperance cast (mirrors AST Sun Sign / Suntouched).
+    execution_zone_seconds: 30,
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Divine_Caress",
   },
 ];
