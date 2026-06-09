@@ -379,3 +379,13 @@ _Avoid_: active scheme, selected scheme, color mode
 **Ability color default**:
 An app-global, per-(**damage type** | **target pattern**) text color the user configures once so abilities of a given kind read at a glance. A sparse, optional map (one per **Color scheme**) — an *absent* value falls back to the theme-neutral text color, so an unconfigured app looks exactly as before. Stored in its own AppData file, never serialized into a timeline. Parallels **Job HP default** (blank = baseline). On the canvas **Label**, the configured color paints the text only in the resting state: a *lethal* hit overrides it with a red **border** (not red text), and an *unset-target* hit overrides it entirely with the yellow background + dark text; *selected* adds a blue halo that composes with any of these.
 _Avoid_: color preset, custom color, type color
+
+### Updates
+
+**Update Notice**:
+The in-app modal announcing that a newer app version exists, showing that release's notes and offering to install now or later. Each release earns exactly one Notice; declining it (however the modal is closed) is remembered.
+_Avoid_: update dialog, update popup, update notification, nag
+
+**Deferred Update**:
+A pending update whose **Update Notice** was declined. It remains quietly available as a clickable "Update available" affordance in the menu bar until installed or superseded by a newer release, which earns a fresh **Update Notice**.
+_Avoid_: dismissed update, skipped version, snoozed update
