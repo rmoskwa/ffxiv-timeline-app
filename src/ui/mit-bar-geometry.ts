@@ -204,8 +204,10 @@ export function computeChildGeometry(args: ComputeChildGeometryArgs): ChildGeome
   const parentActiveEnd = parentEffectTime + parentDurationSec;
   const iconLeftPx = (childEffectTime - parentEffectTime) * pxPerSec + pxPerSec / 2;
 
-  // Utility children carry no duration band; same for zero-duration types.
-  const showBand = childType.mechanic !== "utility" && childType.duration_seconds > 0;
+  // Any child with a duration shows its band — utility children included
+  // (their empty mitigation_per_type already keeps them out of the damage
+  // math). Only zero-duration types render icon-only.
+  const showBand = childType.duration_seconds > 0;
   if (!showBand) {
     return { iconLeftPx, innerBand: undefined, extensionBand: undefined };
   }
