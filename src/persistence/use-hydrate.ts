@@ -5,11 +5,13 @@
 
 import { useEffect, useState } from "react";
 import { useAbilityColorsStore } from "@/state/ability-colors-store";
+import { useImageExportOptionsStore } from "@/state/image-export-options-store";
 import { useJobHpDefaultsStore } from "@/state/job-hp-defaults-store";
 import { useMitLaneLayoutStore } from "@/state/mit-lane-layout-store";
 import { useShareOptionsStore } from "@/state/share-options-store";
 import { useTimelineStore } from "@/state/timeline-store";
 import { loadAbilityColors } from "./ability-colors-storage";
+import { loadImageExportOptions } from "./image-export-options-storage";
 import { loadJobHpDefaults } from "./job-hp-defaults-storage";
 import { loadMitLaneLayout } from "./mit-lane-layout-storage";
 import { loadShareOptions } from "./share-options-storage";
@@ -49,6 +51,10 @@ export function useHydrate(): HydrateState {
         const shareOptions = await loadShareOptions();
         if (cancelled) return;
         useShareOptionsStore.getState().setAll(shareOptions);
+        // App-global Image Export options (auto-hide-empty toggle for the Image Share).
+        const imageExportOptions = await loadImageExportOptions();
+        if (cancelled) return;
+        useImageExportOptionsStore.getState().setAll(imageExportOptions);
         const tl = await loadWorkingTimeline(defaults);
         if (cancelled) return;
         if (tl) useTimelineStore.getState().loadTimeline(tl);

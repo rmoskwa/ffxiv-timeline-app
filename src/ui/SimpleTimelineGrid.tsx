@@ -28,6 +28,7 @@ import { TimecodeField } from "./primitives/TimecodeField";
 import { jobColor } from "./role-color";
 import { SimpleGridAddRow } from "./SimpleGridAddRow";
 import { SimpleGridMitPicker } from "./SimpleGridMitPicker";
+import { isRowMitigationFree } from "./simple-grid-empty-row";
 import { legalChildAnchorRows, restackGatedChildren } from "./simple-grid-placement";
 import { projectInstancesToHits } from "./simple-grid-projection";
 import { COLUMN_WIDTH_MAX, COLUMN_WIDTH_MIN, useColumnWidthStore } from "./use-column-width";
@@ -567,6 +568,14 @@ export function SimpleTimelineGrid() {
               // damage-type color.
               const nameColor = type ? abilityTextColor(type, "target_pattern", colorConfig) : null;
               const typeColor = type ? abilityTextColor(type, "damage_type", colorConfig) : null;
+              // Rows rendering no chip in any displayed slot (WYSIWYG: Coverage
+              // markers count only while shown) are tagged so the Image Share
+              // can opt to drop them; inert until that capture filter reads it
+              // (§5.1).
+              const isEmptyRow = isRowMitigationFree(
+                displayedSlots.map((slot) => chipsBySlotRow.get(slot.id)?.get(item.rowIndex)),
+                showCoverageMarkers,
+              );
               return (
                 <tr
                   key={item.inst.id}
@@ -574,6 +583,7 @@ export function SimpleTimelineGrid() {
                     item.rowIndex % 2 === 1 ? " simple-grid-row--alt" : ""
                   }${item.inst.id === selectedBossInstanceId ? " is-selected" : ""}`}
                   data-boss-instance-id={item.inst.id}
+                  data-empty-row={isEmptyRow ? "true" : undefined}
                 >
                   <td className="simple-grid-col-time">
                     {item.phasePrefix && (

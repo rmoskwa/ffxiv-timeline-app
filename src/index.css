@@ -583,6 +583,25 @@ button {
 .export-menu-item:disabled .export-menu-hint {
   color: #555;
 }
+/* View-gated row (e.g. Image off the Simple view): kept focusable via
+   aria-disabled so its tooltip is reachable, but reads as disabled and never
+   highlights on hover/focus. */
+.export-menu-item[aria-disabled="true"] {
+  color: #6a6a6a;
+  cursor: default;
+}
+.export-menu-item[aria-disabled="true"] .export-menu-glyph {
+  color: #5a5340;
+}
+.export-menu-item[aria-disabled="true"] .export-menu-hint {
+  color: #555;
+}
+.export-menu-item[aria-disabled="true"]:hover,
+.export-menu-item[aria-disabled="true"]:focus-visible {
+  background: transparent;
+  color: #6a6a6a;
+  outline: none;
+}
 .export-menu-badge {
   margin-left: 0.5rem;
   padding: 0.05rem 0.3rem;
@@ -5134,4 +5153,121 @@ button {
   padding: 0.35rem 0.9rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* ─── Image Export modal ─────────────────────────────────────────────── */
+
+.image-export-modal {
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  width: min(420px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.image-export-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.image-export-modal h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #e0e0e0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.image-export-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+.image-export-close:hover:not(:disabled) {
+  color: #e0e0e0;
+}
+/* Dismissal is blocked while a capture is in flight (busy) — read as disabled. */
+.image-export-close:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.image-export-hint {
+  margin: 0;
+  color: #888;
+  font-size: 0.8rem;
+}
+.image-export-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.image-export-field-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #aaa;
+  font-weight: 600;
+}
+.image-export-title {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.9rem;
+}
+.image-export-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #ccc;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.image-export-option input {
+  cursor: pointer;
+}
+/* Sits left of the action buttons (which the shared .form-actions right-aligns). */
+.image-export-status {
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: #8c8;
+}
+.image-export-status.is-error {
+  color: #e57373;
+}
+.image-export-modal .form-actions button:not(.link-button) {
+  background: #4a8;
+  color: #111;
+  border: none;
+  border-radius: 3px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.image-export-modal .form-actions button:not(.link-button):disabled {
+  background: #333;
+  color: #777;
+  cursor: not-allowed;
+}
+/* Close shares the pill shape above but wears the destructive red (same palette
+   as the Clear Timeline confirm) to read apart from the green deliver actions. */
+.image-export-modal .form-actions button.image-export-cancel {
+  background: #5a2424;
+  color: #fcc;
+  border: 1px solid #844;
+}
+.image-export-modal .form-actions button.image-export-cancel:hover:not(:disabled) {
+  background: #6a2828;
+}
+.image-export-modal .form-actions button.image-export-cancel:disabled {
+  border-color: #444;
 }
