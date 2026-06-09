@@ -155,8 +155,13 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 // with no pointer/focus, so those pseudo-classes never apply.)
 const NEUTRALIZE_CSS = `
 /* Size the captured table to its content so the image is tight: no width:100%
-   slack left behind by the dropped filler column, and no column stretching. */
+   slack left behind by the dropped filler column, and no column stretching. The
+   filler must also be hidden on the LIVE node — html-to-image measures and
+   freezes the on-screen widths, and the filler's percentage width forces even
+   an auto-width table out to its container, so leaving it in place reflows the
+   dropped-filler clone with the slack poured into the last Slot column. */
 .simple-grid { width: auto !important; }
+.simple-grid .simple-grid-col-filler { display: none !important; }
 /* Selection accent → gone, but preserve the zebra band on an alt row. */
 .simple-grid .simple-grid-row.is-selected:not(.simple-grid-row--alt) .simple-grid-col-time,
 .simple-grid .simple-grid-row.is-selected:not(.simple-grid-row--alt) .simple-grid-col-name,
