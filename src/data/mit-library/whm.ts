@@ -65,7 +65,7 @@ export const WHM_MITS: MitigationType[] = [
     max_charges: 1,
     mechanic: "utility",
     gated_by: "whm.temperance",
-// 30s execution zone — the Divine Grace buff outlives Temperance's 20s
+    // 30s execution zone — the Divine Grace buff outlives Temperance's 20s
     // active by 10s, so Divine Caress is castable for the full 30s after the
     // Temperance cast (mirrors AST Sun Sign / Suntouched).
     execution_zone_seconds: 30,
