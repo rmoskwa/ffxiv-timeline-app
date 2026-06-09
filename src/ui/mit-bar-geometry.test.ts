@@ -291,15 +291,25 @@ describe("computeChildGeometry", () => {
     expect(geo.extensionBand).toEqual({ leftPx: 100, widthPx: 50 });
   });
 
-  it("utility child — no bands regardless of duration", () => {
+  it("utility child — bands render same as mit children", () => {
     const geo = computeChildGeometry(
       childArgs({
         childType: mitType({ id: "test.c", mechanic: "utility", duration_seconds: 10 }),
       }),
     );
+    expect(geo.iconLeftPx).toBe(55);
+    expect(geo.innerBand).toEqual({ leftPx: 50, widthPx: 100 });
+    expect(geo.extensionBand).toBeUndefined();
+  });
+
+  it("zero-duration child — icon only, no bands", () => {
+    const geo = computeChildGeometry(
+      childArgs({
+        childType: mitType({ id: "test.c", mechanic: "utility", duration_seconds: 0 }),
+      }),
+    );
     expect(geo.innerBand).toBeUndefined();
     expect(geo.extensionBand).toBeUndefined();
-    // Icon still positions normally.
     expect(geo.iconLeftPx).toBe(55);
   });
 
