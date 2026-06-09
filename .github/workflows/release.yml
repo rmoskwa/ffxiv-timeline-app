@@ -32,7 +32,9 @@ jobs:
                 repo: context.repo.repo,
                 tag_sha: ref.data.object.sha,
               })
-              message = tagObj.data.message.trim()
+              message = tagObj.data.message
+                .replace(/-----BEGIN (SSH|PGP) SIGNATURE-----[\s\S]*-----END \1 SIGNATURE-----\s*$/, '')
+                .trim()
             }
             core.setOutput('tag_message', message)
             const { data } = await github.rest.repos.createRelease({
