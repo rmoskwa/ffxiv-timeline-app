@@ -568,11 +568,13 @@ export function SimpleTimelineGrid() {
               // damage-type color.
               const nameColor = type ? abilityTextColor(type, "target_pattern", colorConfig) : null;
               const typeColor = type ? abilityTextColor(type, "damage_type", colorConfig) : null;
-              // Mitigation-free rows (no Home chip or Coverage marker in any
-              // displayed slot) are tagged so the Image Share can opt to drop
-              // them; inert until that capture filter reads it (§5.1).
+              // Rows rendering no chip in any displayed slot (WYSIWYG: Coverage
+              // markers count only while shown) are tagged so the Image Share
+              // can opt to drop them; inert until that capture filter reads it
+              // (§5.1).
               const isEmptyRow = isRowMitigationFree(
                 displayedSlots.map((slot) => chipsBySlotRow.get(slot.id)?.get(item.rowIndex)),
+                showCoverageMarkers,
               );
               return (
                 <tr
