@@ -5194,8 +5194,7 @@ button {
   color: #e0e0e0;
 }
 /* Dismissal is blocked while a capture is in flight (busy) — read as disabled. */
-.image-export-close:disabled,
-.image-export-modal .link-button:disabled {
+.image-export-close:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -5258,4 +5257,17 @@ button {
   background: #333;
   color: #777;
   cursor: not-allowed;
+}
+/* Close shares the pill shape above but wears the destructive red (same palette
+   as the Clear Timeline confirm) to read apart from the green deliver actions. */
+.image-export-modal .form-actions button.image-export-cancel {
+  background: #5a2424;
+  color: #fcc;
+  border: 1px solid #844;
+}
+.image-export-modal .form-actions button.image-export-cancel:hover:not(:disabled) {
+  background: #6a2828;
+}
+.image-export-modal .form-actions button.image-export-cancel:disabled {
+  border-color: #444;
 }

@@ -221,7 +221,12 @@ export function ImageExportModal() {
           <button type="button" onClick={handleCopy} disabled={busy}>
             Copy
           </button>
-          <button type="button" className="link-button" onClick={requestClose} disabled={busy}>
+          <button
+            type="button"
+            className="image-export-cancel"
+            onClick={requestClose}
+            disabled={busy}
+          >
             Close
           </button>
         </div>
