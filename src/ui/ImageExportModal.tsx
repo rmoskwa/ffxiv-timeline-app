@@ -18,9 +18,20 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { captureSimpleGridPng, sanitizeFilename } from "./share-image";
 import { useImageExportModalStore } from "./use-image-export-modal";
 
-type Status = "idle" | "saved" | "copied" | "save-error" | "copy-error";
+type Status =
+  | "idle"
+  | "capturing"
+  | "copying"
+  | "saving"
+  | "saved"
+  | "copied"
+  | "save-error"
+  | "copy-error";
 
 const STATUS_TEXT: Record<Exclude<Status, "idle">, string> = {
+  capturing: "Capturing…",
+  copying: "Copying…",
+  saving: "Saving…",
   saved: "Saved",
   copied: "Copied!",
   "save-error": "Save failed",
@@ -65,22 +76,31 @@ export function ImageExportModal() {
     statusTimer.current = window.setTimeout(() => setStatus("idle"), ms);
   };
 
-  // Resolve the live grid and theme colors, then raster. Returns null (with an
-  // error status) if the grid node is missing — shouldn't happen behind the
-  // availability gate, but the delivery handlers guard on it anyway.
+  // Resolve the live grid and theme colors, then raster — holding "Capturing…"
+  // in the status line while the raster runs (a large grid takes a couple of
+  // seconds). Returns null (with an error status) if the grid node is missing —
+  // shouldn't happen behind the availability gate, but the delivery handlers
+  // guard on it anyway.
   const capture = async (errorStatus: "save-error" | "copy-error"): Promise<Blob | null> => {
     const gridEl = document.querySelector<HTMLElement>(".simple-grid");
     if (!gridEl) {
       flashStatus(errorStatus, 2500);
       return null;
     }
+    setStatus("capturing");
     const theme = getComputedStyle(document.documentElement);
-    return captureSimpleGridPng(gridEl, {
-      title,
-      autoHideEmptyRows,
-      background: theme.backgroundColor,
-      textColor: theme.color,
-    });
+    try {
+      return await captureSimpleGridPng(gridEl, {
+        title,
+        autoHideEmptyRows,
+        background: theme.backgroundColor,
+        textColor: theme.color,
+      });
+    } finally {
+      // Back to idle so "Capturing…" never outlives the raster (the save path
+      // sits in the native file dialog next); success/error flashes overwrite.
+      setStatus("idle");
+    }
   };
 
   const handleSave = async () => {
@@ -94,6 +114,7 @@ export function ImageExportModal() {
         filters: [{ name: "PNG Image", extensions: ["png"] }],
       });
       if (!path) return; // user cancelled the save dialog — no status flash
+      setStatus("saving");
       await writeFile(path, new Uint8Array(await blob.arrayBuffer()));
       flashStatus("saved", 2000);
     } catch (e) {
@@ -110,6 +131,9 @@ export function ImageExportModal() {
     try {
       const blob = await capture("copy-error");
       if (!blob) return;
+      // The slow phase on large grids: the PNG bytes cross Tauri's IPC, get
+      // decoded in Rust (image-png), and land on the OS clipboard.
+      setStatus("copying");
       const img = await Image.fromBytes(new Uint8Array(await blob.arrayBuffer()));
       await writeImage(img);
       flashStatus("copied", 2000);
@@ -121,8 +145,15 @@ export function ImageExportModal() {
     }
   };
 
+  // Dismissal is blocked while a capture/delivery is in flight: the raster
+  // walks the live grid DOM, so closing and editing mid-capture would tear the
+  // image (and silently overwrite the clipboard after the fact).
+  const requestClose = () => {
+    if (!busy) close();
+  };
+
   const handleBackdropPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) close();
+    if (e.target === e.currentTarget) requestClose();
   };
 
   const isError = status === "save-error" || status === "copy-error";
@@ -137,13 +168,19 @@ export function ImageExportModal() {
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();
-            close();
+            requestClose();
           }
         }}
       >
         <div className="image-export-header">
           <h2>Export Image</h2>
-          <button type="button" className="image-export-close" onClick={close} aria-label="Close">
+          <button
+            type="button"
+            className="image-export-close"
+            onClick={requestClose}
+            disabled={busy}
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
@@ -184,7 +221,7 @@ export function ImageExportModal() {
           <button type="button" onClick={handleCopy} disabled={busy}>
             Copy
           </button>
-          <button type="button" className="link-button" onClick={close}>
+          <button type="button" className="link-button" onClick={requestClose} disabled={busy}>
             Close
           </button>
         </div>

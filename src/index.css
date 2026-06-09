@@ -5190,8 +5190,14 @@ button {
   cursor: pointer;
   padding: 0 0.25rem;
 }
-.image-export-close:hover {
+.image-export-close:hover:not(:disabled) {
   color: #e0e0e0;
+}
+/* Dismissal is blocked while a capture is in flight (busy) — read as disabled. */
+.image-export-close:disabled,
+.image-export-modal .link-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .image-export-hint {
   margin: 0;
