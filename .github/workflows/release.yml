@@ -54,6 +54,8 @@ jobs:
       contents: write
     strategy:
       fail-fast: false
+      # Serialize so the two jobs don't race the shared latest.json asset.
+      max-parallel: 1
       matrix:
         include:
           - platform: windows-latest
