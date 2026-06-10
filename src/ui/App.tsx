@@ -2,7 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { confirm as confirmDialog, message as messageDialog } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MAX_NAME_LEN } from "@/domain/types";
+import { DEFAULT_PRE_PULL_SEC, MAX_NAME_LEN } from "@/domain/types";
 import {
   deleteWorkingTimeline,
   exportTimelineDialog,
@@ -59,6 +59,7 @@ export function App() {
   const timeline = useTimelineStore((s) => s.timeline);
   const loadTimeline = useTimelineStore((s) => s.loadTimeline);
   const closeTimeline = useTimelineStore((s) => s.closeTimeline);
+  const setPrePullDuration = useTimelineStore((s) => s.setPrePullDuration);
   const undo = useHistoryStore((s) => s.undo);
   const redo = useHistoryStore((s) => s.redo);
   const canUndo = useHistoryStore((s) => s.past.length > 0);
@@ -181,6 +182,15 @@ export function App() {
             disabled: timeline === null,
           },
           {
+            // Menu = discovery; daily use is the Start field on the boss lane
+            // label. Seeds a default-size pre-pull section the user fine-tunes
+            // there; inert once one exists (Start < 0).
+            kind: "item",
+            label: "Add Pre-pull Section",
+            onClick: () => setPrePullDuration(DEFAULT_PRE_PULL_SEC),
+            disabled: timeline === null || (timeline.metadata.pre_pull_duration_sec ?? 0) > 0,
+          },
+          {
             kind: "item",
             label: "Clear Timeline",
             onClick: openClearTimeline,
@@ -237,6 +247,7 @@ export function App() {
       handleSaveTimeline,
       handleExit,
       openAddPhase,
+      setPrePullDuration,
       openClearTimeline,
       openJobDefaults,
       openAbilityColors,

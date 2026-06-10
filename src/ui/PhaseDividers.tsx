@@ -16,7 +16,7 @@ const EMPTY_PHASES: readonly Phase[] = [];
 
 export function PhaseDividers() {
   const phases = useTimelineStore((s) => s.timeline?.phases ?? EMPTY_PHASES);
-  const { pxPerSec } = useZoom();
+  const { pxPerSec, startSec } = useZoom();
   if (phases.length < 2) return null;
   return (
     <>
@@ -24,7 +24,7 @@ export function PhaseDividers() {
         <div
           key={p.id}
           className="phase-divider"
-          style={{ left: p.start_time * pxPerSec }}
+          style={{ left: (p.start_time - startSec) * pxPerSec }}
           aria-hidden
         />
       ))}

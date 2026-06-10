@@ -113,7 +113,7 @@ export interface BossAbilityInstance {
   // previous chip's exit HP) instead of resetting to max. Empty (the default)
   // = everyone full-healed = the original per-hit HP-isolation behavior.
   // Always present (defaults to []). Entries need not reference live roster
-  // slots — a stale id is inert (it never matches a slot). See ADR 0004.
+  // slots — a stale id is inert (it never matches a slot).
   no_full_heal_slot_ids: string[];
   observed_damage: ObservedDamageEntry[];
 }
@@ -213,7 +213,7 @@ export interface MitigationType {
   wiki_url: string;
   // Irreducible modeling-caveat prose — the *why* a number is what it is, when no
   // other field can express it (e.g. an approximation, or a held-channel UX rule).
-  // Provenance about the model, not screen copy (ADR-0007). Behavior the structured
+  // Provenance about the model, not screen copy. Behavior the structured
   // fields already encode (tiers, conditional_bonus, affects, shared_recast_group,
   // non_stacking_group, max_charges, gated_by, cooldown_reduce_on_absorb, mechanic)
   // is DERIVED at the view — do NOT restate it here.
@@ -320,7 +320,7 @@ export function mitReachesLabel(mit: MitigationType): string {
 }
 
 // Cross-entry names the seam looked up so mitReferenceNotes stays library-free
-// (src/domain/types.ts must not import the mit library — see ADR-0001). The
+// (src/domain/types.ts must not import the mit library). The
 // modal resolves these via getMitById / getSharedRecastPartners and passes them in.
 export interface ResolvedMitRefs {
   parentName?: string; // getMitById(mit.gated_by)?.name
@@ -341,7 +341,7 @@ function pctLabel(m: Partial<Record<DamageType | "all", number>>): string {
 
 // Modeling notes for an ability: *derived* notes from the structured fields,
 // followed by the authored mit.reference_notes. Each note is one short sentence.
-// Cross-entry names come from `refs` (resolved at the modal seam, per ADR-0001).
+// Cross-entry names come from `refs` (resolved at the modal seam).
 export function mitReferenceNotes(mit: MitigationType, refs: ResolvedMitRefs): string[] {
   const notes: string[] = [];
   if (mit.tiers) {
@@ -483,7 +483,6 @@ export interface PlayerSlot {
   // seeded from a **Job HP default** (absent/false, **default-derived**).
   // Hand-tuned HP survives "Apply to current roster" and resets only on a job
   // change. Travels with the file so a recipient sees the same distinction.
-  // See docs/adr/0003-job-hp-is-baked-not-resolved.md.
   hp_manual?: boolean;
   // role is DERIVED from job — not stored. See deriveRole() below.
 }
@@ -528,6 +527,13 @@ export const TIMELINE_SCHEMA_VERSION = 2 as const;
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 export const MAX_FIGHT_DURATION_SEC = 1800; // 30:00 hard cap on user-set length
 
+// Pre-pull section bounds (CONTEXT.md "Pre-pull section"). The cap
+// matches the in-game /countdown maximum; no defensive lasts long enough for
+// an earlier placement to matter. The default seeds the Edit ▸ Add Pre-pull
+// Section menu action; the user fine-tunes via the Start field.
+export const MAX_PRE_PULL_SEC = 30;
+export const DEFAULT_PRE_PULL_SEC = 15;
+
 export const MAX_BASE_DAMAGE = 9_999_999; // 7-digit cap on boss-ability base damage — catches typo-zeros (10M+ is implausible)
 
 export const MAX_NAME_LEN = 80; // user-given name fields (fight name, boss name, type name, phase name, slot label) — prevents pasted-document overflow without constraining real names
@@ -557,7 +563,12 @@ export interface TimelineFile {
   metadata: {
     name: string; // user-given fight name
     boss_name: string; // user-given boss name shown on the BOSS lane label
-    fight_duration_sec: number; // total timeline length; canvas cannot extend past this
+    fight_duration_sec: number; // fight length (End); canvas cannot extend past this
+    // Pre-pull section size: how far before the pull the timeline extends
+    // (Start = -pre_pull_duration_sec). Only mitigation instances may sit
+    // there. Optional + absent ⇒ 0 so every existing v2 file keeps loading
+    // unchanged — deliberately additive, no schema bump.
+    pre_pull_duration_sec?: number;
     created_at: string; // ISO-8601
     updated_at: string;
   };

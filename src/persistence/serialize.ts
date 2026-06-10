@@ -26,6 +26,7 @@ import {
   MAX_MITIGATION_INSTANCES,
   MAX_NAME_LEN,
   MAX_PHASES,
+  MAX_PRE_PULL_SEC,
   type MitigationInstance,
   type ObservedDamageEntry,
   type Phase,
@@ -184,6 +185,7 @@ export function newTimeline(name: string): TimelineFile {
       name,
       boss_name: "Boss Name",
       fight_duration_sec: DEFAULT_FIGHT_DURATION_SEC,
+      pre_pull_duration_sec: 0,
       created_at: now,
       updated_at: now,
     },
@@ -431,13 +433,24 @@ function validateCoverageOverride(v: unknown, path: string): CoverageOverride {
   };
 }
 
-function validateMitigationInstance(v: unknown, path: string): MitigationInstance {
+// Mit effect times alone may be negative — down to the timeline's Start
+// (-prePullSec) per the Pre-pull section rules (ADR 0012). Boss instances and
+// phases keep the asNonNegativeNumber gate.
+function validateMitigationInstance(
+  v: unknown,
+  path: string,
+  prePullSec: number,
+): MitigationInstance {
   const o = asObject(v, path);
+  const effect_time = asNumber(o.effect_time, `${path}.effect_time`);
+  if (effect_time < -prePullSec) {
+    throw new TimelineValidationError(`${path}.effect_time`, `must be >= ${-prePullSec}`);
+  }
   const out: MitigationInstance = {
     id: asString(o.id, `${path}.id`),
     type_id: asString(o.type_id, `${path}.type_id`),
     player_slot_id: asString(o.player_slot_id, `${path}.player_slot_id`),
-    effect_time: asNonNegativeNumber(o.effect_time, `${path}.effect_time`),
+    effect_time,
     target_slot_ids: asStringArray(o.target_slot_ids, `${path}.target_slot_ids`),
     coverage_overrides: asArray(o.coverage_overrides, `${path}.coverage_overrides`).map((el, i) =>
       validateCoverageOverride(el, `${path}.coverage_overrides[${i}]`),
@@ -494,6 +507,13 @@ function validateMetadata(v: unknown, path: string): TimelineFile["metadata"] {
   // import. Instances/phases past the cap stay in the file; setFightDuration
   // (or the next edit) will cull them via the same code path the user hits.
   const fight_duration_sec = Math.min(MAX_FIGHT_DURATION_SEC, rawDuration);
+  // Absent ⇒ 0 (no Pre-pull section) so every pre-feature file keeps loading
+  // unchanged. Silent clamp matches setPrePullDuration.
+  const rawPrePull = asOptionalNumber(o.pre_pull_duration_sec, `${path}.pre_pull_duration_sec`);
+  if (rawPrePull !== undefined && rawPrePull < 0) {
+    throw new TimelineValidationError(`${path}.pre_pull_duration_sec`, "must be >= 0");
+  }
+  const pre_pull_duration_sec = Math.min(MAX_PRE_PULL_SEC, rawPrePull ?? 0);
   const nameTrimmed = sanitizeSingleLineName(asString(o.name, `${path}.name`))
     .slice(0, MAX_NAME_LEN)
     .trim();
@@ -504,6 +524,7 @@ function validateMetadata(v: unknown, path: string): TimelineFile["metadata"] {
     name: nameTrimmed === "" ? "Untitled Timeline" : nameTrimmed,
     boss_name: bossTrimmed === "" ? "Boss Name" : bossTrimmed,
     fight_duration_sec,
+    pre_pull_duration_sec,
     created_at: asString(o.created_at, `${path}.created_at`),
     updated_at: asString(o.updated_at, `${path}.updated_at`),
   };
@@ -529,7 +550,11 @@ export function validateTimelineFile(parsed: unknown, defaults: JobHpDefaults = 
   );
   assertTypeReferences(boss_ability_instances, boss_ability_types, "$.boss_ability_instances");
   const mitigation_instances = mitInstancesArr.map((el, i) =>
-    validateMitigationInstance(el, `$.mitigation_instances[${i}]`),
+    validateMitigationInstance(
+      el,
+      `$.mitigation_instances[${i}]`,
+      metadata.pre_pull_duration_sec ?? 0,
+    ),
   );
   assertNoDuplicateMitPlacements(mitigation_instances, "$.mitigation_instances");
   const phases = phasesArr.map((el, i) => validatePhase(el, `$.phases[${i}]`, i));

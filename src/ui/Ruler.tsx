@@ -8,7 +8,7 @@ import { useZoom } from "./use-zoom";
 const EMPTY_PHASES: readonly Phase[] = [];
 
 export function Ruler() {
-  const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
+  const { pxPerSec, laneDurationSec, startSec, laneWidthPx } = useZoom();
   const chipPosition = useChipLayoutStore((s) => s.position);
   const phases = useTimelineStore((s) => s.timeline?.phases ?? EMPTY_PHASES);
 
@@ -19,6 +19,7 @@ export function Ruler() {
           phases={phases}
           pxPerSec={pxPerSec}
           laneDurationSec={laneDurationSec}
+          startSec={startSec}
           laneWidthPx={laneWidthPx}
           chipPosition={chipPosition}
         />
@@ -26,6 +27,7 @@ export function Ruler() {
       <AbsoluteRulerRow
         pxPerSec={pxPerSec}
         laneDurationSec={laneDurationSec}
+        startSec={startSec}
         laneWidthPx={laneWidthPx}
         chipPosition={chipPosition}
       />
@@ -36,18 +38,23 @@ export function Ruler() {
 function AbsoluteRulerRow({
   pxPerSec,
   laneDurationSec,
+  startSec,
   laneWidthPx,
   chipPosition,
 }: {
   pxPerSec: number;
   laneDurationSec: number;
+  startSec: number;
   laneWidthPx: number;
   chipPosition: string;
 }) {
   const tickInterval = pickTickIntervalSec(pxPerSec);
   const labelInterval = pickLabelIntervalSec(tickInterval);
   const ticks: number[] = [];
-  for (let t = 0; t <= laneDurationSec; t += tickInterval) ticks.push(t);
+  // Ticks stay on whole multiples of the interval; a Pre-pull section extends
+  // them into negative time (-0:30 … -0:05) from the first multiple ≥ startSec.
+  const firstTick = Math.ceil(startSec / tickInterval) * tickInterval;
+  for (let t = firstTick; t <= laneDurationSec; t += tickInterval) ticks.push(t);
 
   return (
     <div className="lane-row lane-row--ruler" aria-hidden>
@@ -61,7 +68,7 @@ function AbsoluteRulerRow({
             <div
               key={t}
               className={`tick${isLabeled ? " tick--labeled" : ""}`}
-              style={{ left: t * pxPerSec }}
+              style={{ left: (t - startSec) * pxPerSec }}
             >
               {isLabeled && (
                 <span className={`tick-label${atEnd ? " tick-label--end" : ""}`}>
@@ -80,12 +87,14 @@ function PhaseRelativeRulerRow({
   phases,
   pxPerSec,
   laneDurationSec,
+  startSec,
   laneWidthPx,
   chipPosition,
 }: {
   phases: readonly Phase[];
   pxPerSec: number;
   laneDurationSec: number;
+  startSec: number;
   laneWidthPx: number;
   chipPosition: string;
 }) {
@@ -101,7 +110,9 @@ function PhaseRelativeRulerRow({
           const nextStart = phases[idx + 1]?.start_time ?? laneDurationSec;
           const segmentDuration = nextStart - phase.start_time;
           if (segmentDuration <= 0) return null;
-          const leftPx = phase.start_time * pxPerSec;
+          // Phases start at 0, so a Pre-pull section leaves the region left of
+          // the first segment blank — there is no phase before the pull.
+          const leftPx = (phase.start_time - startSec) * pxPerSec;
           const widthPx = segmentDuration * pxPerSec;
           const isLast = idx === phases.length - 1;
           return (

@@ -105,11 +105,23 @@ A type-level enum on a mitigation describing whom it reaches (`self`, `target`, 
 _Avoid_: scope, audience
 
 **Pull**:
-The moment combat starts, defined as `t = 0` on the timeline. All **effect times** are measured in seconds from pull. Not a stored field — it's the implicit zero of the time axis.
+The moment combat starts, defined as `t = 0` on the timeline. All **effect times** are measured in seconds from pull. Not a stored field — it's the implicit zero of the time axis, and it stays `t = 0` even when a **Pre-pull section** extends the axis left of it.
 _Avoid_: start, t-zero, beginning
 
+**Pre-pull section**:
+The optional slice of the time axis before the **Pull** — from the timeline's **Start** (as early as −30s) up to `t = 0` — where only **Mitigation** instances may sit. Boss abilities, **Phase**s, and notes never exist pre-pull. Absent by default (**Start** = 0). Models real-world countdown usage: e.g. Rampart cast at −5s so an early tankbuster lands inside its **active window**.
+_Avoid_: countdown, pre-fight, prep phase, negative section
+
+**Start**:
+The timeline's left edge: how far before the **Pull** the timeline extends, a non-positive timecode in `[−0:30, 0:00]`. `Start < 0` is what creates the **Pre-pull section**. Distinct from **Pull** — the Pull entry's avoid-list still holds: "start" never means `t = 0`.
+_Avoid_: pre-pull duration (in user-facing prose; fine as the stored field name), offset, begin
+
+**End**:
+The timeline's right edge: the fight's duration in seconds from **Pull** (`fight_duration_sec`). A **Pre-pull section** never moves End — a 10:00 fight with 5s of pre-pull still ends at 10:00. Together with **Start**, supersedes the retired "Length" field.
+_Avoid_: length (retired), total length, finish
+
 **Effect time**:
-A single canonical timestamp on an instance: the moment the ability lands (boss) or the moment the buff is applied (mitigation). Always seconds-from-**pull**.
+A single canonical timestamp on an instance: the moment the ability lands (boss) or the moment the buff is applied (mitigation). Always seconds-from-**pull**; negative only for mitigation instances in the **Pre-pull section** — boss instance effect times are never negative.
 _Avoid_: cast time, snapshot time, timestamp
 
 **Active window**:

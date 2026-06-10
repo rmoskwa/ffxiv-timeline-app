@@ -8,6 +8,7 @@ import {
   DEFAULT_FIGHT_DURATION_SEC,
   MAX_FIGHT_DURATION_SEC,
   MAX_NAME_LEN,
+  MAX_PRE_PULL_SEC,
   type Phase,
 } from "@/domain/types";
 import { useAbilityColorsStore } from "@/state/ability-colors-store";
@@ -16,6 +17,7 @@ import { abilityTextColor } from "./ability-color";
 import { BossPlacementPicker } from "./BossPlacementPicker";
 import { clampLabelCenter, packLabelRows } from "./boss-label-packing";
 import { PhaseDividers } from "./PhaseDividers";
+import { PrePullShade } from "./PrePullShade";
 import { TimecodeField } from "./primitives/TimecodeField";
 import {
   BOSS_PIN_HEIGHT,
@@ -52,7 +54,7 @@ export function BossLane() {
   const deselectInstance = useTimelineStore((s) => s.deselectInstance);
   const damageByTime = useDamageByTime();
   const colorConfig = useAbilityColorsStore((s) => s.config);
-  const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
+  const { pxPerSec, laneDurationSec, startSec, laneWidthPx } = useZoom();
   const chipPosition = useChipLayoutStore((s) => s.position);
 
   const [hoverSec, setHoverSec] = useState<number | null>(null);
@@ -94,10 +96,15 @@ export function BossLane() {
       const t = typeMap.get(inst.type_id);
       if (!t) return [];
       const prefix = phasePrefixById.get(inst.id) ?? "";
-      return [{ id: inst.id, effect_time: inst.effect_time, name: `${prefix}${t.name}` }];
+      // The packer positions by effect_time * pxPerSec from the track's left
+      // edge; shift by startSec so labels line up when a Pre-pull section
+      // moves that edge left of the pull.
+      return [
+        { id: inst.id, effect_time: inst.effect_time - startSec, name: `${prefix}${t.name}` },
+      ];
     });
     return packLabelRows(items, pxPerSec, laneWidthPx);
-  }, [instances, typeMap, pxPerSec, laneWidthPx, phasePrefixById]);
+  }, [instances, typeMap, pxPerSec, startSec, laneWidthPx, phasePrefixById]);
 
   const stripHeight = bossLaneStripHeight(packed.rowCount);
   const contentHeight = stripHeight + BOSS_TRACK_HEIGHT;
@@ -105,7 +112,10 @@ export function BossLane() {
   const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (inert) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    setHoverSec(snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec));
+    const sec = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec, startSec);
+    // The Pre-pull section is mit-only — the boss cannot act before the pull,
+    // so the boss lane shows no ghost and takes no clicks there.
+    setHoverSec(sec < 0 ? null : sec);
   };
 
   const handleLeave = () => setHoverSec(null);
@@ -117,7 +127,8 @@ export function BossLane() {
     // overlays with pointer-events: none (ghost, gridlines) fall through.
     if (e.target !== e.currentTarget) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const sec = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec);
+    const sec = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec, startSec);
+    if (sec < 0) return;
     setPickerAtSec(sec);
     deselectInstance();
   };
@@ -143,16 +154,20 @@ export function BossLane() {
           onClick={inert ? undefined : handleTrackClick}
         >
           <div className="lane-gridlines" aria-hidden />
+          <PrePullShade />
           <PhaseDividers />
           {hoverSec !== null && pickerAtSec === null && (
             <div
               className="hover-ghost hover-ghost--track"
-              style={{ left: hoverSec * pxPerSec, width: Math.max(pxPerSec, 2) }}
+              style={{ left: (hoverSec - startSec) * pxPerSec, width: Math.max(pxPerSec, 2) }}
               aria-hidden
             />
           )}
           {pickerAtSec !== null && (
-            <div className="boss-placement-anchor" style={{ left: pickerAtSec * pxPerSec }}>
+            <div
+              className="boss-placement-anchor"
+              style={{ left: (pickerAtSec - startSec) * pxPerSec }}
+            >
               <BossPlacementPicker
                 types={types}
                 onPick={(typeId) => {
@@ -186,6 +201,7 @@ export function BossLane() {
               lethal={lethal}
               selected={selectedBossInstanceId === inst.id}
               pxPerSec={pxPerSec}
+              startSec={startSec}
               laneWidthPx={laneWidthPx}
               rowIndex={rowIndex}
               stripHeight={stripHeight}
@@ -211,6 +227,7 @@ function BossMarker({
   lethal,
   selected,
   pxPerSec,
+  startSec,
   laneWidthPx,
   rowIndex,
   stripHeight,
@@ -223,6 +240,7 @@ function BossMarker({
   lethal: boolean;
   selected: boolean;
   pxPerSec: number;
+  startSec: number;
   laneWidthPx: number;
   rowIndex: number;
   stripHeight: number;
@@ -251,7 +269,7 @@ function BossMarker({
   // Pin sits at the true effect_time; label can shift horizontally to stay
   // inside the lane. The connecting leader then slants — see the SVG below.
   const displayName = `${phasePrefix}${type.name}`;
-  const naturalCenter = instance.effect_time * pxPerSec;
+  const naturalCenter = (instance.effect_time - startSec) * pxPerSec;
   const visibleWidth = Math.min(estimateLabelWidth(displayName), MAX_LABEL_WIDTH_PX);
   const labelCenter = clampLabelCenter(naturalCenter, visibleWidth, laneWidthPx);
   const labelDx = labelCenter - naturalCenter;
@@ -274,7 +292,7 @@ function BossMarker({
         `${targetsUnset ? " boss-marker--needs-target" : ""}` +
         `${selected ? " boss-marker--selected" : ""}`
       }
-      style={{ left: instance.effect_time * pxPerSec }}
+      style={{ left: (instance.effect_time - startSec) * pxPerSec }}
       title={title}
       data-boss-instance-id={instance.id}
     >
@@ -316,16 +334,19 @@ function BossMarker({
 }
 
 // Sticky label for the boss lane. Edits propagate to timeline metadata:
-// boss_name commits per keystroke; fight_duration commits on blur / Enter
-// (reverts on Escape or invalid input). Shrinking the duration past existing
-// instances cascades them out — see timeline-store.setFightDuration.
+// boss_name commits per keystroke; Start / End commit on blur / Enter
+// (reverts on Escape or invalid input). Shrinking End past existing instances
+// cascades them out (timeline-store.setFightDuration); raising Start past
+// pre-pull mits culls those the same way (setPrePullDuration).
 function BossLaneLabel({ mergedGutter }: { mergedGutter: boolean }) {
   const bossName = useTimelineStore((s) => s.timeline?.metadata.boss_name ?? "");
   const fightDurationSec = useTimelineStore(
     (s) => s.timeline?.metadata.fight_duration_sec ?? DEFAULT_FIGHT_DURATION_SEC,
   );
+  const prePullSec = useTimelineStore((s) => s.timeline?.metadata.pre_pull_duration_sec ?? 0);
   const setBossName = useTimelineStore((s) => s.setBossName);
   const setFightDuration = useTimelineStore((s) => s.setFightDuration);
+  const setPrePullDuration = useTimelineStore((s) => s.setPrePullDuration);
   // Local draft committed on blur/Enter, so a boss rename is a single undo step
   // rather than one per keystroke. Resyncs on external change (Open, undo/redo).
   const [draft, setDraft] = useState(bossName);
@@ -359,10 +380,25 @@ function BossLaneLabel({ mergedGutter }: { mergedGutter: boolean }) {
         aria-label="Boss name"
       />
       <div className="boss-length-row">
-        <span className="boss-length-prefix">Length:</span>
+        <span className="boss-length-prefix">Start:</span>
+        <TimecodeField
+          value={-prePullSec}
+          ariaLabel="Timeline start (0:00 or a negative pre-pull time)"
+          className="boss-length-input"
+          title={`${secondsToTimecode(-MAX_PRE_PULL_SEC)} to 0:00 — a negative Start adds a pre-pull section`}
+          validate={(n) => n <= 0 && n >= -MAX_PRE_PULL_SEC}
+          onCommit={(n) => {
+            // Throw → TimecodeField paints invalid and reverts the draft.
+            if (n > 0 || n < -MAX_PRE_PULL_SEC) throw new Error("out of range");
+            setPrePullDuration(-n);
+          }}
+        />
+      </div>
+      <div className="boss-length-row">
+        <span className="boss-length-prefix">End:</span>
         <TimecodeField
           value={fightDurationSec}
-          ariaLabel="Fight length (mm:ss)"
+          ariaLabel="Fight end (mm:ss)"
           className="boss-length-input"
           title={`Max ${secondsToTimecode(MAX_FIGHT_DURATION_SEC)}`}
           validate={(n) => n >= 1 && n <= MAX_FIGHT_DURATION_SEC}

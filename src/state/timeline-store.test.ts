@@ -88,6 +88,59 @@ describe("timeline-store — setFightDuration cascade", () => {
   });
 });
 
+describe("timeline-store — setPrePullDuration", () => {
+  beforeEach(freshTimeline);
+
+  function addRampartAt(effectTime: number): string {
+    return useTimelineStore.getState().addMitigationInstance({
+      type_id: RAMPART,
+      player_slot_id: rosterSlotId(0),
+      effect_time: effectTime,
+      target_slot_ids: [],
+    });
+  }
+
+  it("stores the clamped value and rounds to whole seconds", () => {
+    useTimelineStore.getState().setPrePullDuration(5.4);
+    expect(useTimelineStore.getState().timeline?.metadata.pre_pull_duration_sec).toBe(5);
+    useTimelineStore.getState().setPrePullDuration(999);
+    expect(useTimelineStore.getState().timeline?.metadata.pre_pull_duration_sec).toBe(30);
+    useTimelineStore.getState().setPrePullDuration(-3);
+    expect(useTimelineStore.getState().timeline?.metadata.pre_pull_duration_sec).toBe(0);
+  });
+
+  it("keeps a pre-pull mit that still fits the new Start", () => {
+    useTimelineStore.getState().setPrePullDuration(15);
+    addRampartAt(-10);
+    useTimelineStore.getState().setPrePullDuration(10);
+    expect(useTimelineStore.getState().timeline?.mitigation_instances).toHaveLength(1);
+  });
+
+  it("culls mits left of the new Start, mirroring setFightDuration's right-edge cull", () => {
+    useTimelineStore.getState().setPrePullDuration(15);
+    addRampartAt(-10);
+    useTimelineStore.getState().setPrePullDuration(5);
+    expect(useTimelineStore.getState().timeline?.mitigation_instances).toHaveLength(0);
+  });
+
+  it("clears selection when the selected mit is culled", () => {
+    useTimelineStore.getState().setPrePullDuration(15);
+    const id = addRampartAt(-10);
+    useTimelineStore.getState().selectMitInstance(id);
+    useTimelineStore.getState().setPrePullDuration(0);
+    expect(useTimelineStore.getState().selectedInstance).toBeNull();
+  });
+
+  it("leaves boss instances and t >= 0 mits untouched", () => {
+    addBossHitAt(30);
+    addRampartAt(0);
+    useTimelineStore.getState().setPrePullDuration(15);
+    useTimelineStore.getState().setPrePullDuration(0);
+    expect(useTimelineStore.getState().timeline?.boss_ability_instances).toHaveLength(1);
+    expect(useTimelineStore.getState().timeline?.mitigation_instances).toHaveLength(1);
+  });
+});
+
 describe("timeline-store — selection mutex", () => {
   beforeEach(freshTimeline);
 

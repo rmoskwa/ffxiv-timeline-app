@@ -201,6 +201,9 @@ export interface BarDragRangeArgs {
   // Gated children attached to this bar (offset-glued during drag).
   childInstances: readonly MitigationInstance[];
   fightDurationSec: number;
+  // Drag floor: 0 normally, -pre_pull_duration_sec when the timeline has a
+  // Pre-pull section (mits may sit before the pull; boss abilities may not).
+  minSec?: number;
   allMits: readonly MitigationInstance[];
   lookupMitType: MitTypeLookup;
   mitStates: ReadonlyMap<string, MitInstanceState>;
@@ -231,7 +234,7 @@ export function barDragRange(args: BarDragRangeArgs): { minSec: number; maxSec: 
     lookupMitType,
     mitStates,
   );
-  let minSec = 0;
+  let minSec = args.minSec ?? 0;
   let maxSec = fightDurationSec;
   const clampAgainst = (b: BlockingInterval) => {
     if (b.startSec < instance.effect_time) {

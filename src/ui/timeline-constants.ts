@@ -85,19 +85,32 @@ export function bossLaneStripHeight(rowCount: number): number {
   return Math.max(packed, MIN_BOSS_LABEL_STRIP_HEIGHT);
 }
 
+// Negative seconds (Pre-pull section times) render with a leading minus:
+// secondsToTimecode(-5) → "-0:05".
 export function secondsToTimecode(sec: number): string {
-  const s = Math.max(0, Math.round(sec));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m}:${r.toString().padStart(2, "0")}`;
+  const s = Math.round(sec);
+  const abs = Math.abs(s);
+  const m = Math.floor(abs / 60);
+  const r = abs % 60;
+  return `${s < 0 ? "-" : ""}${m}:${r.toString().padStart(2, "0")}`;
 }
 
-// Inverse of secondsToTimecode. Accepts mm:ss[.s] or a bare seconds number.
-// Snaps to whole seconds (canvas placement precision). Returns null on invalid.
+// Inverse of secondsToTimecode. Accepts mm:ss[.s] or a bare seconds number,
+// optionally with a leading "-" (Pre-pull section times). Snaps to whole
+// seconds (canvas placement precision). Returns null on invalid. Callers gate
+// their own range — every consumer validates or clamps its lower bound.
 export function parseTimecode(input: string): number | null {
   const trimmed = input.trim();
-  if (trimmed === "") return null;
-  const colonMatch = /^(\d+):(\d+(?:\.\d+)?)$/.exec(trimmed);
+  const negative = trimmed.startsWith("-");
+  const body = negative ? trimmed.slice(1) : trimmed;
+  if (body === "") return null;
+  const parsed = parseUnsignedTimecode(body);
+  if (parsed === null) return null;
+  return negative && parsed !== 0 ? -parsed : parsed;
+}
+
+function parseUnsignedTimecode(body: string): number | null {
+  const colonMatch = /^(\d+):(\d+(?:\.\d+)?)$/.exec(body);
   if (colonMatch) {
     const minutes = Number.parseInt(colonMatch[1] ?? "0", 10);
     const seconds = Number.parseFloat(colonMatch[2] ?? "0");
@@ -105,20 +118,26 @@ export function parseTimecode(input: string): number | null {
     if (seconds >= 60) return null;
     return Math.round(minutes * 60 + seconds);
   }
-  const n = Number(trimmed);
+  const n = Number(body);
   if (Number.isFinite(n) && n >= 0) return Math.round(n);
   return null;
 }
 
 // Snap a viewport-relative cursor X to the nearest whole second within the lane,
 // clamped to the lane bounds. Shared by every click-to-place / hover-ghost
-// renderer so click commits and ghost previews always agree.
+// renderer so click commits and ghost previews always agree. `laneStartSec` is
+// the lane's left-edge time — 0 normally, negative when a Pre-pull section
+// extends the track left of the pull.
 export function snapClientXToSecond(
   cursorClientX: number,
   laneLeft: number,
   pxPerSec: number,
   laneDurationSec: number,
+  laneStartSec = 0,
 ): number {
   const offsetX = cursorClientX - laneLeft;
-  return Math.max(0, Math.min(laneDurationSec, Math.round(offsetX / pxPerSec)));
+  return Math.max(
+    laneStartSec,
+    Math.min(laneDurationSec, laneStartSec + Math.round(offsetX / pxPerSec)),
+  );
 }

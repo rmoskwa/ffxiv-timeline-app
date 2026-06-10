@@ -51,6 +51,9 @@ export interface ComputeBarGeometryArgs {
   type: MitigationType;
   pxPerSec: number;
   laneDurationSec: number;
+  // Lane left-edge time: 0 normally, negative when a Pre-pull section extends
+  // the track left of the pull. Offsets leftPx only — widths are durations.
+  laneStartSec?: number;
   // Result of effectiveCooldownSeconds() — pre-resolved by caller.
   effectiveCdSec: number;
   // mitStates.get(id)?.dispelled_at — pre-resolved by caller.
@@ -152,7 +155,7 @@ export function computeBarGeometry(args: ComputeBarGeometryArgs): BarGeometry {
     : undefined;
 
   return {
-    leftPx: effectTime * pxPerSec,
+    leftPx: (effectTime - (args.laneStartSec ?? 0)) * pxPerSec,
     durationPx,
     heldExtensionPx,
     zoneExtensionPx,
