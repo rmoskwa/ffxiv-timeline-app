@@ -1,7 +1,8 @@
 import type React from "react";
 import { useRef, useState } from "react";
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
-import { effectiveBarFootprintSeconds, effectiveCooldownSeconds } from "@/domain/damage";
+import { effectiveCooldownSeconds } from "@/domain/damage";
+import { barDragRange, childDragRange } from "@/domain/placement";
 import { targetingForMit } from "@/domain/targeting";
 import {
   formatMitMagnitude,
@@ -38,11 +39,6 @@ interface MitBarProps {
 // Pixel distance the pointer must travel after pointerdown before we treat
 // the gesture as a drag. Below the threshold, pointerup fires a click.
 const DRAG_THRESHOLD_PX = 3;
-
-// Multi-charge gated children (today: SCH Consolation) must keep a 2s gap
-// between their casts — the SCH GCD floor. If a future child adds itself
-// with max_charges > 1, lift this into a type-level field.
-const GATED_CHILD_MIN_GAP_SECONDS = 2;
 
 // Solid segment for the active window (T → T+duration), faded segment for the
 // remaining cooldown (T+duration → T+cooldown).
@@ -130,66 +126,26 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
     e.stopPropagation();
     const tl = useTimelineStore.getState().timeline;
     if (!tl) return;
-    // Only this bar's charge-row matters for drag clamping. Bars on the other
-    // charge-row of a multi-charge mit are independent placements and must
-    // not constrain this bar's movement.
-    const neighbors = rowSiblings.filter((m) => m.id !== instance.id);
-    // Immediate neighbors on each side, by effect_time.
-    let prev: MitigationInstance | null = null;
-    let next: MitigationInstance | null = null;
-    for (const n of neighbors) {
-      if (n.effect_time < instance.effect_time) {
-        if (!prev || n.effect_time > prev.effect_time) prev = n;
-      } else {
-        if (!next || n.effect_time < next.effect_time) next = n;
-      }
-    }
-    // Use the previous neighbor's EFFECTIVE footprint (max of CD and duration)
-    // so a shrunken bar (e.g. a Tempera Coat whose shield was absorbed) frees
-    // up the post-shrinkage gap for this bar's left edge — and a buff whose
-    // active window exceeds its CD (Holy Sheltron) still blocks the entire
-    // active period. The dragged bar's own right edge uses its own effective
-    // footprint for the same reason.
-    const thisFootprint = effectiveBarFootprintSeconds(
+    // Snapshot the legal range at gesture start; the clamp rules (row
+    // neighbors' effective footprints, partner cooldown windows, offset-glued
+    // children, the timeline edge) live in domain/placement.ts.
+    const { minSec, maxSec } = barDragRange({
       instance,
       type,
-      allMits ?? [],
-      getMitById,
+      rowSiblings,
+      partnerInstances,
+      childInstances,
+      fightDurationSec: tl.metadata.fight_duration_sec,
+      allMits: allMits ?? [],
+      lookupMitType: getMitById,
       mitStates,
-    );
-    const prevType = prev ? getMitById(prev.type_id) : undefined;
-    const prevFootprint =
-      prev && prevType
-        ? effectiveBarFootprintSeconds(prev, prevType, allMits ?? [], getMitById, mitStates)
-        : 0;
-    let minT = prev ? prev.effect_time + prevFootprint : 0;
-    let maxT = next ? next.effect_time - thisFootprint : tl.metadata.fight_duration_sec;
-    // Offset-glued children must stay within the timeline. Snapshot each
-    // child's current offset and tighten the parent's right-edge clamp so
-    // dragging never pushes a child past fight_duration_sec.
-    for (const child of childInstances) {
-      const offset = child.effect_time - instance.effect_time;
-      maxT = Math.min(maxT, tl.metadata.fight_duration_sec - offset);
-    }
-    // Shared-recast partners on the same slot block dragging into their
-    // effective cooldown window. Partner active duration is irrelevant — the
-    // mits never share an active window — so we clamp against partner CD only.
-    for (const p of partnerInstances) {
-      const pType = getMitById(p.type_id);
-      if (!pType) continue;
-      const pCd = effectiveCooldownSeconds(p, pType, allMits ?? [], getMitById, mitStates);
-      if (p.effect_time < instance.effect_time) {
-        minT = Math.max(minT, p.effect_time + pCd);
-      } else {
-        maxT = Math.min(maxT, p.effect_time - thisFootprint);
-      }
-    }
+    });
     dragStartRef.current = {
       pointerId: e.pointerId,
       clientX: e.clientX,
       startEffectTime: instance.effect_time,
-      minT,
-      maxT,
+      minT: minSec,
+      maxT: maxSec,
       dragging: false,
     };
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -535,33 +491,22 @@ function ChildOverlay({
   const beginDrag = (e: React.PointerEvent<HTMLElement>) => {
     if (e.button !== 0) return;
     e.stopPropagation();
-    // Clamp to the execution zone, shrunk by 1s on each end: the child can't
-    // share the parent's cast moment (+1s start boundary) and can't be cast on
-    // the last legal frame of the zone (-1s end boundary — players can't
-    // realistically activate at the tail of the buff). Also clamp to the
-    // timeline edge, like any other mit.
-    const baseMin = parent.effect_time + 1;
-    const baseMax = Math.min(parent.effect_time + execZone - 1, laneDurationSec);
-    // Multi-charge gap clamp (today: SCH Consolation, 2s).
-    let gapMin = baseMin;
-    let gapMax = baseMax;
-    if (childType.max_charges > 1) {
-      for (const s of siblings) {
-        if (s.id === child.id) continue;
-        if (s.type_id !== child.type_id) continue;
-        if (s.effect_time < child.effect_time) {
-          gapMin = Math.max(gapMin, s.effect_time + GATED_CHILD_MIN_GAP_SECONDS);
-        } else {
-          gapMax = Math.min(gapMax, s.effect_time - GATED_CHILD_MIN_GAP_SECONDS);
-        }
-      }
-    }
+    // Execution-zone bounds plus the multi-charge sibling gap, from
+    // domain/placement.ts.
+    const { minSec, maxSec } = childDragRange({
+      child,
+      childType,
+      parentEffectTime: parent.effect_time,
+      execZoneSec: execZone,
+      fightDurationSec: laneDurationSec,
+      siblings,
+    });
     dragStartRef.current = {
       pointerId: e.pointerId,
       clientX: e.clientX,
       startT: child.effect_time,
-      minT: gapMin,
-      maxT: gapMax,
+      minT: minSec,
+      maxT: maxSec,
       dragging: false,
     };
     e.currentTarget.setPointerCapture(e.pointerId);

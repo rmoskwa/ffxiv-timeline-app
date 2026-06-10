@@ -1,8 +1,11 @@
 import type React from "react";
 import { useMemo, useState } from "react";
 import { getMitById, getSharedRecastPartners } from "@/data/mit-library";
-import { assignChargeRows } from "@/domain/charges";
-import { effectiveBarFootprintSeconds, effectiveCooldownSeconds } from "@/domain/damage";
+import {
+  legalRowPlacement,
+  resolveSubLanePlacement,
+  type SubLanePlacement,
+} from "@/domain/placement";
 import {
   instanceActiveDurationSeconds,
   type MitigationInstance,
@@ -13,7 +16,6 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { MitBar } from "./MitBar";
 import { MitIcon } from "./MitIcon";
 import { PhaseDividers } from "./PhaseDividers";
-import { type BlockingInterval, isPlacementLegal } from "./placement-legality";
 import { snapClientXToSecond } from "./timeline-constants";
 import { useBossGuidesStore } from "./use-boss-guides";
 import { useMitInstanceStates } from "./use-derived";
@@ -40,26 +42,25 @@ interface MitSubLaneProps {
 // chronological); no schema field. The whole sub-lane shares one left label.
 export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLaneProps) {
   const { subLaneHeight } = useRowSize();
+  const allMits = useTimelineStore((s) => s.timeline?.mitigation_instances);
+  const mitStates = useMitInstanceStates();
 
-  const rows = useMemo(() => {
-    // Sticky row-of-record: instance.charge_row when set (placements from the
-    // current schema); derived chronologically when not (loaded saves
-    // pre-dating the field). The derived fallback only fires when charge_row
-    // is undefined — surviving placements never re-flow onto other rows just
-    // because a neighbor was deleted.
-    const derived = assignChargeRows(instances, mitType);
-    const maxRow = Math.max(1, mitType.max_charges);
-    const buckets: MitigationInstance[][] = Array.from({ length: maxRow }, () => []);
-    for (const inst of instances) {
-      const sticky = inst.charge_row;
-      const rowIdx =
-        sticky !== undefined && sticky >= 0 && sticky < maxRow
-          ? sticky
-          : (derived.get(inst.id)?.rowIndex ?? 0);
-      buckets[rowIdx]?.push(inst);
-    }
-    return buckets;
-  }, [instances, mitType]);
+  // The legality rules (charge-row bucketing, effective-footprint blockers,
+  // shared-recast partner windows) live in domain/placement.ts; this shell
+  // pre-resolves the library lookups at the seam and renders the result.
+  const placement = useMemo(
+    () =>
+      resolveSubLanePlacement({
+        mitType,
+        slotId: slot.id,
+        laneInstances: instances,
+        partnerTypes: getSharedRecastPartners(mitType),
+        allMits: allMits ?? [],
+        lookupMitType: getMitById,
+        mitStates,
+      }),
+    [mitType, slot.id, instances, allMits, mitStates],
+  );
 
   return (
     <div
@@ -71,13 +72,14 @@ export function MitSubLane({ slot, mitType, instances, damageMarks }: MitSubLane
         <span className="sub-lane-name">{mitType.name}</span>
       </div>
       <div className="sub-lane-rows">
-        {rows.map((rowInstances, rowIdx) => (
+        {placement.rows.map((rowInstances, rowIdx) => (
           <ChargeRow
             // biome-ignore lint/suspicious/noArrayIndexKey: row index IS the identity here — there are exactly max_charges rows and they don't reorder.
             key={rowIdx}
             rowIndex={rowIdx}
             slot={slot}
             mitType={mitType}
+            placement={placement}
             instances={rowInstances}
             damageMarks={damageMarks}
           />
@@ -91,6 +93,7 @@ interface ChargeRowProps {
   rowIndex: number;
   slot: PlayerSlot;
   mitType: MitigationType;
+  placement: SubLanePlacement;
   instances: readonly MitigationInstance[];
   damageMarks: readonly DamageMark[];
 }
@@ -100,62 +103,15 @@ interface ChargeRowProps {
 // never overlap by construction. A bar's footprint may extend past the timeline
 // end (the buff outlasts the encounter); the portion past `laneDurationSec` is
 // clipped visually.
-function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRowProps) {
+function ChargeRow({ rowIndex, slot, mitType, placement, instances, damageMarks }: ChargeRowProps) {
   const addMit = useTimelineStore((s) => s.addMitigationInstance);
-  const allMits = useTimelineStore((s) => s.timeline?.mitigation_instances);
-  const mitStates = useMitInstanceStates();
   const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
   const guidesVisible = useBossGuidesStore((s) => s.visible);
   const [hoverSec, setHoverSec] = useState<number | null>(null);
 
-  // Neighbor end-time uses each placement's EFFECTIVE footprint — `max(CD,
-  // duration)`. When a Tempera shield is absorbed, the freed-up space behind
-  // the shrunken bar becomes available for the next placement; the duration
-  // floor matters when CD < duration (Holy Sheltron) so the buff's active
-  // window remains blocking. The hover ghost's own footprint still uses the
-  // data values (worst case — the new placement's eventual absorption state is
-  // unknown until a boss hit interacts with it).
-  const neighborEnds = instances.map(
-    (m) =>
-      m.effect_time +
-      effectiveBarFootprintSeconds(m, mitType, allMits ?? [], getMitById, mitStates),
-  );
-  const ghostFootprintSec = Math.max(mitType.cooldown_seconds, mitType.duration_seconds);
-
-  // Shared-recast partners on this slot: any placement of a sibling mit in the
-  // same shared_recast_group locks every charge of this lane out for the
-  // partner's effective cooldown window. The active duration of the partner
-  // doesn't matter here — only its CD — because the two mits never share an
-  // active window (one is always locked when the other is cast).
-  const partnerTypes = getSharedRecastPartners(mitType);
-  const partnerInstances =
-    partnerTypes.length === 0
-      ? []
-      : (allMits ?? []).filter(
-          (m) => m.player_slot_id === slot.id && partnerTypes.some((p) => p.id === m.type_id),
-        );
-  const partnerCdEnds = partnerInstances.map((m) => {
-    const t = getMitById(m.type_id);
-    if (!t) return null;
-    return m.effect_time + effectiveCooldownSeconds(m, t, allMits ?? [], getMitById, mitStates);
-  });
-
   const legalHoverSec = (raw: number): number | null => {
     if (raw < 0 || raw > laneDurationSec) return null;
-    const blockers: BlockingInterval[] = [];
-    for (let i = 0; i < instances.length; i++) {
-      const n = instances[i];
-      const nEnd = neighborEnds[i];
-      if (!n || nEnd == null) continue;
-      blockers.push({ startSec: n.effect_time, endSec: nEnd });
-    }
-    for (let i = 0; i < partnerInstances.length; i++) {
-      const p = partnerInstances[i];
-      const pEnd = partnerCdEnds[i];
-      if (!p || pEnd == null) continue;
-      blockers.push({ startSec: p.effect_time, endSec: pEnd });
-    }
-    return isPlacementLegal(raw, ghostFootprintSec, blockers) ? raw : null;
+    return legalRowPlacement(placement, rowIndex, raw) ? raw : null;
   };
 
   const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -232,11 +188,11 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
             aria-hidden
           />
         ))}
-      {partnerInstances.map((p, i) => {
-        const pEnd = partnerCdEnds[i];
-        if (pEnd == null) return null;
-        const leftSec = Math.max(0, p.effect_time);
-        const widthSec = Math.max(0, Math.min(pEnd, laneDurationSec) - leftSec);
+      {placement.partnerInstances.map((p, i) => {
+        const w = placement.partnerWindows[i];
+        if (w == null) return null;
+        const leftSec = Math.max(0, w.startSec);
+        const widthSec = Math.max(0, Math.min(w.endSec, laneDurationSec) - leftSec);
         if (widthSec <= 0) return null;
         return (
           <div
@@ -261,7 +217,7 @@ function ChargeRow({ rowIndex, slot, mitType, instances, damageMarks }: ChargeRo
           instance={m}
           type={mitType}
           rowSiblings={instances}
-          partnerInstances={partnerInstances}
+          partnerInstances={placement.partnerInstances}
         />
       ))}
     </div>

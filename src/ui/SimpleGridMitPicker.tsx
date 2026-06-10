@@ -13,11 +13,11 @@
 // time when the spot is out of bounds, on cooldown, or a boss hit sits between
 // the shifted spot and the clicked hit. The canvas placement path is unaffected.
 //
-// Availability reuses the canvas's snap-free legality core (isPlacementLegal)
-// plus the same charge-row bucketing and effective-footprint/cooldown
-// resolution MitSubLane uses, so the grid and canvas can never disagree about
-// what is legal at a given second. This is React-shell seam code, not
-// a pure view module — it resolves domain values before calling the core.
+// Availability reuses the canvas's legality rules wholesale — the same
+// Placement module (domain/placement.ts) MitSubLane renders from — so the
+// grid and canvas can never disagree about what is legal at a given second.
+// This is React-shell seam code, not a pure view module — it resolves domain
+// values before calling the module and turns the results into reason strings.
 
 import { useEffect, useRef } from "react";
 import {
@@ -26,16 +26,16 @@ import {
   getMitsForJob,
   getSharedRecastPartners,
 } from "@/data/mit-library";
-import { assignChargeRows } from "@/domain/charges";
+import type { MitInstanceState } from "@/domain/damage";
 import {
-  effectiveBarFootprintSeconds,
-  effectiveCooldownSeconds,
-  type MitInstanceState,
-} from "@/domain/damage";
+  blockedUntilSec,
+  firstLegalRow,
+  isPlacementLegal,
+  resolveSubLanePlacement,
+} from "@/domain/placement";
 import type { MitigationInstance, MitigationType, PlayerSlot } from "@/domain/types";
 import { useTimelineStore } from "@/state/timeline-store";
 import { MitIcon } from "./MitIcon";
-import { isPlacementLegal } from "./placement-legality";
 import { secondsToTimecode } from "./timeline-constants";
 import { useMitInstanceStates } from "./use-derived";
 
@@ -49,10 +49,8 @@ interface Availability {
   reason: string | null;
 }
 
-// Mirrors MitSubLane's legality exactly: a candidate placement of footprint
-// max(cooldown, duration) at `effectTime` is legal on a charge-row when it
-// overlaps no same-(slot,type) neighbor's effective footprint, and the slot has
-// no shared-recast partner whose effective cooldown window overlaps it.
+// Thin adapter over the shared Placement module: resolve the sub-lane once,
+// then translate the legality queries into availability + a reason string.
 function computeMitAvailability(
   mitType: MitigationType,
   slotId: string,
@@ -60,62 +58,37 @@ function computeMitAvailability(
   allMits: readonly MitigationInstance[],
   mitStates: ReadonlyMap<string, MitInstanceState>,
 ): Availability {
-  const footprintSec = Math.max(mitType.cooldown_seconds, mitType.duration_seconds);
+  const placement = resolveSubLanePlacement({
+    mitType,
+    slotId,
+    laneInstances: allMits.filter((m) => m.player_slot_id === slotId && m.type_id === mitType.id),
+    partnerTypes: getSharedRecastPartners(mitType),
+    allMits,
+    lookupMitType: getMitById,
+    mitStates,
+  });
 
   // Shared-recast partners block every charge of this lane.
-  const partnerTypes = getSharedRecastPartners(mitType);
-  if (partnerTypes.length > 0) {
-    for (const m of allMits) {
-      if (m.player_slot_id !== slotId) continue;
-      if (!partnerTypes.some((p) => p.id === m.type_id)) continue;
-      const t = getMitById(m.type_id);
-      if (!t) continue;
-      const end = m.effect_time + effectiveCooldownSeconds(m, t, allMits, getMitById, mitStates);
-      if (effectTime < end && effectTime + footprintSec > m.effect_time) {
-        return { available: false, chargeRow: 0, reason: `shared recast with ${t.name}` };
-      }
+  for (let i = 0; i < placement.partnerWindows.length; i++) {
+    const w = placement.partnerWindows[i];
+    const p = placement.partnerInstances[i];
+    if (!w || !p) continue;
+    if (!isPlacementLegal(effectTime, placement.footprintSec, [w])) {
+      const name = getMitById(p.type_id)?.name ?? p.type_id;
+      return { available: false, chargeRow: 0, reason: `shared recast with ${name}` };
     }
   }
 
-  // Bucket existing same-type placements into charge-rows exactly as MitSubLane:
-  // sticky charge_row when set, derived chronologically otherwise.
-  const sameType = allMits.filter((m) => m.player_slot_id === slotId && m.type_id === mitType.id);
-  const maxRow = Math.max(1, mitType.max_charges);
-  const derived = assignChargeRows(sameType, mitType);
-  const buckets: MitigationInstance[][] = Array.from({ length: maxRow }, () => []);
-  for (const inst of sameType) {
-    const sticky = inst.charge_row;
-    const rowIdx =
-      sticky !== undefined && sticky >= 0 && sticky < maxRow
-        ? sticky
-        : (derived.get(inst.id)?.rowIndex ?? 0);
-    buckets[rowIdx]?.push(inst);
-  }
-
-  for (let rowIdx = 0; rowIdx < maxRow; rowIdx++) {
-    const blockers = (buckets[rowIdx] ?? []).map((n) => ({
-      startSec: n.effect_time,
-      endSec:
-        n.effect_time + effectiveBarFootprintSeconds(n, mitType, allMits, getMitById, mitStates),
-    }));
-    if (isPlacementLegal(effectTime, footprintSec, blockers)) {
-      return { available: true, chargeRow: rowIdx, reason: null };
-    }
-  }
+  const row = firstLegalRow(placement, effectTime);
+  if (row !== -1) return { available: true, chargeRow: row, reason: null };
 
   // No free charge-row: report when the soonest charge frees up (single-charge)
   // or simply that all charges are spent (multi-charge).
-  if (maxRow > 1) return { available: false, chargeRow: 0, reason: "no charges" };
-  let until = effectTime;
-  for (const n of sameType) {
-    const end =
-      n.effect_time + effectiveBarFootprintSeconds(n, mitType, allMits, getMitById, mitStates);
-    if (effectTime < end && effectTime + footprintSec > n.effect_time) until = Math.max(until, end);
-  }
+  if (placement.rows.length > 1) return { available: false, chargeRow: 0, reason: "no charges" };
   return {
     available: false,
     chargeRow: 0,
-    reason: `on cooldown until ${secondsToTimecode(until)}`,
+    reason: `on cooldown until ${secondsToTimecode(blockedUntilSec(placement, effectTime))}`,
   };
 }
 
