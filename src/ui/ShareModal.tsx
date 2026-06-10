@@ -5,7 +5,7 @@
 // the persisted store so the preview updates live and the choice sticks. Copy uses
 // the Tauri clipboard plugin. Follows the JobDefaultsModal / MitLaneLayoutModal
 // pattern (modal-backdrop, role=dialog, Escape/backdrop close).
-// See docs/prd/share-to-discord.md §5 and docs/adr/0006.
+// See docs/prd/share-to-discord.md §5.
 
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type React from "react";
@@ -67,7 +67,7 @@ export function ShareModal() {
   const fightDurationSec = timeline?.metadata.fight_duration_sec ?? 0;
   const phases = timeline?.phases ?? [];
 
-  // Range is fight-specific and transient (ADR-0006): seeded to whole-fight on
+  // Range is fight-specific and transient: seeded to whole-fight on
   // every open, never persisted. {0, fightDuration} reads as whole-fight, so the
   // renderer suppresses the Range header line until the user narrows it.
   const [slice, setSlice] = useState({ fromSec: 0, toSec: fightDurationSec });

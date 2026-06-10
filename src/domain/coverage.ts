@@ -122,11 +122,11 @@ export function mitCovers(
 }
 
 // Inspector-only "does this mit touch this hit?" — temporal presence (raw
-// window, per ADR-0002) ∩ reach, with NO damage-type clause and the
+// window) ∩ reach, with NO damage-type clause and the
 // untargetable-boss boss_debuff exclusion. Distinct from mitCovers (which
 // gates the damage walk and DOES require a damage-type match). The active
 // duration is resolved at the React seam and passed in, so this module stays
-// library-free (ADR-0001), mirroring simple-grid-projection.ts.
+// library-free, mirroring simple-grid-projection.ts.
 export function mitInteractsWithHit(
   mit: MitigationInstance,
   mitType: MitigationType,

@@ -2,7 +2,7 @@
 // visibility of that job's mitigation Sub-lanes on the canvas. A personal
 // authoring preference — NOT part of any TimelineFile, persisted to its own
 // AppData file (see persistence/mit-lane-layout-storage.ts) and never serialized
-// into a timeline. Canvas-only visual lens (ADR-0005): a hidden Sub-lane's
+// into a timeline. Canvas-only visual lens: a hidden Sub-lane's
 // instances still occupy the timeline and still feed the survival math. Parallels
 // the Job HP default / Ability color default stores. See CONTEXT.md → "Mit lane
 // layout".

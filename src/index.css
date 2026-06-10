@@ -4985,7 +4985,7 @@ button {
   color: #aaa;
   font-size: 0.85rem;
 }
-/* Release notes come from the annotated tag message (ADR-0011) and render
+/* Release notes come from the annotated tag message and render
    as written: plain text, line breaks kept. */
 .update-notice-notes {
   white-space: pre-wrap;

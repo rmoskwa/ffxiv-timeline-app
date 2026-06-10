@@ -52,7 +52,7 @@ describe("mit-lane-layout store", () => {
     });
   });
 
-  // The Mit lane layout is app-global, Canvas-only config (ADR-0005), never
+  // The Mit lane layout is app-global, Canvas-only config, never
   // serialized into a timeline: configuring a layout must not change the
   // serialized TimelineFile.
   it("does not affect the serialized timeline", () => {

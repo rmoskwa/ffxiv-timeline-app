@@ -15,7 +15,7 @@
 // (MitBar), and the Simple Timeline View's Mit picker availability
 // (SimpleGridMitPicker) are thin adapters over these functions, so the two
 // views can never disagree about what is legal — by construction, not by
-// hand-kept parallel copies. See docs/adr/0002-simple-view-live-projection.md.
+// hand-kept parallel copies.
 //
 // Pure domain module: seconds in, seconds out — no pixels, no React. The
 // mit-library lookup is injected (MitTypeLookup), as in damage.ts.

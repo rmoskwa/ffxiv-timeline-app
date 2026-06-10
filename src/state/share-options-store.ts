@@ -2,8 +2,8 @@
 // (attribution, which ability fields, show-uncovered, etc.). A personal authoring
 // preference — NOT part of any TimelineFile, persisted to its own AppData file
 // (see persistence/share-options-storage.ts) and never serialized into a
-// timeline. Parallels the Mit lane layout / Ability color default stores
-// (ADR-0005). The Slice/range is fight-specific and stays modal-local, never here.
+// timeline. Parallels the Mit lane layout / Ability color default stores.
+// The Slice/range is fight-specific and stays modal-local, never here.
 // The ShareOptions shape itself lives with the pure renderer (ui/share-markdown.ts),
 // since the options are exactly its parameters. See CONTEXT.md → "Share".
 

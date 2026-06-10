@@ -7,7 +7,7 @@
 // Pure I/O — the forgiving parse stays a caller-supplied, independently-tested
 // function so storage carries no schema/library knowledge (see e.g.
 // mit-lane-layout-storage.ts). Never the working timeline: these are personal
-// config, never serialized into a TimelineFile (ADR-0005).
+// config, never serialized into a TimelineFile.
 
 import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 

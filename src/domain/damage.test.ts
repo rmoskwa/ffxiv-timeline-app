@@ -2865,7 +2865,7 @@ describe("aggregateDamageByTime", () => {
 });
 
 // ─── Carried HP (the Full heal flag) ──────────────────────────────────────
-// ADR 0004 / PRD health-metadata-full-heal. A chip whose slot is in an
+// A chip whose slot is in an
 // instance's no_full_heal_slot_ids enters at the previous chip's exit HP
 // (Carried HP) instead of the cap; Lethal becomes damage ≥ entering HP.
 describe("aggregateDamageByTime — Carried HP", () => {

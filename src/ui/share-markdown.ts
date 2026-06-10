@@ -2,9 +2,9 @@
 // a Slice + Share options into the copy/paste-ready Discord-flavored digest: a
 // per-Boss-ability list grouped by Phase, listing which mitigations are present
 // on each hit and who presses them. The single source of truth for the output
-// text (docs/prd/share-to-discord.md §4, docs/adr/0006).
+// text (docs/prd/share-to-discord.md §4).
 //
-// Pure src/ui/-layer module (ADR-0001): it takes pre-resolved scalars and imports
+// Pure src/ui/-layer module: it takes pre-resolved scalars and imports
 // no src/domain/ engine — only the Simple-view presence projection
 // (projectInstancesToHits) and the small pure time formatter (secondsToTimecode),
 // so the digest and the grid can never disagree about presence. The React shell

@@ -74,7 +74,6 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
   // them via the X-affordance or re-add via the inspector).
   const childInstances = (allMits ?? []).filter((m) => m.parent_instance_id === instance.id);
   // Pre-resolve domain values at the React seam; geometry takes scalars.
-  // See docs/adr/0001-view-layer-pure-modules.md.
   const dispelledAt = mitStates.get(instance.id)?.dispelled_at;
   const effectiveCdSec = effectiveCooldownSeconds(
     instance,

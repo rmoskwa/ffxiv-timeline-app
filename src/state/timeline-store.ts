@@ -118,7 +118,7 @@ export interface TimelineStore {
   setSlotLabel: (slotIdx: number, label: string | undefined) => void;
   setSlotHp: (slotIdx: number, hp: number | undefined) => void;
   // Move the slot at `fromIdx` to `toIdx`, shifting the rest. A document
-  // mutation (ADR-0008): permutes the persisted roster AND every boss
+  // mutation: permutes the persisted roster AND every boss
   // instance's position-keyed observed_damage[].damage_per_player in lockstep.
   // No mit cascade (mits bind by slot ID), no confirmation. Out-of-range or
   // no-op indices are ignored.
@@ -140,7 +140,7 @@ export interface TimelineStore {
   selectMitInstance: (id: string) => void;
   deselectInstance: () => void;
 
-  // Full heal flag (ADR 0004). Per (boss-hit effect_time × player slot): flip
+  // Full heal flag. Per (boss-hit effect_time × player slot): flip
   // whether the slot is topped to full HP before the chip at that time, or
   // carries its HP forward from the previous chip. Writes the negative-sense
   // flag to every boss instance that lands a hit on the slot at that time, so

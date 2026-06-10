@@ -41,7 +41,7 @@ function ensureAppDataDir(): Promise<void> {
 // Export writes the app-specific extension only (.fftl / .ffbt) so our files are
 // identifiable; import also accepts legacy .json so files exported before the
 // extensions existed still load. The extension is cosmetic — deserialize()
-// validates by inner schema_version/kind and never inspects it (ADR 0009).
+// validates by inner schema_version/kind and never inspects it.
 const TIMELINE_EXPORT_FILTER = [{ name: "FFXIV Timeline", extensions: ["fftl"] }];
 const TIMELINE_IMPORT_FILTER = [{ name: "FFXIV Timeline", extensions: ["fftl", "json"] }];
 const BOSS_EXPORT_FILTER = [{ name: "FFXIV Boss Timeline", extensions: ["ffbt"] }];

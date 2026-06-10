@@ -1,7 +1,7 @@
 // Read-only Help → Mitigation Reference modal. Surfaces the per-job mitigation
 // reference (docs/mitigation-data.md) inside the app: every entry the app models
 // for a job, with the live numbers (cd, duration, effect, reaches) and the
-// modeling notes behind them. A view over the mit library (ADR-0007) — it reads
+// modeling notes behind them. A view over the mit library — it reads
 // and displays only; it never touches the damage engine, the timeline, or any
 // persisted state. Two-pane master-detail mirroring MitLaneLayoutModal's
 // shape/styling; read-only ephemeral open/close like HelpModals.

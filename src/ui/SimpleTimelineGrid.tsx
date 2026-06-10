@@ -9,7 +9,6 @@
 // placement slots at its legal re-anchor rows (and an × to delete it). The
 // per-cell add button opens SimpleGridMitPicker; the Time cell edits the
 // instance inline (re-sorts on commit); SimpleGridAddRow appends new rows.
-// See docs/adr/0002-simple-view-live-projection.md.
 
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
 import { getMitById } from "@/data/mit-library";

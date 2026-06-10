@@ -3,7 +3,7 @@
 // consumed by the canvas (orderedVisibleMits) and the Mitigation Layout modal
 // (resolveJobMitLanes, which needs hidden rows too to show their toggles).
 //
-// Per ADR-0001 the library lookup happens at the React seam: callers pass the
+// The library lookup happens at the React seam: callers pass the
 // job's non-gated library types in (`getMitsForJob(job).filter(mt => mt.gated_by
 // == null)`); this module never imports getMitsForJob, so its tests need no real
 // library. See docs/prd/mit-lane-layout.md §4.

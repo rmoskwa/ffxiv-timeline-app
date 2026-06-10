@@ -2,9 +2,9 @@
 // cd · duration · reaches meta line, and the derived + authored Reference notes.
 // Extracted from MitReferenceModal's row so the Mit inspector renders the same
 // per-ability content (docs/prd/mit-inspector-detail.md). A pure view over the
-// mit library (ADR-0007) — reads and displays only. Resolves the cross-entry
-// names mitReferenceNotes needs at this seam so the formatter stays library-free
-// (ADR-0001). Callers own the wrapper: the modal wraps it in <li className=
+// mit library — reads and displays only. Resolves the cross-entry
+// names mitReferenceNotes needs at this seam so the formatter stays library-free.
+// Callers own the wrapper: the modal wraps it in <li className=
 // "mit-ref-row">, the inspector in a plain container.
 
 import { getMitById, getSharedRecastPartners } from "@/data/mit-library";

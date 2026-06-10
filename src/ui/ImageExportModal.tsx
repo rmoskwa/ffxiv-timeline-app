@@ -4,7 +4,7 @@
 // (Coverage markers, hidden slots, icon/column size). The only image-specific
 // controls are a transient title (re-seeded to the fight name on open, never
 // persisted) and the persisted auto-hide-empty-rows toggle. No live preview —
-// the Simple view itself is the preview (ADR-0010). Follows the ShareModal /
+// the Simple view itself is the preview. Follows the ShareModal /
 // JobDefaultsModal pattern. See docs/prd/image-share.md §5.
 
 import { Image } from "@tauri-apps/api/image";

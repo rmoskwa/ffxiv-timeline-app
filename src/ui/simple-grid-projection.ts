@@ -2,7 +2,7 @@
 // mitigation instance to the boss-hit rows it covers, so the grid knows where
 // to draw a mit's editable Home cell and its read-only Coverage markers.
 //
-// Pure scalar module per docs/adr/0001-view-layer-pure-modules.md: it takes
+// Pure scalar module: it takes
 // pre-resolved hit times and per-instance {effectTime, durationSec} — no
 // MitigationInstance, no library lookups, no damage helpers. The React shell
 // resolves active durations (instanceActiveDurationSeconds, incl. held
@@ -10,7 +10,7 @@
 //
 // Presence here is TEMPORAL ONLY (active window contains the hit time) — it
 // does NOT apply coverage()'s damage-type/reach checks. Utility entries and
-// off-type mits must still surface. See docs/adr/0002-simple-view-live-projection.md.
+// off-type mits must still surface.
 //
 // Tests in simple-grid-projection.test.ts.
 

@@ -22,7 +22,7 @@ import { useZoom } from "./use-zoom";
 // The job's non-gated library types in library order — the base set the Mit lane
 // layout reorders/filters over. Gated children render on their parent's bar (see
 // MitBar) and never get their own sub-lane, so they're excluded here. Resolved
-// at the React seam per ADR-0001; mit-lane-order.ts stays library-agnostic.
+// at the React seam; mit-lane-order.ts stays library-agnostic.
 function useOrderedSlotMits(slot: PlayerSlot): MitigationType[] {
   const layout = useMitLaneLayoutStore((s) => s.layout);
   return useMemo(
@@ -67,7 +67,7 @@ const EMPTY_BOSS_INSTANCES: readonly BossAbilityInstance[] = [];
 // Drives both the chip bar and the vertical guide lines. `maxHp` is the
 // engine-provided buffed cap at this instant — not `slot.hp` — so max-HP
 // buffs (Thrill, Protraction, Great Nebula) widen lethality and resize the
-// HP fill correctly. `lethal` is contextual: damage ≥ entering HP (ADR 0004),
+// HP fill correctly. `lethal` is contextual: damage ≥ entering HP,
 // which reduces to ≥ max HP for an unmarked (Full heal) chip.
 function usePlayerDamageMarks(slotIndex: number): DamageMark[] {
   const damageByTime = useDamageByTime();

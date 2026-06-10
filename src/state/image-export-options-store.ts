@@ -2,7 +2,7 @@
 // mitigation-free rows in an Image Share. A personal authoring preference — NOT
 // part of any TimelineFile, persisted to its own AppData file (see
 // persistence/image-export-options-storage.ts) and never serialized into a
-// timeline. Mirrors the Share-options store (ADR-0005). The image title is
+// timeline. Mirrors the Share-options store. The image title is
 // fight-specific and stays modal-local, never here. See docs/prd/image-share.md §3.1.
 
 import { create } from "zustand";

@@ -1,7 +1,7 @@
 // Image Share capture: rasters the live Simple-view grid (the `.simple-grid`
 // <table>) to a PNG Blob with html-to-image, composites an optional title band,
 // and returns the bytes for the caller to save or copy. DOM-impure BY DESIGN —
-// the documented exception to ADR-0001's pure-view-module rule (ADR-0010): an
+// the documented exception to the pure-view-module rule: an
 // image's fidelity (job-colored headers, mit PNG icons, chip layout, theming)
 // lives only in the rendered DOM + CSS, so we raster the real node rather than
 // re-implement it in canvas draw calls (a guaranteed-to-drift second source of

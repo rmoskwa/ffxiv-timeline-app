@@ -3,7 +3,7 @@
 // master-detail: a role-grouped job list on the left, the selected job's rows
 // (reorder + show/hide) on the right. Edits live in a local draft; Save commits
 // to the layout store (auto-save persists it), Cancel discards. Canvas-only
-// visual lens (ADR-0005) — hidden rows still mitigate and the Simple view is
+// visual lens — hidden rows still mitigate and the Simple view is
 // unaffected. Follows the JobDefaultsModal / AbilityColorsModal pattern.
 // See docs/prd/mit-lane-layout.md §5 and CONTEXT.md → "Mit lane layout".
 
@@ -26,7 +26,7 @@ const FIRST_JOB: Job = JOBS_BY_ROLE[0]?.jobs[0] ?? "PLD";
 
 // The job's non-gated library types in library order — the base set the layout
 // reorders/filters over. Cached per job (the library is static). The modal is a
-// React seam, so it resolves library data here (ADR-0001).
+// React seam, so it resolves library data here.
 const NON_GATED_BY_JOB: Partial<Record<Job, MitigationType[]>> = {};
 function baseTypesForJob(job: Job): MitigationType[] {
   const cached = NON_GATED_BY_JOB[job];

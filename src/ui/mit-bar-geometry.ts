@@ -1,6 +1,6 @@
 // Pure pixel geometry for the mit-bar render. Inputs are pre-resolved scalars
 // (caller does the domain lookups); outputs are widths and offsets that JSX
-// drops into style props directly. See docs/adr/0001-view-layer-pure-modules.md.
+// drops into style props directly.
 //
 // Two entry points:
 //   - computeBarGeometry: the parent bar (active band, held/zone extensions,

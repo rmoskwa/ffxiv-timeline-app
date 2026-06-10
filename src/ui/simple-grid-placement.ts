@@ -5,12 +5,11 @@
 // sibling gap come from the shared Placement module (domain/placement.ts) —
 // the same rules the canvas drag clamp uses, so the two can't drift.
 //
-// Pure scalar module per docs/adr/0001-view-layer-pure-modules.md: takes hit
+// Pure scalar module: takes hit
 // times and pre-resolved scalars only (the Placement imports are themselves
 // scalar-pure). Only the child's current Home row is excluded — every other
 // legal hit is a re-anchor target, including ones the child currently covers
-// (the React shell turns those rows' Coverage markers into slots). See
-// docs/adr/0002-simple-view-live-projection.md.
+// (the React shell turns those rows' Coverage markers into slots).
 //
 // Two kinds of legal row:
 //   • Activation row — a hit inside the zone [zoneMin, zoneMax]. The child is

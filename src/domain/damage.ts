@@ -54,7 +54,7 @@ export interface PerPlayerHitResult {
   // The player's current HP immediately after this hit. Per-instance walk:
   // `max_hp − damage`. After the Carried HP fold in aggregateDamageByTime:
   // the carried exit HP (enter − damage), which only differs from the walk
-  // value on chips the user marked no-Full-heal. See ADR 0004.
+  // value on chips the user marked no-Full-heal.
   hp_after: number;
   // The HP the player holds *entering* this chip. Per-instance walk = the
   // effective cap (full heal). After the fold: the Carried HP for a marked
@@ -585,7 +585,7 @@ function expireAt(pools: BarrierPool[][], t: number) {
 // simultaneous hits, so the final `active_shields_after` for any given time
 // is whatever the last hit at that time reported.
 //
-// Carried HP fold (ADR 0004): after bucketing, the buckets are walked in
+// Carried HP fold: after bucketing, the buckets are walked in
 // ascending effect-time order to thread each player's HP across their own
 // chips. A chip whose slot is flagged no-Full-heal by any contributing
 // instance (OR-merge) enters at the previous chip's exit HP (clamped to the

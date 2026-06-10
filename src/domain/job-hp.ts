@@ -3,8 +3,7 @@
 // lives in src/state/job-hp-defaults-store.ts; this module only owns the type,
 // the clamp range, and the resolution rule.
 //
-// See docs/adr/0003-job-hp-is-baked-not-resolved.md and CONTEXT.md → "Job HP
-// default" / "Player slot".
+// See CONTEXT.md → "Job HP default" / "Player slot".
 
 import { PLAYER_MAX_HP } from "./damage";
 import type { Job } from "./types";
