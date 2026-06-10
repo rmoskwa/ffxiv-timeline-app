@@ -1,11 +1,11 @@
 import type { MitigationType } from "@/domain/types";
 
 // SCH mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Adloquium, Succor, Concitation, Recitation, Seraphic Veil excluded — rotational cure-potency.
+// Adloquium, Succor, Concitation, Seraphic Veil excluded — rotational cure-potency.
 // Fey Illumination also grants +10% healing magic potency; only the mit component is modeled.
 // Protraction's +10% received-healing component is dropped per shielded-mits / heal-buff policy;
 // the +10% max-HP buff is first-class.
-// Utility entries (planner anchors, 0% mit): Deployment Tactics, Summon Seraph, Consolation.
+// Utility entries (planner anchors, 0% mit): Recitation, Deployment Tactics, Summon Seraph, Consolation.
 export const SCH_MITS: MitigationType[] = [
   {
     id: "sch.sacred_soil",
@@ -57,6 +57,18 @@ export const SCH_MITS: MitigationType[] = [
     // dropped per shielded-mits / heal-buff policy.
     max_hp_buff_pct: 10,
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Protraction",
+  },
+  {
+    id: "sch.recitation",
+    name: "Recitation",
+    job: "SCH",
+    cooldown_seconds: 60,
+    duration_seconds: 15,
+    mitigation_per_type: {},
+    affects: "self",
+    max_charges: 1,
+    mechanic: "utility",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Recitation",
   },
   {
     id: "sch.deployment_tactics",
