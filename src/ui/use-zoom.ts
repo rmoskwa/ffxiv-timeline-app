@@ -45,12 +45,20 @@ export const useZoomStore = create<ZoomStore>((set, get) => ({
   },
 }));
 
-// Hook returning current px/s plus the derived lane width. Components that only
-// need to position by time should select `pxPerSec` directly via useZoomStore.
+// Hook returning current px/s plus the derived lane bounds. `startSec` is the
+// timeline's Start (0, or negative when a Pre-pull section exists); every
+// track spans [startSec, laneDurationSec], so a time t renders at
+// (t - startSec) * pxPerSec and laneWidthPx covers the full span.
 export function useZoom() {
   const pxPerSec = useZoomStore((s) => s.pxPerSec);
   const laneDurationSec = useTimelineStore(
     (s) => s.timeline?.metadata.fight_duration_sec ?? DEFAULT_FIGHT_DURATION_SEC,
   );
-  return { pxPerSec, laneDurationSec, laneWidthPx: laneDurationSec * pxPerSec };
+  const startSec = useTimelineStore((s) => -(s.timeline?.metadata.pre_pull_duration_sec ?? 0));
+  return {
+    pxPerSec,
+    laneDurationSec,
+    startSec,
+    laneWidthPx: (laneDurationSec - startSec) * pxPerSec,
+  };
 }

@@ -37,6 +37,7 @@ export function TimelineCanvas() {
   const fightDurationSec = useTimelineStore(
     (s) => s.timeline?.metadata.fight_duration_sec ?? DEFAULT_FIGHT_DURATION_SEC,
   );
+  const prePullSec = useTimelineStore((s) => s.timeline?.metadata.pre_pull_duration_sec ?? 0);
   const hiddenSlotIds = useViewStore((s) => s.hiddenSlotIds);
   const { pxPerSec } = useZoom();
   const theme = useAppearanceStore((s) => s.theme);
@@ -56,14 +57,15 @@ export function TimelineCanvas() {
       chipPosition === "interleaved" ? LANE_LABEL_WIDTH_PX : LANE_LABEL_WIDTH_PX + JOB_GUTTER_PX;
     const recompute = () => {
       const trackWidth = Math.max(0, el.clientWidth - labelRegion);
-      if (trackWidth <= 0 || fightDurationSec <= 0) return;
-      setMinPxPerSec(trackWidth / fightDurationSec);
+      const spanSec = fightDurationSec + prePullSec;
+      if (trackWidth <= 0 || spanSec <= 0) return;
+      setMinPxPerSec(trackWidth / spanSec);
     };
     recompute();
     const ro = new ResizeObserver(recompute);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [fightDurationSec, setMinPxPerSec, chipPosition]);
+  }, [fightDurationSec, prePullSec, setMinPxPerSec, chipPosition]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLDivElement>) => {
@@ -125,6 +127,10 @@ export function TimelineCanvas() {
           style={
             {
               ["--tick-px" as string]: `${tickIntervalSec * pxPerSec}px`,
+              // Gridlines anchor to the track's left edge; with a Pre-pull
+              // section that edge sits at -prePullSec, so shift the repeating
+              // pattern right to keep gridlines on whole tick multiples.
+              ["--prepull-px" as string]: `${prePullSec * pxPerSec}px`,
             } as React.CSSProperties
           }
         >

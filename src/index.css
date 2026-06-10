@@ -2402,6 +2402,9 @@ button {
     rgba(255, 255, 255, 0.03) calc(var(--tick-px, 360px) - 1px),
     rgba(255, 255, 255, 0.03) var(--tick-px, 360px)
   );
+  /* With a Pre-pull section the track's left edge sits at -prePull, not 0;
+     shift the repeating pattern so gridlines stay on whole tick multiples. */
+  background-position-x: var(--prepull-px, 0px);
   pointer-events: none;
 }
 
@@ -4687,6 +4690,37 @@ button {
   position: absolute;
   left: 0.15rem;
   color: #555;
+}
+
+/* ─── Pre-pull section (CONTEXT.md "Pre-pull section") ───────────────── */
+
+/* Tinted slice of every track left of the pull, plus the pull line at t = 0.
+   Painted early in each track (like .phase-divider) so Bars, Markers, and
+   chips render on top. */
+.pre-pull-shade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(255, 200, 90, 0.05);
+  pointer-events: none;
+  z-index: 0;
+}
+.pull-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(255, 200, 90, 0.45);
+  pointer-events: none;
+  z-index: 0;
+}
+.theme-light .pre-pull-shade {
+  background: rgba(190, 120, 0, 0.08);
+}
+.theme-light .pull-line {
+  background: rgba(190, 120, 0, 0.5);
 }
 
 /* ─── Phase dividers ─────────────────────────────────────────────────── */

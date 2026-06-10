@@ -13,6 +13,7 @@ import { JobIcon } from "./JobIcon";
 import { MitSubLane } from "./MitSubLane";
 import { orderedVisibleMits } from "./mit-lane-order";
 import { PhaseDividers } from "./PhaseDividers";
+import { PrePullShade } from "./PrePullShade";
 import { jobColor } from "./role-color";
 import { CHIP_BAR_PX, JOB_GUTTER_PX } from "./timeline-constants";
 import { useDamageByTime } from "./use-derived";
@@ -115,7 +116,7 @@ function useSlotMits(slot: PlayerSlot): readonly MitigationInstance[] {
 export function PlayerLane({ slot, index }: PlayerLaneProps) {
   const damageMarks = usePlayerDamageMarks(index);
   const mitsBySlot = useSlotMits(slot);
-  const { pxPerSec, laneWidthPx } = useZoom();
+  const { pxPerSec, startSec, laneWidthPx } = useZoom();
 
   const label = slot.name_label ?? (slot.job === "unset" ? "Unset" : slot.job);
   const mits = useOrderedSlotMits(slot);
@@ -132,10 +133,17 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
           <span className="lane-slot-name">{label}</span>
         </div>
         <div className="lane-track player-header-track" style={{ width: laneWidthPx }}>
+          <PrePullShade />
           <PhaseDividers />
           {!isUnset &&
             damageMarks.map((m) => (
-              <DamageChip key={m.id} mark={m} slotId={slot.id} pxPerSec={pxPerSec} />
+              <DamageChip
+                key={m.id}
+                mark={m}
+                slotId={slot.id}
+                pxPerSec={pxPerSec}
+                startSec={startSec}
+              />
             ))}
         </div>
       </div>
@@ -158,7 +166,7 @@ export function PlayerLane({ slot, index }: PlayerLaneProps) {
 // height as slots get assigned.
 export function PlayerChipRow({ slot, index }: PlayerLaneProps) {
   const damageMarks = usePlayerDamageMarks(index);
-  const { pxPerSec, laneWidthPx } = useZoom();
+  const { pxPerSec, startSec, laneWidthPx } = useZoom();
   const isUnset = slot.job === "unset";
   const label = slot.name_label ?? (isUnset ? "Unset" : slot.job);
 
@@ -167,10 +175,17 @@ export function PlayerChipRow({ slot, index }: PlayerLaneProps) {
       <JobGutter slot={slot} title={label} />
       <div className="lane-label chip-row-label" aria-hidden />
       <div className="lane-track player-header-track chip-row-track" style={{ width: laneWidthPx }}>
+        <PrePullShade />
         <PhaseDividers />
         {!isUnset &&
           damageMarks.map((m) => (
-            <DamageChip key={m.id} mark={m} slotId={slot.id} pxPerSec={pxPerSec} />
+            <DamageChip
+              key={m.id}
+              mark={m}
+              slotId={slot.id}
+              pxPerSec={pxPerSec}
+              startSec={startSec}
+            />
           ))}
       </div>
     </div>
@@ -247,10 +262,12 @@ function DamageChip({
   mark,
   slotId,
   pxPerSec,
+  startSec,
 }: {
   mark: DamageMark;
   slotId: string;
   pxPerSec: number;
+  startSec: number;
 }) {
   const toggleChip = useTimelineStore((s) => s.toggleChipNoFullHeal);
 
@@ -282,7 +299,7 @@ function DamageChip({
     <button
       type="button"
       className={`damage-chip${variant}${carried}`}
-      style={{ left: mark.effectTime * pxPerSec, width: CHIP_BAR_PX }}
+      style={{ left: (mark.effectTime - startSec) * pxPerSec, width: CHIP_BAR_PX }}
       title={title}
       aria-pressed={mark.noFullHeal}
       onClick={() => toggleChip(mark.effectTime, slotId)}

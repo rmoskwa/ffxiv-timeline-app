@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTimecode, secondsToTimecode } from "./timeline-constants";
+import { parseTimecode, secondsToTimecode, snapClientXToSecond } from "./timeline-constants";
 
 describe("parseTimecode", () => {
   it("parses mm:ss form", () => {
@@ -40,12 +40,20 @@ describe("parseTimecode", () => {
     expect(parseTimecode(":")).toBeNull();
   });
 
-  it("rejects empty / non-numeric / negative input", () => {
+  it("rejects empty / non-numeric input", () => {
     expect(parseTimecode("")).toBeNull();
     expect(parseTimecode("   ")).toBeNull();
     expect(parseTimecode("abc")).toBeNull();
-    expect(parseTimecode("-1")).toBeNull();
-    expect(parseTimecode("-1:30")).toBeNull();
+    expect(parseTimecode("-")).toBeNull();
+    expect(parseTimecode("-abc")).toBeNull();
+  });
+
+  it("accepts a leading minus (Pre-pull section times) — callers gate range", () => {
+    expect(parseTimecode("-1")).toBe(-1);
+    expect(parseTimecode("-1:30")).toBe(-90);
+    expect(parseTimecode("-0:05")).toBe(-5);
+    expect(parseTimecode("-0")).toBe(0);
+    expect(parseTimecode("-0:00")).toBe(0);
   });
 
   it("rejects Infinity and NaN literals via Number.isFinite", () => {
@@ -68,13 +76,30 @@ describe("secondsToTimecode", () => {
     expect(secondsToTimecode(1800)).toBe("30:00");
   });
 
-  it("clamps negative values to 0:00", () => {
-    expect(secondsToTimecode(-5)).toBe("0:00");
+  it("formats negative values with a leading minus (Pre-pull section times)", () => {
+    expect(secondsToTimecode(-5)).toBe("-0:05");
+    expect(secondsToTimecode(-90)).toBe("-1:30");
   });
 
   it("rounds fractional seconds before formatting", () => {
     expect(secondsToTimecode(0.49)).toBe("0:00");
     expect(secondsToTimecode(0.5)).toBe("0:01");
     expect(secondsToTimecode(59.5)).toBe("1:00");
+  });
+});
+
+describe("snapClientXToSecond", () => {
+  it("snaps relative to the lane's left edge and clamps to [0, duration] by default", () => {
+    expect(snapClientXToSecond(105, 100, 10, 600)).toBe(1);
+    expect(snapClientXToSecond(50, 100, 10, 600)).toBe(0);
+    expect(snapClientXToSecond(100 + 7000, 100, 10, 600)).toBe(600);
+  });
+
+  it("offsets by laneStartSec and clamps to [laneStartSec, duration] (Pre-pull section)", () => {
+    // Track origin at -15: x = laneLeft lands on -15, the pull sits 150px in.
+    expect(snapClientXToSecond(100, 100, 10, 600, -15)).toBe(-15);
+    expect(snapClientXToSecond(250, 100, 10, 600, -15)).toBe(0);
+    expect(snapClientXToSecond(200, 100, 10, 600, -15)).toBe(-5);
+    expect(snapClientXToSecond(0, 100, 10, 600, -15)).toBe(-15);
   });
 });

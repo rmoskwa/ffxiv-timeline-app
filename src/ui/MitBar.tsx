@@ -51,7 +51,7 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
   const roster = useTimelineStore((s) => s.timeline?.roster);
   const allMits = useTimelineStore((s) => s.timeline?.mitigation_instances);
   const mitStates = useMitInstanceStates();
-  const { pxPerSec, laneDurationSec } = useZoom();
+  const { pxPerSec, laneDurationSec, startSec } = useZoom();
   const { mitBarHeight, mitIconSize } = useRowSize();
 
   // While dragging, `dragEffectTime` overrides `instance.effect_time` for
@@ -88,6 +88,7 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
     type,
     pxPerSec,
     laneDurationSec,
+    laneStartSec: startSec,
     effectiveCdSec,
     dispelledAt,
     heldDurationSec,
@@ -136,6 +137,7 @@ export function MitBar({ instance, type, rowSiblings, partnerInstances }: MitBar
       partnerInstances,
       childInstances,
       fightDurationSec: tl.metadata.fight_duration_sec,
+      minSec: startSec,
       allMits: allMits ?? [],
       lookupMitType: getMitById,
       mitStates,

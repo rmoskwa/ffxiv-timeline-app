@@ -16,6 +16,7 @@ import { useTimelineStore } from "@/state/timeline-store";
 import { MitBar } from "./MitBar";
 import { MitIcon } from "./MitIcon";
 import { PhaseDividers } from "./PhaseDividers";
+import { PrePullShade } from "./PrePullShade";
 import { snapClientXToSecond } from "./timeline-constants";
 import { useBossGuidesStore } from "./use-boss-guides";
 import { useMitInstanceStates } from "./use-derived";
@@ -105,12 +106,14 @@ interface ChargeRowProps {
 // clipped visually.
 function ChargeRow({ rowIndex, slot, mitType, placement, instances, damageMarks }: ChargeRowProps) {
   const addMit = useTimelineStore((s) => s.addMitigationInstance);
-  const { pxPerSec, laneDurationSec, laneWidthPx } = useZoom();
+  const { pxPerSec, laneDurationSec, startSec, laneWidthPx } = useZoom();
   const guidesVisible = useBossGuidesStore((s) => s.visible);
   const [hoverSec, setHoverSec] = useState<number | null>(null);
 
+  // Mits may sit anywhere in [startSec, laneDurationSec] — including the
+  // Pre-pull section (startSec < 0) when one exists.
   const legalHoverSec = (raw: number): number | null => {
-    if (raw < 0 || raw > laneDurationSec) return null;
+    if (raw < startSec || raw > laneDurationSec) return null;
     return legalRowPlacement(placement, rowIndex, raw) ? raw : null;
   };
 
@@ -123,7 +126,7 @@ function ChargeRow({ rowIndex, slot, mitType, placement, instances, damageMarks 
       return;
     }
     const rect = e.currentTarget.getBoundingClientRect();
-    const raw = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec);
+    const raw = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec, startSec);
     setHoverSec(legalHoverSec(raw));
   };
 
@@ -135,7 +138,7 @@ function ChargeRow({ rowIndex, slot, mitType, placement, instances, damageMarks 
     // popover's anchor position on the lane.
     if (e.target instanceof Element && e.target.closest(".mit-bar-popover")) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const raw = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec);
+    const raw = snapClientXToSecond(e.clientX, rect.left, pxPerSec, laneDurationSec, startSec);
     if (legalHoverSec(raw) === null) return;
     addMit({
       type_id: mitType.id,
@@ -178,33 +181,34 @@ function ChargeRow({ rowIndex, slot, mitType, placement, instances, damageMarks 
       onClick={handleClick}
     >
       <div className="lane-gridlines" aria-hidden />
+      <PrePullShade />
       <PhaseDividers />
       {guidesVisible &&
         damageMarks.map((m) => (
           <div
             key={m.id}
             className={`damage-guide${m.lethal ? " damage-guide--lethal" : ""}`}
-            style={{ left: m.effectTime * pxPerSec }}
+            style={{ left: (m.effectTime - startSec) * pxPerSec }}
             aria-hidden
           />
         ))}
       {placement.partnerInstances.map((p, i) => {
         const w = placement.partnerWindows[i];
         if (w == null) return null;
-        const leftSec = Math.max(0, w.startSec);
+        const leftSec = Math.max(startSec, w.startSec);
         const widthSec = Math.max(0, Math.min(w.endSec, laneDurationSec) - leftSec);
         if (widthSec <= 0) return null;
         return (
           <div
             key={`shared-cd-${p.id}`}
             className="mit-shared-cd"
-            style={{ left: leftSec * pxPerSec, width: widthSec * pxPerSec }}
+            style={{ left: (leftSec - startSec) * pxPerSec, width: widthSec * pxPerSec }}
             aria-hidden
           />
         );
       })}
       {hoverSec !== null && (
-        <div className="hover-ghost" style={{ left: hoverSec * pxPerSec }} aria-hidden>
+        <div className="hover-ghost" style={{ left: (hoverSec - startSec) * pxPerSec }} aria-hidden>
           <div className="hover-ghost-active" style={{ width: ghostActivePx }} />
           {ghostCooldownTailPx > 0 && (
             <div className="hover-ghost-cooldown" style={{ width: ghostCooldownTailPx }} />
