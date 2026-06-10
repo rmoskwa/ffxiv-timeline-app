@@ -528,6 +528,13 @@ export const TIMELINE_SCHEMA_VERSION = 2 as const;
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 export const MAX_FIGHT_DURATION_SEC = 1800; // 30:00 hard cap on user-set length
 
+// Pre-pull section bounds (CONTEXT.md "Pre-pull section", ADR 0012). The cap
+// matches the in-game /countdown maximum; no defensive lasts long enough for
+// an earlier placement to matter. The default seeds the Edit ▸ Add Pre-pull
+// Section menu action; the user fine-tunes via the Start field.
+export const MAX_PRE_PULL_SEC = 30;
+export const DEFAULT_PRE_PULL_SEC = 15;
+
 export const MAX_BASE_DAMAGE = 9_999_999; // 7-digit cap on boss-ability base damage — catches typo-zeros (10M+ is implausible)
 
 export const MAX_NAME_LEN = 80; // user-given name fields (fight name, boss name, type name, phase name, slot label) — prevents pasted-document overflow without constraining real names
@@ -557,7 +564,12 @@ export interface TimelineFile {
   metadata: {
     name: string; // user-given fight name
     boss_name: string; // user-given boss name shown on the BOSS lane label
-    fight_duration_sec: number; // total timeline length; canvas cannot extend past this
+    fight_duration_sec: number; // fight length (End); canvas cannot extend past this
+    // Pre-pull section size: how far before the pull the timeline extends
+    // (Start = -pre_pull_duration_sec). Only mitigation instances may sit
+    // there. Optional + absent ⇒ 0 so every existing v2 file keeps loading
+    // unchanged — deliberately additive, no schema bump (ADR 0012).
+    pre_pull_duration_sec?: number;
     created_at: string; // ISO-8601
     updated_at: string;
   };

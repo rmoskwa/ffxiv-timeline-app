@@ -241,6 +241,7 @@ describe("barDragRange", () => {
     partnerInstances?: MitigationInstance[];
     childInstances?: MitigationInstance[];
     fightDurationSec?: number;
+    minSec?: number;
   }) {
     const all = [
       args.instance,
@@ -255,6 +256,7 @@ describe("barDragRange", () => {
       partnerInstances: args.partnerInstances ?? [],
       childInstances: args.childInstances ?? [],
       fightDurationSec: args.fightDurationSec ?? 600,
+      ...(args.minSec !== undefined ? { minSec: args.minSec } : {}),
       allMits: all,
       lookupMitType: lookup,
       mitStates: NO_STATES,
@@ -263,6 +265,19 @@ describe("barDragRange", () => {
 
   it("an unconstrained bar ranges over the whole fight", () => {
     expect(range({ instance: mit("a", 100) })).toEqual({ minSec: 0, maxSec: 600 });
+  });
+
+  it("a negative minSec (Pre-pull section) extends the floor left of the pull", () => {
+    expect(range({ instance: mit("a", 100), minSec: -15 })).toEqual({ minSec: -15, maxSec: 600 });
+  });
+
+  it("a next neighbor still clamps a bar sitting in the Pre-pull section", () => {
+    const self = mit("b", -10);
+    const next = mit("c", 100); // self's footprint (60) must end by 100
+    expect(range({ instance: self, rowSiblings: [self, next], minSec: -15 })).toEqual({
+      minSec: -15,
+      maxSec: 40,
+    });
   });
 
   it("clamps against the previous neighbor's footprint end and the next neighbor's start", () => {

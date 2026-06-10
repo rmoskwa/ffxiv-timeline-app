@@ -10,6 +10,7 @@ import {
   MAX_MITIGATION_INSTANCES,
   MAX_NAME_LEN,
   MAX_PHASES,
+  MAX_PRE_PULL_SEC,
   TIMELINE_SCHEMA_VERSION,
 } from "@/domain/types";
 import {
@@ -1224,5 +1225,74 @@ describe("deserialize — no_full_heal_slot_ids (the Full heal flag)", () => {
     const tl = flaggedTimeline();
     const exported = deserializeBossTimeline(serializeBossTimeline(tl));
     expect(exported.boss_ability_instances[0].no_full_heal_slot_ids).toEqual([]);
+  });
+});
+
+describe("deserialize — pre_pull_duration_sec (the Pre-pull section)", () => {
+  function mitAt(effectTime: number) {
+    return {
+      id: "m1",
+      type_id: "drk.rampart",
+      player_slot_id: "slot-0",
+      effect_time: effectTime,
+      target_slot_ids: [],
+      coverage_overrides: [],
+    };
+  }
+
+  function withPrePull(prePull: number | undefined, mits: unknown[] = []) {
+    const tl = newTimeline("fixture");
+    const metadata: Record<string, unknown> = { ...tl.metadata };
+    if (prePull === undefined) {
+      delete metadata.pre_pull_duration_sec;
+    } else {
+      metadata.pre_pull_duration_sec = prePull;
+    }
+    return JSON.stringify({ ...tl, metadata, mitigation_instances: mits });
+  }
+
+  it("defaults a missing field to 0 (pre-feature files keep loading unchanged)", () => {
+    const tl = deserialize(withPrePull(undefined));
+    expect(tl.metadata.pre_pull_duration_sec).toBe(0);
+  });
+
+  it("round-trips a Pre-pull section with a negative mit effect_time", () => {
+    const tl = newTimeline("fixture");
+    tl.metadata.pre_pull_duration_sec = 15;
+    tl.mitigation_instances = [mitAt(-5)];
+    const tl2 = deserialize(serialize(tl));
+    expect(tl2.metadata.pre_pull_duration_sec).toBe(15);
+    expect(tl2.mitigation_instances[0].effect_time).toBe(-5);
+  });
+
+  it("rejects a mit effect_time left of the Start", () => {
+    expect(() => deserialize(withPrePull(5, [mitAt(-10)]))).toThrowError(/effect_time/);
+  });
+
+  it("rejects a negative mit effect_time when the file has no Pre-pull section", () => {
+    expect(() => deserialize(withPrePull(undefined, [mitAt(-1)]))).toThrowError(/effect_time/);
+  });
+
+  it("keeps rejecting negative boss-instance effect_time even with a Pre-pull section", () => {
+    const tl = newTimeline("fixture");
+    tl.metadata.pre_pull_duration_sec = 30;
+    const badInst = {
+      id: "i1",
+      type_id: "t1",
+      effect_time: -5,
+      target_slot_ids: [],
+      observed_damage: [],
+    };
+    const json = JSON.stringify({ ...tl, boss_ability_instances: [badInst] });
+    expect(() => deserialize(json)).toThrowError(/effect_time/);
+  });
+
+  it("silently clamps an over-cap pre_pull_duration_sec to MAX_PRE_PULL_SEC", () => {
+    const tl = deserialize(withPrePull(120));
+    expect(tl.metadata.pre_pull_duration_sec).toBe(MAX_PRE_PULL_SEC);
+  });
+
+  it("rejects a negative pre_pull_duration_sec", () => {
+    expect(() => deserialize(withPrePull(-5))).toThrowError(/pre_pull_duration_sec/);
   });
 });

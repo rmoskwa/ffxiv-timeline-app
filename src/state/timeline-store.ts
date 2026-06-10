@@ -24,6 +24,7 @@ import {
   MAX_MITIGATION_INSTANCES,
   MAX_NAME_LEN,
   MAX_PHASES,
+  MAX_PRE_PULL_SEC,
   type MitigationInstance,
   type Phase,
   type TimelineFile,
@@ -109,6 +110,9 @@ export interface TimelineStore {
   setName: (name: string) => void;
   setBossName: (name: string) => void;
   setFightDuration: (sec: number) => void;
+  // Pre-pull section size (Start = -sec). Clamped to [0, MAX_PRE_PULL_SEC];
+  // shrinking culls mits left of the new Start, mirroring setFightDuration.
+  setPrePullDuration: (sec: number) => void;
 
   setSlotJob: (slotIdx: number, job: JobOrUnset) => void;
   setSlotLabel: (slotIdx: number, label: string | undefined) => void;
@@ -300,6 +304,36 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           boss_ability_instances: survivingBoss,
           mitigation_instances: survivingMits,
           phases: survivingPhases,
+        }),
+        ...(selectionStillValid ? {} : { selectedInstance: null }),
+      };
+    }),
+
+  setPrePullDuration: (sec) =>
+    set((s) => {
+      if (!s.timeline) return s;
+      const clamped = Math.min(MAX_PRE_PULL_SEC, Math.max(0, Math.round(sec)));
+      // Mits left of the new Start are culled — the symmetric rule to
+      // setFightDuration's cull past the right edge. Boss instances and phases
+      // never sit pre-pull, so only mits are affected. A surviving gated child
+      // whose parent was culled goes with it (children may sit later than a
+      // pre-pull parent, so the time filter alone can't catch them).
+      const timeSurvivors = s.timeline.mitigation_instances.filter(
+        (m) => m.effect_time >= -clamped,
+      );
+      const survivorIds = new Set(timeSurvivors.map((m) => m.id));
+      const survivingMits = timeSurvivors.filter(
+        (m) => m.parent_instance_id == null || survivorIds.has(m.parent_instance_id),
+      );
+      const survivingMitIds = new Set(survivingMits.map((m) => m.id));
+      const sel = s.selectedInstance;
+      const selectionStillValid =
+        sel === null || sel.kind === "boss" || survivingMitIds.has(sel.id);
+      return {
+        timeline: touch({
+          ...s.timeline,
+          metadata: { ...s.timeline.metadata, pre_pull_duration_sec: clamped },
+          mitigation_instances: survivingMits,
         }),
         ...(selectionStillValid ? {} : { selectedInstance: null }),
       };
