@@ -1,8 +1,8 @@
 import type { MitigationType } from "@/domain/types";
 
 // WHM mitigation kit, FFXIV 7.x (Dawntrail), level 100 values.
-// Divine Benison, Divine Grace excluded — rotational cure-potency / heal-buff.
-// Utility entries (planner anchors, 0% mit): Liturgy of the Bell, Divine Caress.
+// Divine Grace excluded — rotational cure-potency / heal-buff.
+// Utility entries (planner anchors, 0% mit): Divine Benison, Liturgy of the Bell, Divine Caress.
 export const WHM_MITS: MitigationType[] = [
   {
     id: "whm.temperance",
@@ -40,6 +40,18 @@ export const WHM_MITS: MitigationType[] = [
     mechanic: "mit",
     wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Plenary_Indulgence",
     reference_notes: ["Only the 10% damage reduction is modeled."],
+  },
+  {
+    id: "whm.divine_benison",
+    name: "Divine Benison",
+    job: "WHM",
+    cooldown_seconds: 30, // per-charge recharge
+    duration_seconds: 15,
+    mitigation_per_type: {},
+    affects: "self",
+    max_charges: 2,
+    mechanic: "utility",
+    wiki_url: "https://ffxiv.consolegameswiki.com/wiki/Divine_Benison",
   },
   {
     id: "whm.liturgy_of_the_bell",
