@@ -8,6 +8,7 @@
 // A plain leaf mit shows the detail alone. See docs/prd/mit-inspector-detail.md.
 
 import { getGatedChildrenOf, getMitById } from "@/data/mit-library";
+import { childZoneBounds, GATED_CHILD_MIN_GAP_SECONDS } from "@/domain/placement";
 import { targetingForMit } from "@/domain/targeting";
 import {
   instanceActiveDurationSeconds,
@@ -21,9 +22,6 @@ import { TargetPicker } from "./TargetPicker";
 import { secondsToTimecode } from "./timeline-constants";
 import { useMitInstanceStates } from "./use-derived";
 import { useZoom } from "./use-zoom";
-
-// Mirrors the constant in MitBar — multi-charge gated children keep this gap.
-const GATED_CHILD_MIN_GAP_SECONDS = 2;
 
 export function MitInspectorPanel() {
   const selectedMitId = useTimelineStore((s) =>
@@ -182,10 +180,12 @@ function ChildSlotList({ parent, parentType, childType, allMits }: ChildSlotList
   );
   const execZone = childType.execution_zone_seconds ?? parentType.duration_seconds;
   const canonicalPositions = defaultChildPositions(parent.effect_time, childType.max_charges);
-  // Match the drag-time clamp: +1s from parent's cast, -1s from the zone end,
-  // and never past the timeline edge.
-  const zoneMin = parent.effect_time + 1;
-  const zoneMax = Math.min(parent.effect_time + execZone - 1, laneDurationSec);
+  // Match the drag-time clamp: the same zone bounds the canvas uses.
+  const { minSec: zoneMin, maxSec: zoneMax } = childZoneBounds(
+    parent.effect_time,
+    execZone,
+    laneDurationSec,
+  );
 
   // Pick a placement for a re-added child at `row`. Start at the canonical
   // position; if it's within the 2s gap of any existing sibling, shift to the

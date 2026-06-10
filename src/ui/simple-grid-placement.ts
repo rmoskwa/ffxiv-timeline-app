@@ -1,15 +1,16 @@
 // Legal re-anchor targets for a gated child in the Simple Timeline View. When a
 // child chip is selected, the grid offers to move it onto a boss-hit row; this
-// computes which rows are valid. Mirrors the canvas drag clamp (MitBar.tsx):
-// the child can't share the parent's cast (+1s start) or sit on the last legal
-// frame of the zone (-1s end), can't sit within the 2s GCD-floor gap of a
-// sibling charge, and never past the timeline edge.
+// computes which rows are valid. The zone bounds (+1s from the parent's cast,
+// -1s from the zone end, never past the timeline edge) and the 2s GCD-floor
+// sibling gap come from the shared Placement module (domain/placement.ts) —
+// the same rules the canvas drag clamp uses, so the two can't drift.
 //
 // Pure scalar module per docs/adr/0001-view-layer-pure-modules.md: takes hit
-// times and pre-resolved scalars only. Only the child's current Home row is
-// excluded — every other legal hit is a re-anchor target, including ones the
-// child currently covers (the React shell turns those rows' Coverage markers
-// into slots). See docs/adr/0002-simple-view-live-projection.md.
+// times and pre-resolved scalars only (the Placement imports are themselves
+// scalar-pure). Only the child's current Home row is excluded — every other
+// legal hit is a re-anchor target, including ones the child currently covers
+// (the React shell turns those rows' Coverage markers into slots). See
+// docs/adr/0002-simple-view-live-projection.md.
 //
 // Two kinds of legal row:
 //   • Activation row — a hit inside the zone [zoneMin, zoneMax]. The child is
@@ -26,8 +27,7 @@
 //
 // Tests in simple-grid-placement.test.ts.
 
-// Matches GATED_CHILD_MIN_GAP_SECONDS in MitBar.tsx / MitInspectorPanel.tsx.
-const GATED_CHILD_MIN_GAP_SECONDS = 2;
+import { childZoneBounds, GATED_CHILD_MIN_GAP_SECONDS } from "@/domain/placement";
 
 export interface ChildAnchorParams {
   // Parent instance effect_time, in seconds — the zone origin.
@@ -52,9 +52,9 @@ export function legalChildAnchorRows(
   hitTimes: readonly number[],
   params: ChildAnchorParams,
 ): { hitIndex: number; effectTime: number }[] {
-  const zoneMin = params.parentEffectTime + 1;
-  const zoneMax = Math.min(
-    params.parentEffectTime + params.execZoneSeconds - 1,
+  const { minSec: zoneMin, maxSec: zoneMax } = childZoneBounds(
+    params.parentEffectTime,
+    params.execZoneSeconds,
     params.fightDurationSec,
   );
   const rows: { hitIndex: number; effectTime: number }[] = [];
