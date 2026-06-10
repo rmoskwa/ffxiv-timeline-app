@@ -37,12 +37,12 @@ describe("mitReferenceNotes", () => {
 
   it("derives the gated note for a gated child given parentName (Tempera Grassa)", () => {
     const notes = mitReferenceNotes(byId("pct.tempera_grassa"), { parentName: "Tempera Coat" });
-    expect(notes).toContain("Cast inside Tempera Coat.");
+    expect(notes).toContain("Castable after Tempera Coat is activated.");
   });
 
   it("derives the shared-slot note for a non-stacking member (Reprisal)", () => {
     expect(mitReferenceNotes(byId("pld.reprisal"), NO_REFS)).toContain(
-      'Shared "reprisal" — only one copy applies across the party (re-casts refresh).',
+      "Only one copy applies across the party (re-casts refresh).",
     );
   });
 
