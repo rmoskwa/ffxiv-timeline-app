@@ -528,7 +528,7 @@ export const TIMELINE_SCHEMA_VERSION = 2 as const;
 export const DEFAULT_FIGHT_DURATION_SEC = 600; // 10:00 default fight length
 export const MAX_FIGHT_DURATION_SEC = 1800; // 30:00 hard cap on user-set length
 
-export const MAX_BASE_DAMAGE = 999_999; // 6-digit cap on boss-ability base damage — catches typo-zeros (1M+ is implausible)
+export const MAX_BASE_DAMAGE = 9_999_999; // 7-digit cap on boss-ability base damage — catches typo-zeros (10M+ is implausible)
 
 export const MAX_NAME_LEN = 80; // user-given name fields (fight name, boss name, type name, phase name, slot label) — prevents pasted-document overflow without constraining real names
 
