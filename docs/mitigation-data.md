@@ -113,6 +113,7 @@ Every tank has the permanent 20% Tank Mastery reduction inherently included.
 | Temperance | 120s | 20s | 10% | Whole party |
 | Aquaveil | 60s | 8s | 15% | One ally or self |
 | Plenary Indulgence | 60s | 10s | 10% — *only the damage reduction is modeled; the Confession healing boost is not* | Whole party |
+| Divine Benison | 30s | 15s | Planner marker only — **2 charges** | Self |
 | Liturgy of the Bell | 180s | 20s | Planner marker only | — |
 | Divine Caress | *cast inside Temperance* | 10s | Planner marker only | Whole party |
 
@@ -124,6 +125,7 @@ Every tank has the permanent 20% Tank Mastery reduction inherently included.
 | Expedient | 120s | 20s | 10% | Whole party |
 | Fey Illumination | 120s | 20s | 5% magical | Whole party |
 | Protraction | 60s | 10s | +10% max HP | One ally or self |
+| Recitation | 60s | 15s | Planner marker only | Self |
 | Deployment Tactics | 90s | instant | Planner marker only | Whole party |
 | Summon Seraph | 120s | 22s | Planner marker only | Whole party |
 | Consolation | *cast inside Summon Seraph* | 30s | Planner marker only — **2 charges** | Whole party |
@@ -320,12 +322,12 @@ What the app currently does **not** model:
   Divine Caress's barrier, and similar) are **not** included as shields, because
   their size depends on the healer's stats rather than a fixed percentage. Some
   of these still appear as *planner markers* (Haima, Panhaima, Divine Caress,
-  Consolation) so you can place them in your plan, but they contribute no
-  absorption to the math. The one exception is **PLD Guardian**, which is faked
+  Consolation, Divine Benison) so you can place them in your plan, but they
+  contribute no absorption to the math. The one exception is **PLD Guardian**, which is faked
   as a flat 15% shield (see above).
 - **Rotational / damage-step abilities** that happen to grant a small shield or
-  heal (e.g. GNB Brutal Shell, DNC Improvised Finish, WHM Divine Benison) are not
-  currently implemented.
+  heal (e.g. GNB Brutal Shell, DNC Improvised Finish) are not currently
+  implemented.
 - **Healing and regen components** of mitigations that also heal (e.g. the
   Knight's Benediction regen on Holy Sheltron/Intervention, the heals on
   Bloodwhetting and Heart of Corundum) are not modeled — only the damage
