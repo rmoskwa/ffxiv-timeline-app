@@ -365,15 +365,13 @@ export function mitReferenceNotes(mit: MitigationType, refs: ResolvedMitRefs): s
     notes.push(`Shares a recast with ${refs.recastPartners.join(", ")}.`);
   }
   if (mit.non_stacking_group) {
-    notes.push(
-      `Shared "${mit.non_stacking_group}" — only one copy applies across the party (re-casts refresh).`,
-    );
+    notes.push(`Only one copy applies across the party (re-casts refresh).`);
   }
   if (mit.max_charges > 1) {
     notes.push(`${mit.max_charges} charges.`);
   }
   if (mit.gated_by != null && refs.parentName) {
-    notes.push(`Cast inside ${refs.parentName}.`);
+    notes.push(`Castable after ${refs.parentName} is activated.`);
   }
   if (mit.cooldown_reduce_on_absorb != null) {
     notes.push(`Cooldown drops ${mit.cooldown_reduce_on_absorb}s if the shield is fully absorbed.`);
